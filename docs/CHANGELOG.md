@@ -9,6 +9,35 @@ which point versioning starts.
 
 ### Added
 
+- Phase 2 (admin catalog + allocation):
+  - Supabase Auth wiring: session-refresh middleware, magic-link
+    `/login`, `/auth/callback`, and a `requireAdmin()` guard for admin
+    routes (backed by RLS, not just a UX check).
+  - `catalog_items.stock_on_hand` (migration `0006`) — Phase 1 tracked
+    allocations but never tracked actual warehouse stock to check them
+    against.
+  - `public.allocate_inventory()` RPC — locks the catalog row, checks
+    and decrements stock, upserts the allocation, and posts the
+    allocation ledger entry as one atomic operation; rejects
+    over-allocation outright. `app.*` stays internal-only (not exposed
+    over the API); `public.*` is now the deliberate RPC surface for
+    business actions like this one, callable from Server Actions using
+    the signed-in admin's own session.
+  - Admin screens: `/admin/catalog` (list, quick-add, CSV bulk upload),
+    `/admin/organizations` and `/admin/fairs` (minimal scaffolding, not
+    the real application-review/Stripe-onboarding or fair-creation
+    screens — just enough for a fair to exist), and
+    `/admin/fairs/[id]/allocations` (the allocation checklist:
+    availability check, lead-time-aware "reorder now" vs. manual-decision
+    flag, and a packing suggestion).
+  - Packing suggestion is a **weight-only heuristic** (cartons needed ≈
+    total allocated weight ÷ carton capacity) — not true volumetric
+    packing. Seeded 3 generic carton sizes (migration `0007`) since
+    there's no carton-spec management screen yet.
+  - Validated against a real local Postgres instance again: the RPC's
+    authorization check, atomic stock decrement + ledger posting,
+    upsert-on-repeat-allocation, and rejection-with-no-partial-write on
+    insufficient stock all covered by a smoke test.
 - Phase 1 foundation:
   - Next.js + Supabase project skeleton (`app/`, `lib/supabase/`), builds
     and typechecks cleanly.

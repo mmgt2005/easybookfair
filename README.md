@@ -4,8 +4,10 @@ Book fair consignment platform. See [`docs/spec.md`](./docs/spec.md) for the
 full design, [`docs/MANUAL.md`](./docs/MANUAL.md) for intended usage, and
 [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) for what's shipped so far.
 
-**Status**: Phase 1 (foundation) — schema, ledger, and seeded chart of
-accounts. No screens yet; those start in Phase 2.
+**Status**: Phase 2 (admin catalog + allocation) — Supabase Auth wiring,
+admin catalog CRUD/CSV upload, and the allocation checklist with
+lead-time-aware restock handling and a packing suggestion. Org portal,
+storefront, and everything Stripe-related are later phases.
 
 ## Stack
 
@@ -30,10 +32,27 @@ code (everything that needs to be unit-tested).
    - `0003_ledger.sql`
    - `0004_seed_chart_of_accounts.sql`
    - `0005_rls.sql`
-4. Run the app:
+   - `0006_stock_and_allocation.sql`
+   - `0007_seed_carton_specs.sql`
+4. Make yourself a platform admin: sign in once at `/login` (magic link)
+   so a row exists in Supabase's `auth.users`, then insert your user id
+   into `platform_admins` directly (SQL Editor — there's no self-serve
+   admin invite flow yet):
+   ```sql
+   insert into public.platform_admins (user_id)
+   values ('<your auth.users id>');
+   ```
+5. Run the app:
    ```
    npm run dev
    ```
+
+## Known gap
+
+`lib/supabase/types.ts` is still the Phase 1 placeholder — a couple of
+joined-column reads in the allocation/fairs pages use an `as unknown as`
+cast to work around it. Regenerate real types once a project exists
+(command's in that file) and those casts should come out.
 
 ## Database notes
 

@@ -1,9 +1,18 @@
 # User manual
 
-> **Status**: no software has been built yet — this describes intended
-> behavior per [`docs/spec.md`](./spec.md). Each section will be
-> rewritten against the real screens as its build-plan phase ships, and
-> this notice will be removed once Phase 1 has a working app to describe.
+> **Status**: Phase 2 (admin catalog + allocation) is built and described
+> below as it actually works, not just intended behavior. Everything else
+> in this manual still describes intended behavior per
+> [`docs/spec.md`](./spec.md), pending its build-plan phase.
+
+## Signing in
+
+Admin screens live under `/admin` and require a session — go to `/login`,
+enter your email, and follow the magic link Supabase emails you. Being
+signed in isn't enough on its own: your user id also has to be a row in
+`platform_admins` (an existing admin adds it directly in the database for
+now — there's no self-serve admin invite flow yet), or you'll land on
+`/unauthorized` after signing in.
 
 ## Roles
 
@@ -18,33 +27,52 @@
 
 ## Admin guide
 
-### Catalog and inventory
+### Catalog and inventory (`/admin/catalog`)
 
-- **Add an item**: single quick-add form (title, cost, price, image,
-  category, tags, description, weight, lead time) or CSV bulk upload.
-  Applies to books and non-book merchandise (pencils, erasers, posters,
-  journals, etc.) alike — set `item_type` to distinguish them for
-  filtering/reporting; ISBN is optional and only used for books.
-- **Labels**: a QR code/label is generated automatically when an item is
-  added. For items without a manufacturer barcode, configure a label
-  template once (sheet/label dimensions, margins, gaps, rows/columns)
-  and reuse it for batch printing at packing time, on any printer/label
-  brand.
+- **Add an item** (`/admin/catalog/new`): quick-add form — title, cost,
+  price, image URL, category, tags, description, weight, lead time,
+  and `stock_on_hand` (how many you actually have on the shelf right
+  now — added in Phase 2 since allocation needs something concrete to
+  check availability against). Applies to books and non-book
+  merchandise (pencils, erasers, posters, journals, etc.) alike — set
+  the item type to distinguish them; ISBN is optional and only used for
+  books.
+- **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
+  required columns `title`, `cost`, `price`; everything else optional.
+  `tags` within a cell is semicolon-separated (a CSV already uses commas
+  as its own delimiter).
+- **Labels**: not built yet — still Phase 6 per the build plan.
 
-### Allocating a fair
+### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)
 
-1. Review the org's requested quantities in the allocation checklist.
-2. The system checks each item's available-to-promise stock against the
-   fair's start date and the item's lead time. A shortfall with enough
-   lead time offers "reorder now" (reserves a restock order against this
-   allocation); otherwise it's flagged for you to reduce quantity,
-   substitute, or reschedule.
-3. Packing suggestions show efficient carton packing for the finalized
-   allocation.
-4. **Cash drawer setup**: review the suggested starting petty-cash float
-   and denomination breakdown for this fair (computed from the
-   allocation's price points and the org's assumed or historical cash
-   sales ratio); adjust if needed.
+Minimal scaffolding, not the real screens from the spec: creating an
+organization here marks it `approved` immediately with no review step,
+and there's no Stripe Connect onboarding trigger yet (that's Phase 3).
+This exists only so a fair has an org to belong to, and allocation has a
+fair to allocate against.
+
+### Allocating a fair (`/admin/fairs/<id>/allocations`)
+
+1. Each catalog item's row shows current `stock_on_hand` and how much is
+   already allocated to this fair. Enter a quantity and **Allocate** —
+   this calls the `allocate_inventory` database function, which locks
+   the item's stock row, decrements it, and posts the allocation ledger
+   entry (Consigned ↔ Unallocated) as one atomic operation. Requesting
+   more than available stock is rejected outright with nothing written.
+2. If the fair's start date leaves enough lead time for the item, the
+   row instead offers **Reorder now**: enter the shortfall and it
+   allocates whatever stock exists now (if any), then reserves a
+   `restock_orders` row against that allocation for the rest. Without
+   enough lead time, the row just flags it for you to decide manually
+   (reduce quantity, substitute, or reschedule) — there's no automatic
+   action to take.
+3. **Packing suggestion**: click Recompute to get a cartons-needed
+   estimate per configured carton size, based on the fair's total
+   allocated weight. This is a **weight-only heuristic** (total weight ÷
+   carton weight capacity, rounded up) — not true volumetric/dimensional
+   bin packing. Good enough to gauge roughly how many boxes you need, not
+   to plan exactly what goes in which box.
+4. **Cash drawer setup**: not built yet.
 
 ### Application review
 
