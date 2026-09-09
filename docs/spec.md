@@ -2,11 +2,17 @@
 
 ## Overview
 
-A platform where a supplier organization consigns book inventory to partner
+A platform where a supplier organization consigns inventory to partner
 organizations (schools, churches, homeschool co-ops) who run book fair
 fundraisers. Buyers pay through the platform's payment system; at the end
 of each fair, the org receives payout for items sold and returns unsold
 items to the supplier. All transactions are documented and reportable.
+
+Inventory is not limited to books — the consignment/settlement model
+operates on cost vs. price per catalog item, so non-book merchandise
+(pencils, erasers, posters, journals, and similar fair add-ons) consigns,
+sells, and settles identically once entered in `catalog_items`. See
+"Data model" for the schema change this implies.
 
 Pre-Phase-7, "the supplier" and "the platform" are the same entity: this
 is a single business running its own consignment operation. Phase 7
@@ -108,8 +114,8 @@ Core tables (see `supabase/migrations/0001_init.sql` for full schema):
 |---|---|
 | `organizations` | Partner orgs, application status, Stripe Connect account |
 | `org_members` | Maps users to organizations with a role (`org_admin`, `org_staff`); needed from the org portal on, extended with platform/tenant roles in Phase 7 |
-| `catalog_items` | Master book list: title, ISBN, cost, price, image, category, tags, description, weight, lead time |
-| `fairs` | One per org's event; `status` (`scheduled`/`active`/`return_window`/`closed`) drives the settlement lifecycle |
+| `catalog_items` | Master item list — books and non-book merchandise: `item_type` (`book`/`merchandise`), title, SKU (general identifier; `isbn` nullable, populated only for books), cost, price, image, category, tags, description, weight, lead time |
+| `fairs` | One per org's event; `status` (`scheduled`/`active`/`return_window`/`closed`) drives the settlement lifecycle; `cash_sales_assumption_pct` seeds the petty-cash suggestion (see "Petty cash suggestion") |
 | `allocations` | Inventory checked out to an org for a specific fair |
 | `carton_specs` / `packing_suggestions` | Shipping/packing efficiency for allocation |
 | `restock_orders` | Lead-time tracking, reserved against a specific allocation |
@@ -124,6 +130,14 @@ Core tables (see `supabase/migrations/0001_init.sql` for full schema):
 `quantity` column) so per-unit inventory tracking and unit-level refunds
 stay simple; a 20-book cart is 20 rows sharing one `payment_intent_id`.
 Revisit if row volume becomes a real concern.
+
+**Design decision — merchandise support**: ISBN is the only book-specific
+assumption in the original schema, so it becomes optional; QR/label
+generation, barcode scanning, and lead-time/restock logic already key
+off SKU/barcode and `lead_time_days`, not ISBN, so they need no change
+to support pencils, erasers, posters, journals, etc. alongside books.
+`item_type` exists mainly for catalog filtering/reporting, not because
+the settlement math treats the two differently — it doesn't.
 
 **Explicitly deferred, not designed yet**:
 - Sales tax (no tax calculation, `Sales Tax Payable` account, or
@@ -185,6 +199,9 @@ both key off the same locked settlement numbers from "close fair."
    check against lead time, packing suggestion
 8. **Application review** — approve/decline, Stripe Connect onboarding
    trigger
+9. **Cash drawer setup** — suggested petty-cash float and denomination
+   breakdown for a fair, computed from its allocation, editable before
+   the fair opens (see "Petty cash suggestion")
 
 ## Core workflows
 
@@ -230,6 +247,27 @@ item's `lead_time_days`. If a shortfall exists and there's enough lead
 time, offers "reorder now" (creates a `restock_orders` row reserved
 against that allocation); otherwise flags for a manual decision (reduce
 quantity, substitute, or reschedule).
+
+**Petty cash suggestion**: before a fair opens, suggests a starting
+cash-drawer float sized to make change for expected cash sales:
+
+```
+expected_cash_sales_revenue = Σ(allocated item price) × cash_sales_assumption_pct
+suggested_float_total       = expected_cash_sales_revenue × change_buffer_factor
+```
+
+- `cash_sales_assumption_pct` defaults to a configurable estimate (e.g.
+  25%) and is refined automatically from that org's own trailing
+  cash-vs-card revenue split across their past closed fairs once that
+  history exists.
+- `change_buffer_factor` (e.g. 1.15–1.25) covers that a float needs
+  change-making capacity, not just a share of expected revenue.
+- The denomination breakdown (counts of $1s, $5s, $10s, quarters) is
+  derived from the actual price points in that fair's allocation, so
+  a catalog full of $7.99 items suggests plenty of $1s and quarters,
+  not just round bills.
+- This is a suggestion, not an enforced amount — admins/org staff can
+  override it, and accuracy improves after an org's first few fairs.
 
 **QR codes and labels**: generated automatically when a catalog item is
 added. For items without a manufacturer barcode, a brand-agnostic label
