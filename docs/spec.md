@@ -113,6 +113,7 @@ Core tables (see `supabase/migrations/0001_init.sql` for full schema):
 | Table | Purpose |
 |---|---|
 | `organizations` | Partner orgs, application status, Stripe Connect account |
+| `platform_admins` | Minimal stand-in for a platform-admin role ahead of Phase 7's three-tier role system — membership is what RLS treats as full access |
 | `org_members` | Maps users to organizations with a role (`org_admin`, `org_staff`); needed from the org portal on, extended with platform/tenant roles in Phase 7 |
 | `catalog_items` | Master item list — books and non-book merchandise: `item_type` (`book`/`merchandise`), title, SKU (general identifier; `isbn` nullable, populated only for books), cost, price, image, category, tags, description, weight, lead time |
 | `fairs` | One per org's event; `status` (`scheduled`/`active`/`return_window`/`closed`) drives the settlement lifecycle; `cash_sales_assumption_pct` seeds the petty-cash suggestion (see "Petty cash suggestion") |

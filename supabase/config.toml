@@ -1,0 +1,27 @@
+project_id = "easybookfair"
+
+[api]
+enabled = true
+port = 54321
+# `app` is intentionally not exposed here — it holds RLS predicate helpers
+# and the ledger-posting function, called from inside Postgres (policies,
+# triggers) or via a direct connection from trusted server code, never as a
+# PostgREST RPC. See supabase/migrations/0005_rls.sql.
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 16
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[storage]
+enabled = false

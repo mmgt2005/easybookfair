@@ -9,6 +9,28 @@ which point versioning starts.
 
 ### Added
 
+- Phase 1 foundation:
+  - Next.js + Supabase project skeleton (`app/`, `lib/supabase/`), builds
+    and typechecks cleanly.
+  - Full schema migration (`supabase/migrations/0001`–`0005`) implementing
+    every table in the spec's data model, plus `platform_admins` — a
+    minimal stand-in for a platform-admin role, needed for RLS before
+    Phase 7's three-tier roles exist.
+  - Double-entry ledger: `app.post_journal_entry()` posts a balanced
+    entry or rejects it, backed by a deferred constraint trigger on
+    `journal_lines` that enforces the same invariant independently of the
+    function. `settlements` has check constraints pinning the net-payout
+    formula directly in the schema.
+  - Seeded chart of accounts (the 7 accounts from `docs/spec.md`).
+  - Foundational RLS: org-scoped access via `app.current_org_ids()`,
+    platform-admin bypass via `app.is_platform_admin()`, default-deny on
+    tables that should only ever be written by trusted server code
+    (`sales`, `journal_entries`, `webhook_events`, `settlements`).
+  - All of the above validated against a real local Postgres instance
+    (schema applies cleanly; ledger balance enforcement, settlement
+    check constraints, and RLS scoping all verified with a smoke test),
+    not just reviewed as SQL.
+
 - Initial design spec (`docs/spec.md`): data model, chart of accounts,
   screens, and core workflows for a per-fair book consignment platform.
 - User manual (`docs/MANUAL.md`) and this changelog.

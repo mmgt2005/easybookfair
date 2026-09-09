@@ -1,0 +1,23 @@
+# Next.js
+.next/
+out/
+build/
+
+# Dependencies
+node_modules/
+
+# Env
+.env
+.env*.local
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Editor/OS
+.DS_Store
+*.log
