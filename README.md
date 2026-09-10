@@ -35,6 +35,7 @@ code (everything that needs to be unit-tested).
    - `0006_stock_and_allocation.sql`
    - `0007_seed_carton_specs.sql`
    - `0008_catalog_image_uploads.sql`
+   - `0009_receive_stock.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve

@@ -9,6 +9,14 @@ which point versioning starts.
 
 ### Added
 
+- Restocking an existing catalog item: a "Receive stock" quantity field
+  and button per row on `/admin/catalog`, backed by a new
+  `public.receive_stock()` RPC (migration `0009`) that atomically adds to
+  `stock_on_hand` rather than requiring a read-then-write from the client.
+  Deliberately not ledger-tracked, consistent with how `stock_on_hand` at
+  the unallocated stage already wasn't — only the allocation transition
+  (Unallocated → Consigned) posts a journal entry. There's still no
+  general "edit item" screen for other fields (price, description, etc.).
 - Images uploaded from `/admin/catalog/new` are resized (max 1600px) and
   re-encoded as WebP in the browser before upload, cutting typical phone
   photos down substantially — smaller uploads are also less exposed to

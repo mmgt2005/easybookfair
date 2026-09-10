@@ -11,6 +11,31 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
+// Restocking an item already in the catalog — adds to stock_on_hand rather
+// than overwriting it, via the receive_stock() RPC so the increment is
+// atomic (see migration 0009).
+export async function receiveStock(formData: FormData) {
+  const supabase = await createClient();
+
+  const catalogItemId = String(formData.get("catalog_item_id") ?? "");
+  const quantity = Number(formData.get("quantity"));
+
+  if (!catalogItemId || !Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("Quantity must be a positive number");
+  }
+
+  const { error } = await supabase.rpc("receive_stock", {
+    p_catalog_item_id: catalogItemId,
+    p_quantity: quantity,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/catalog");
+}
+
 export async function createCatalogItem(formData: FormData) {
   const supabase = await createClient();
 

@@ -37,6 +37,11 @@ now — there's no self-serve admin invite flow yet), or you'll land on
   merchandise (pencils, erasers, posters, journals, etc.) alike — set
   the item type to distinguish them; ISBN is optional and only used for
   books.
+- **Receive stock**: on the catalog list, each row has a quantity field
+  and a **Receive** button — adds to that item's `stock_on_hand` (e.g.
+  more copies arrived from the supplier). This is the only way to update
+  an existing item's stock right now; there's no general "edit item"
+  screen yet for changing price, description, etc.
 - **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
   required columns `title`, `cost`, `price`; everything else optional.
   `tags` within a cell is semicolon-separated (a CSV already uses commas

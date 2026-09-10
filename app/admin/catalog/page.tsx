@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { receiveStock } from "./actions";
 
 export default async function CatalogPage() {
   const supabase = await createClient();
@@ -34,6 +35,7 @@ export default async function CatalogPage() {
             <th className="py-1 pr-4">Cost</th>
             <th className="py-1 pr-4">Price</th>
             <th className="py-1 pr-4">Stock</th>
+            <th className="py-1 pr-4">Receive stock</th>
           </tr>
         </thead>
         <tbody>
@@ -53,6 +55,22 @@ export default async function CatalogPage() {
               <td className="py-1 pr-4">${item.cost}</td>
               <td className="py-1 pr-4">${item.price}</td>
               <td className="py-1 pr-4">{item.stock_on_hand}</td>
+              <td className="py-1 pr-4">
+                <form action={receiveStock} className="flex gap-1">
+                  <input type="hidden" name="catalog_item_id" value={item.id} />
+                  <input
+                    name="quantity"
+                    type="number"
+                    min={1}
+                    required
+                    placeholder="Qty"
+                    className="w-16 rounded border border-neutral-300 px-1 py-0.5"
+                  />
+                  <button type="submit" className="rounded border border-neutral-400 px-2 py-0.5 text-xs">
+                    Receive
+                  </button>
+                </form>
+              </td>
             </tr>
           ))}
         </tbody>
