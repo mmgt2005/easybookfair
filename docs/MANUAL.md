@@ -39,9 +39,13 @@ now — there's no self-serve admin invite flow yet), or you'll land on
   books.
 - **Receive stock**: on the catalog list, each row has a quantity field
   and a **Receive** button — adds to that item's `stock_on_hand` (e.g.
-  more copies arrived from the supplier). This is the only way to update
-  an existing item's stock right now; there's no general "edit item"
-  screen yet for changing price, description, etc.
+  more copies arrived from the supplier). Use this for routine restocking.
+- **Edit an item** (`/admin/catalog/<id>/edit`, via the **Edit** link on
+  each row): change any field — title, cost, price, category, tags,
+  description, weight, lead time, or `stock_on_hand` directly (for
+  corrections; prefer "Receive" above for routine restocking since that's
+  additive rather than an overwrite). Uploading a new image replaces the
+  old one; leaving the image field blank keeps the current image as-is.
 - **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
   required columns `title`, `cost`, `price`; everything else optional.
   `tags` within a cell is semicolon-separated (a CSV already uses commas

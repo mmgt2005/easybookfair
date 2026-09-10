@@ -9,6 +9,12 @@ which point versioning starts.
 
 ### Added
 
+- Full catalog item editing at `/admin/catalog/<id>/edit` — every field
+  from the "Add item" form, including replacing the image (leaving it
+  blank keeps the current one; the old image isn't deleted from storage,
+  just no longer referenced — a minor known gap, not a correctness issue).
+  `stock_on_hand` is directly editable here too, for corrections — routine
+  restocking should still use the additive "Receive" action instead.
 - Restocking an existing catalog item: a "Receive stock" quantity field
   and button per row on `/admin/catalog`, backed by a new
   `public.receive_stock()` RPC (migration `0009`) that atomically adds to

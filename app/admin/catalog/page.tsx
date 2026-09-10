@@ -36,6 +36,7 @@ export default async function CatalogPage() {
             <th className="py-1 pr-4">Price</th>
             <th className="py-1 pr-4">Stock</th>
             <th className="py-1 pr-4">Receive stock</th>
+            <th className="py-1 pr-4" />
           </tr>
         </thead>
         <tbody>
@@ -70,6 +71,11 @@ export default async function CatalogPage() {
                     Receive
                   </button>
                 </form>
+              </td>
+              <td className="py-1 pr-4">
+                <Link href={`/admin/catalog/${item.id}/edit`} className="underline">
+                  Edit
+                </Link>
               </td>
             </tr>
           ))}
