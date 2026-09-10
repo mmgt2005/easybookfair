@@ -22,6 +22,20 @@ export async function createCatalogItem(formData: FormData) {
     throw new Error("Title, cost, and price are required");
   }
 
+  let imageUrl: string | null = null;
+  const imageFile = formData.get("image") as File | null;
+  if (imageFile && imageFile.size > 0) {
+    const extension = imageFile.name.split(".").pop() || "jpg";
+    const path = `${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("catalog-images")
+      .upload(path, imageFile, { contentType: imageFile.type });
+    if (uploadError) {
+      throw new Error(`Image upload failed: ${uploadError.message}`);
+    }
+    imageUrl = supabase.storage.from("catalog-images").getPublicUrl(path).data.publicUrl;
+  }
+
   const { error } = await supabase.from("catalog_items").insert({
     item_type: String(formData.get("item_type") ?? "book"),
     title,
@@ -29,7 +43,7 @@ export async function createCatalogItem(formData: FormData) {
     isbn: String(formData.get("isbn") ?? "").trim() || null,
     cost,
     price,
-    image_url: String(formData.get("image_url") ?? "").trim() || null,
+    image_url: imageUrl,
     category: String(formData.get("category") ?? "").trim() || null,
     tags: parseTags(String(formData.get("tags") ?? "")),
     description: String(formData.get("description") ?? "").trim() || null,

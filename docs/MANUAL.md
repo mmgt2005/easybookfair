@@ -30,7 +30,7 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 ### Catalog and inventory (`/admin/catalog`)
 
 - **Add an item** (`/admin/catalog/new`): quick-add form — title, cost,
-  price, image URL, category, tags, description, weight, lead time,
+  price, an image file to upload, category, tags, description, weight, lead time,
   and `stock_on_hand` (how many you actually have on the shelf right
   now — added in Phase 2 since allocation needs something concrete to
   check availability against). Applies to books and non-book
@@ -40,7 +40,8 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 - **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
   required columns `title`, `cost`, `price`; everything else optional.
   `tags` within a cell is semicolon-separated (a CSV already uses commas
-  as its own delimiter).
+  as its own delimiter). `image_url` here is still a URL string, not a
+  file — bulk-imported items are expected to already have hosted images.
 - **Labels**: not built yet — still Phase 6 per the build plan.
 
 ### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)

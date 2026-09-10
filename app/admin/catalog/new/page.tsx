@@ -32,7 +32,15 @@ export default function NewCatalogItemPage() {
             className="rounded border border-neutral-300 px-2 py-1"
           />
         </div>
-        <input name="image_url" placeholder="Image URL" className="rounded border border-neutral-300 px-2 py-1" />
+        <label className="text-xs text-neutral-600">
+          Image
+          <input
+            name="image"
+            type="file"
+            accept="image/*"
+            className="mt-1 block w-full text-sm"
+          />
+        </label>
         <input name="category" placeholder="Category" className="rounded border border-neutral-300 px-2 py-1" />
         <input
           name="tags"

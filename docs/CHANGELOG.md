@@ -9,6 +9,11 @@ which point versioning starts.
 
 ### Added
 
+- Catalog item images can now be uploaded as a file from `/admin/catalog/new`
+  instead of only pasted as a URL — stored in a new public Supabase Storage
+  bucket (`catalog-images`, migration `0008`), write-restricted to platform
+  admins. CSV bulk upload still takes `image_url` as a URL string (bulk
+  imports are expected to already have hosted images).
 - Phase 2 (admin catalog + allocation):
   - Supabase Auth wiring: session-refresh middleware, magic-link
     `/login`, `/auth/callback`, and a `requireAdmin()` guard for admin

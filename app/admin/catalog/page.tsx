@@ -5,7 +5,7 @@ export default async function CatalogPage() {
   const supabase = await createClient();
   const { data: items, error } = await supabase
     .from("catalog_items")
-    .select("id, item_type, title, sku, cost, price, stock_on_hand")
+    .select("id, item_type, title, sku, cost, price, stock_on_hand, image_url")
     .order("title");
 
   return (
@@ -27,6 +27,7 @@ export default async function CatalogPage() {
       <table className="w-full max-w-3xl text-sm">
         <thead>
           <tr className="border-b border-neutral-200 text-left">
+            <th className="py-1 pr-4" />
             <th className="py-1 pr-4">Title</th>
             <th className="py-1 pr-4">Type</th>
             <th className="py-1 pr-4">SKU</th>
@@ -38,6 +39,14 @@ export default async function CatalogPage() {
         <tbody>
           {items?.map((item) => (
             <tr key={item.id} className="border-b border-neutral-100">
+              <td className="py-1 pr-4">
+                {/* Plain <img>, not next/image: avoids needing a remote-pattern
+                    config for a Supabase project URL that varies per deploy. */}
+                {item.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.image_url} alt="" className="h-10 w-10 rounded object-cover" />
+                )}
+              </td>
               <td className="py-1 pr-4">{item.title}</td>
               <td className="py-1 pr-4">{item.item_type}</td>
               <td className="py-1 pr-4">{item.sku}</td>
