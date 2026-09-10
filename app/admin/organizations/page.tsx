@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createOrganization } from "./actions";
 
@@ -25,6 +26,7 @@ export default async function OrganizationsPage() {
             <th className="py-1 pr-4">Name</th>
             <th className="py-1 pr-4">Contact</th>
             <th className="py-1 pr-4">Status</th>
+            <th className="py-1 pr-4" />
           </tr>
         </thead>
         <tbody>
@@ -35,6 +37,11 @@ export default async function OrganizationsPage() {
                 {org.contact_name} {org.contact_email && `<${org.contact_email}>`}
               </td>
               <td className="py-1 pr-4">{org.status}</td>
+              <td className="py-1 pr-4">
+                <Link href={`/admin/organizations/${org.id}/edit`} className="underline">
+                  Edit
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

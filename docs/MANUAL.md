@@ -69,6 +69,12 @@ and there's no Stripe Connect onboarding trigger yet (that's Phase 3).
 This exists only so a fair has an org to belong to, and allocation has a
 fair to allocate against.
 
+**Editing an organization** (`/admin/organizations/<id>/edit`): change
+name, contact info, and `status` (pending/approved/declined). Stripe
+Connect's `charges_enabled`/`payouts_enabled` show as read-only here —
+those only ever get set by Stripe's own webhook once real onboarding
+(Phase 3) confirms them, never by hand, so there's no field for them.
+
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
 Change the name, dates, or `status`, and override the platform's default

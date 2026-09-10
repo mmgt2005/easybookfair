@@ -9,6 +9,10 @@ which point versioning starts.
 
 ### Added
 
+- `/admin/organizations/<id>/edit`: change name, contact info, and
+  `status`. Stripe Connect fields (`charges_enabled`/`payouts_enabled`)
+  are shown read-only, not editable — those are meant to be set only by
+  Stripe's webhook once real onboarding (Phase 3) exists, never by hand.
 - `/admin/fairs/<id>/edit`: change a fair's name, dates, `status`, and
   its cash-sales-assumption override. `status` is a manual field for
   now — no automatic lifecycle transitions exist yet (that's tied to
