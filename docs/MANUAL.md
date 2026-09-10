@@ -53,6 +53,14 @@ now — there's no self-serve admin invite flow yet), or you'll land on
   file — bulk-imported items are expected to already have hosted images.
 - **Labels**: not built yet — still Phase 6 per the build plan.
 
+### Carton specs (`/admin/carton-specs`)
+
+A shared list of generic box sizes (not assigned per catalog item) —
+name, dimensions, and max weight capacity. The packing suggestion on a
+fair's allocation page picks whichever of these needs the fewest boxes
+for that fair's total allocated weight. Add more sizes here if the
+default Small/Medium/Large don't match your actual cartons.
+
 ### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)
 
 Minimal scaffolding, not the real screens from the spec: creating an

@@ -23,6 +23,9 @@ export default async function AdminLayout({
         <Link href="/admin/fairs" className="text-neutral-600 hover:text-neutral-900">
           Fairs
         </Link>
+        <Link href="/admin/carton-specs" className="text-neutral-600 hover:text-neutral-900">
+          Carton specs
+        </Link>
       </nav>
       <div className="px-6 py-6">{children}</div>
     </div>

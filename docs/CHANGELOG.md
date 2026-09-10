@@ -9,6 +9,12 @@ which point versioning starts.
 
 ### Added
 
+- `/admin/carton-specs`: list and add generic box sizes (name,
+  dimensions, max weight) — no schema/migration change needed, since
+  `carton_specs` already had an admin-write RLS policy from Phase 1
+  with nothing built to use it yet. These are shared across the whole
+  catalog, not assigned per item; the packing suggestion picks whichever
+  needs the fewest boxes for a fair's total allocated weight.
 - Full catalog item editing at `/admin/catalog/<id>/edit` — every field
   from the "Add item" form, including replacing the image (leaving it
   blank keeps the current one; the old image isn't deleted from storage,
