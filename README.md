@@ -47,6 +47,15 @@ code (everything that needs to be unit-tested).
    npm run dev
    ```
 
+## Deploying
+
+Also deployable to Vercel: import the repo, set the **Production Branch**
+(Project Settings → Git) to `claude/new-session-dm851x` since that's where
+this project's work lives, and add the three variables from `.env.example`
+under Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones can
+use the "Config" type, `SUPABASE_SERVICE_ROLE_KEY` should stay "Secret".
+Every push to that branch triggers a new deployment automatically.
+
 ## Known gap
 
 `lib/supabase/types.ts` is still the Phase 1 placeholder — a couple of
