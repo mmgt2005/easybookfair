@@ -69,6 +69,14 @@ and there's no Stripe Connect onboarding trigger yet (that's Phase 3).
 This exists only so a fair has an org to belong to, and allocation has a
 fair to allocate against.
 
+### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
+
+Change the name, dates, or `status`, and override the platform's default
+cash-sales-ratio assumption for this specific fair. Status is a manual
+field for now — nothing transitions it automatically yet (that's tied to
+the settlement/close-fair work in a later phase), so set it yourself as
+the fair progresses.
+
 ### Allocating a fair (`/admin/fairs/<id>/allocations`)
 
 1. Each catalog item's row shows current `stock_on_hand` and how much is

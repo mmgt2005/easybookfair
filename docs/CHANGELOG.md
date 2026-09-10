@@ -9,6 +9,10 @@ which point versioning starts.
 
 ### Added
 
+- `/admin/fairs/<id>/edit`: change a fair's name, dates, `status`, and
+  its cash-sales-assumption override. `status` is a manual field for
+  now — no automatic lifecycle transitions exist yet (that's tied to
+  the close-fair/settlement work in a later phase).
 - `/admin/carton-specs`: list and add generic box sizes (name,
   dimensions, max weight) — no schema/migration change needed, since
   `carton_specs` already had an admin-write RLS policy from Phase 1

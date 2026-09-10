@@ -40,9 +40,12 @@ export default async function FairsPage() {
                 {fair.start_date} – {fair.end_date}
               </td>
               <td className="py-1 pr-4">{fair.status}</td>
-              <td className="py-1 pr-4">
+              <td className="py-1 pr-4 flex gap-3">
                 <Link href={`/admin/fairs/${fair.id}/allocations`} className="underline">
                   Allocate
+                </Link>
+                <Link href={`/admin/fairs/${fair.id}/edit`} className="underline">
+                  Edit
                 </Link>
               </td>
             </tr>
