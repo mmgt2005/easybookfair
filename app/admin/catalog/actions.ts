@@ -57,7 +57,6 @@ export async function createCatalogItem(formData: FormData) {
   }
 
   revalidatePath("/admin/catalog");
-  redirect("/admin/catalog");
 }
 
 // Bulk upload expects a CSV with a header row matching (a subset of) these

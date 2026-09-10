@@ -1,10 +1,41 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createCatalogItem } from "../actions";
+import { compressImage } from "@/lib/compressImage";
 
 export default function NewCatalogItemPage() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const imageFile = formData.get("image") as File | null;
+    if (imageFile && imageFile.size > 0) {
+      const compressed = await compressImage(imageFile);
+      formData.set("image", compressed);
+    }
+
+    startTransition(async () => {
+      try {
+        await createCatalogItem(formData);
+        router.push("/admin/catalog");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Add catalog item</h1>
-      <form action={createCatalogItem} className="flex max-w-md flex-col gap-2">
+      {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-2">
         <select name="item_type" defaultValue="book" className="rounded border border-neutral-300 px-2 py-1">
           <option value="book">Book</option>
           <option value="merchandise">Merchandise</option>
@@ -33,7 +64,7 @@ export default function NewCatalogItemPage() {
           />
         </div>
         <label className="text-xs text-neutral-600">
-          Image
+          Image (resized/compressed automatically before upload)
           <input
             name="image"
             type="file"
@@ -75,8 +106,12 @@ export default function NewCatalogItemPage() {
             className="rounded border border-neutral-300 px-2 py-1"
           />
         </div>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-white">
-          Add item
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-50"
+        >
+          {isPending ? "Adding…" : "Add item"}
         </button>
       </form>
     </div>

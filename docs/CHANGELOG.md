@@ -9,6 +9,13 @@ which point versioning starts.
 
 ### Added
 
+- Images uploaded from `/admin/catalog/new` are resized (max 1600px) and
+  re-encoded as WebP in the browser before upload, cutting typical phone
+  photos down substantially — smaller uploads are also less exposed to
+  flaky-connection failures. That page also now shows real error messages
+  inline instead of crashing to Next.js's generic error screen, since
+  adding client-side compression meant converting it off a plain form
+  action to an imperative call with its own error handling.
 - Catalog item images can now be uploaded as a file from `/admin/catalog/new`
   instead of only pasted as a URL — stored in a new public Supabase Storage
   bucket (`catalog-images`, migration `0008`), write-restricted to platform
