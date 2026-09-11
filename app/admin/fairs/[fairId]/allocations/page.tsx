@@ -6,6 +6,10 @@ type PackingSuggestion = {
   total_weight_oz: number;
   note: string;
   options: { carton_spec_id: string; name: string; cartons_needed: number }[];
+  cartons?: {
+    items: { catalog_item_id: string; title: string; quantity: number }[];
+    weight_oz: number;
+  }[];
 };
 
 export default async function AllocationsPage({
@@ -171,13 +175,33 @@ export default async function AllocationsPage({
           Weight-based estimate only — not true volumetric/dimensional packing.
         </p>
         {suggestion && recommendedCarton ? (
-          <ul className="text-sm">
-            <li>Total weight: {suggestion.total_weight_oz} oz</li>
-            <li>
-              Use <strong>{recommendedCarton.name}</strong> cartons —{" "}
-              {recommendedCarton.cartons_needed} needed
-            </li>
-          </ul>
+          <div className="flex flex-col gap-3 text-sm">
+            <ul>
+              <li>Total weight: {suggestion.total_weight_oz} oz</li>
+              <li>
+                Use <strong>{recommendedCarton.name}</strong> cartons —{" "}
+                {recommendedCarton.cartons_needed} needed
+              </li>
+            </ul>
+            {suggestion.cartons && suggestion.cartons.length > 0 && (
+              <ol className="flex flex-col gap-2">
+                {suggestion.cartons.map((carton, i) => (
+                  <li key={i} className="rounded-lg bg-neutral-50 p-2">
+                    <span className="font-semibold text-neutral-800">
+                      Carton {i + 1} ({carton.weight_oz} oz)
+                    </span>
+                    <ul className="ml-4 list-disc text-neutral-600">
+                      {carton.items.map((line) => (
+                        <li key={line.catalog_item_id}>
+                          {line.quantity}× {line.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-neutral-600">No suggestion computed yet.</p>
         )}

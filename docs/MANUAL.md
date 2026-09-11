@@ -107,13 +107,14 @@ the fair progresses.
    enough lead time, the row just flags it for you to decide manually
    (reduce quantity, substitute, or reschedule) — there's no automatic
    action to take.
-3. **Packing suggestion**: click Recompute to get a cartons-needed
-   estimate for the fair's total allocated weight — shows the one carton
-   size that needs the fewest boxes (not every configured size). This is
-   a **weight-only heuristic** (total weight ÷ carton weight capacity,
-   rounded up) — not true volumetric/dimensional bin packing. Good enough
-   to gauge roughly how many boxes you need, not to plan exactly what
-   goes in which box.
+3. **Packing suggestion**: click Recompute to get the recommended carton
+   size (fewest boxes needed for the fair's total allocated weight), plus
+   an actual packing list — "Carton 1: 15× Title A, 10× Title B", and so
+   on — assigning specific items to specific boxes via a first-fit-
+   decreasing bin-packing pass. Still a **weight-only heuristic** (no item
+   dimensions exist yet, so this isn't true volumetric/dimensional
+   packing) — an item with no weight set gets grouped into its own carton
+   at the end rather than silently mixed in or dropped from the list.
 4. **Cash drawer setup**: not built yet.
 
 ### Application review

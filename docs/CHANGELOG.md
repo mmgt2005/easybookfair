@@ -7,6 +7,20 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Added
+
+- Packing suggestion now assigns specific items to specific cartons
+  ("Carton 1: 15× Title A, 10× Title B"), not just a box count. New
+  `lib/packCartons.ts`: first-fit-decreasing bin packing by weight
+  against the recommended carton size, unit-tested (fits-in-one-carton,
+  overflow-splits-across-cartons, an item heavier than the whole carton
+  still gets placed one-per-carton rather than looping forever, and an
+  item with no weight set lands in its own carton rather than being
+  silently dropped or mixed into weight-based placement). No schema
+  change — the extra `cartons` array lives in the existing
+  `packing_suggestions.suggestion` jsonb column alongside what was
+  already there.
+
 ### Changed
 
 - Packing suggestion on the allocation page now shows only the one

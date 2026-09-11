@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { packCartons, type PackableItem } from "@/lib/packCartons";
 
 function pagePath(fairId: string) {
   return `/admin/fairs/${fairId}/allocations`;
@@ -98,7 +99,7 @@ export async function computePackingSuggestion(fairId: string) {
     await Promise.all([
       supabase
         .from("allocations")
-        .select("quantity_allocated, catalog_items(weight_oz)")
+        .select("quantity_allocated, catalog_items(id, title, weight_oz)")
         .eq("fair_id", fairId),
       supabase.from("carton_specs").select("id, name, max_weight_oz"),
     ]);
@@ -106,10 +107,24 @@ export async function computePackingSuggestion(fairId: string) {
   if (allocError) withError(fairId, allocError.message);
   if (cartonError) withError(fairId, cartonError.message);
 
-  const totalWeightOz = (allocations ?? []).reduce((sum, row) => {
-    const item = row.catalog_items as unknown as { weight_oz: number | null } | null;
-    return sum + row.quantity_allocated * (item?.weight_oz ?? 0);
-  }, 0);
+  const packableItems: PackableItem[] = (allocations ?? [])
+    .map((row) => {
+      const item = row.catalog_items as unknown as {
+        id: string;
+        title: string;
+        weight_oz: number | null;
+      } | null;
+      if (!item || row.quantity_allocated <= 0) return null;
+      return {
+        catalog_item_id: item.id,
+        title: item.title,
+        weight_oz: item.weight_oz ?? 0,
+        quantity: row.quantity_allocated,
+      };
+    })
+    .filter((x): x is PackableItem => x !== null);
+
+  const totalWeightOz = packableItems.reduce((sum, i) => sum + i.quantity * i.weight_oz, 0);
 
   if (!cartonSpecs || cartonSpecs.length === 0) {
     withError(fairId, "No carton specs configured");
@@ -126,6 +141,9 @@ export async function computePackingSuggestion(fairId: string) {
     opt.cartons_needed < best.cartons_needed ? opt : best,
   );
 
+  const suggestedSpec = cartonSpecs!.find((s) => s.id === suggested.carton_spec_id)!;
+  const cartons = packCartons(packableItems, Number(suggestedSpec.max_weight_oz));
+
   const { error: insertError } = await supabase.from("packing_suggestions").insert({
     fair_id: fairId,
     carton_spec_id: suggested.carton_spec_id,
@@ -133,6 +151,7 @@ export async function computePackingSuggestion(fairId: string) {
       total_weight_oz: totalWeightOz,
       note: "Weight-based estimate only — not true volumetric/dimensional packing.",
       options,
+      cartons,
     },
   });
 
