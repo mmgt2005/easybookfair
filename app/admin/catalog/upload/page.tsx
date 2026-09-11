@@ -13,7 +13,9 @@ export default function BulkUploadPage() {
             (book/merchandise), <code>sku</code>, <code>isbn</code>,{" "}
             <code>image_url</code>, <code>category</code>, <code>tags</code>{" "}
             (semicolon-separated, not comma — this is a CSV), <code>description</code>,{" "}
-            <code>weight_oz</code>, <code>lead_time_days</code>, <code>stock_on_hand</code>.
+            <code>weight_oz</code>, <code>length_in</code>, <code>width_in</code>,{" "}
+            <code>height_in</code> (weight/dimensions drive the packing suggestion),{" "}
+            <code>lead_time_days</code>, <code>stock_on_hand</code>.
           </>
         }
       />

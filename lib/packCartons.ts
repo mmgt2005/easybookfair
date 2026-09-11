@@ -1,49 +1,69 @@
 export type PackableItem = {
   catalog_item_id: string;
   title: string;
-  weight_oz: number;
+  weight_oz: number; // 0 = no weight recorded
+  volume_in3: number; // 0 = no dimensions recorded
   quantity: number;
+};
+
+export type CartonCapacity = {
+  maxWeightOz: number;
+  maxVolumeIn3: number;
 };
 
 export type CartonAssignment = {
   items: { catalog_item_id: string; title: string; quantity: number }[];
   weight_oz: number;
+  volume_in3: number;
 };
 
 /**
- * First-fit-decreasing bin packing by weight: sorts items heaviest-first,
- * then places each into the first carton with enough remaining capacity,
- * opening a new one when none fits. Same weight-only heuristic as the
- * box-count estimate (no item dimensions exist yet, so this is not true
- * volumetric/dimensional packing) — this just goes one step further and
- * says which items land in which box, not only how many boxes.
- *
- * Items with no weight recorded (weight_oz <= 0) don't consume any
- * carton's capacity, so they're grouped into one carton of their own
- * rather than silently included in the weight-based placement (which
- * would let them ride along "for free" in every box) or dropped
- * entirely (which would leave them off the packing list).
+ * First-fit-decreasing bin packing against two independent capacities
+ * (weight and volume) — a carton is full when either limit is hit, since a
+ * real box has both a weight rating and a physical size. An item missing
+ * one of the two measurements (e.g. weight recorded but no dimensions yet)
+ * is only checked against whichever one it has; an item missing both goes
+ * into its own carton(s) at the end rather than being silently unconstrained
+ * or dropped from the list. Still a heuristic, not true 3D placement with
+ * orientation — this answers "does it fit by size and weight," not "where
+ * exactly in the box."
  */
-export function packCartons(items: PackableItem[], maxWeightOz: number): CartonAssignment[] {
+export function packCartons(items: PackableItem[], capacity: CartonCapacity): CartonAssignment[] {
   const cartons: CartonAssignment[] = [];
 
-  const weighed = items.filter((i) => i.weight_oz > 0 && i.quantity > 0);
-  const unweighed = items.filter((i) => !(i.weight_oz > 0) && i.quantity > 0);
+  const sizedOrWeighed = items.filter(
+    (i) => (i.weight_oz > 0 || i.volume_in3 > 0) && i.quantity > 0,
+  );
+  const unspecified = items.filter(
+    (i) => !(i.weight_oz > 0 || i.volume_in3 > 0) && i.quantity > 0,
+  );
 
-  const sorted = [...weighed].sort((a, b) => b.weight_oz - a.weight_oz);
+  // Volume tends to be the more failure-prone constraint for irregularly
+  // shaped physical goods, so it's the primary sort key; weight breaks ties.
+  const sorted = [...sizedOrWeighed].sort(
+    (a, b) => b.volume_in3 - a.volume_in3 || b.weight_oz - a.weight_oz,
+  );
+
+  const roomFor = (carton: CartonAssignment, item: PackableItem): number => {
+    const remainingWeight = capacity.maxWeightOz - carton.weight_oz;
+    const remainingVolume = capacity.maxVolumeIn3 - carton.volume_in3;
+    const byWeight = item.weight_oz > 0 ? Math.floor(remainingWeight / item.weight_oz) : Infinity;
+    const byVolume = item.volume_in3 > 0 ? Math.floor(remainingVolume / item.volume_in3) : Infinity;
+    return Math.min(byWeight, byVolume);
+  };
 
   for (const item of sorted) {
     let remaining = item.quantity;
     while (remaining > 0) {
-      let carton = cartons.find((c) => maxWeightOz - c.weight_oz >= item.weight_oz);
+      let carton = cartons.find((c) => roomFor(c, item) >= 1);
       if (!carton) {
-        carton = { items: [], weight_oz: 0 };
+        carton = { items: [], weight_oz: 0, volume_in3: 0 };
         cartons.push(carton);
       }
-      const roomFor = Math.floor((maxWeightOz - carton.weight_oz) / item.weight_oz);
-      // A single item heavier than the whole carton still needs to go
-      // somewhere — force at least one unit in rather than looping forever.
-      const qty = Math.min(remaining, Math.max(roomFor, 1));
+      // A single item bigger/heavier than the whole carton still needs to
+      // go somewhere — force at least one unit in rather than looping
+      // forever.
+      const qty = Math.min(remaining, Math.max(roomFor(carton, item), 1));
 
       const existingLine = carton.items.find((li) => li.catalog_item_id === item.catalog_item_id);
       if (existingLine) {
@@ -56,18 +76,20 @@ export function packCartons(items: PackableItem[], maxWeightOz: number): CartonA
         });
       }
       carton.weight_oz += qty * item.weight_oz;
+      carton.volume_in3 += qty * item.volume_in3;
       remaining -= qty;
     }
   }
 
-  if (unweighed.length > 0) {
+  if (unspecified.length > 0) {
     cartons.push({
-      items: unweighed.map((i) => ({
+      items: unspecified.map((i) => ({
         catalog_item_id: i.catalog_item_id,
         title: i.title,
         quantity: i.quantity,
       })),
       weight_oz: 0,
+      volume_in3: 0,
     });
   }
 

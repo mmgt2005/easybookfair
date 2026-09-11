@@ -12,7 +12,7 @@ export default async function EditCatalogItemPage({
   const { data: item, error } = await supabase
     .from("catalog_items")
     .select(
-      "id, item_type, title, sku, isbn, cost, price, image_url, category, tags, description, weight_oz, lead_time_days, stock_on_hand",
+      "id, item_type, title, sku, isbn, cost, price, image_url, category, tags, description, weight_oz, length_in, width_in, height_in, lead_time_days, stock_on_hand",
     )
     .eq("id", id)
     .single();

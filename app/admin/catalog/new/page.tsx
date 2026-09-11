@@ -63,10 +63,22 @@ export default function NewCatalogItemPage() {
           <Input name="category" placeholder="Category" />
           <Input name="tags" placeholder="Tags (comma-separated)" />
           <Textarea name="description" placeholder="Description" />
-          <div className="grid grid-cols-3 gap-2">
-            <Input name="weight_oz" type="number" step="0.01" placeholder="Weight (oz)" />
-            <Input name="lead_time_days" type="number" defaultValue={0} placeholder="Lead time (days)" />
-            <Input name="stock_on_hand" type="number" defaultValue={0} placeholder="Stock on hand" />
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
+            <p className="text-xs font-semibold text-neutral-600">
+              Packing &amp; shipping — dimensions and weight drive the packing
+              suggestion (both optional, but fill in what you can); lead time
+              drives allocation availability checks.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <Input name="length_in" type="number" step="0.1" placeholder="Length (in)" />
+              <Input name="width_in" type="number" step="0.1" placeholder="Width (in)" />
+              <Input name="height_in" type="number" step="0.1" placeholder="Height (in)" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Input name="weight_oz" type="number" step="0.01" placeholder="Weight (oz)" />
+              <Input name="lead_time_days" type="number" defaultValue={0} placeholder="Lead time (days)" />
+              <Input name="stock_on_hand" type="number" defaultValue={0} placeholder="Stock on hand" />
+            </div>
           </div>
           <Button type="submit" disabled={isPending}>
             {isPending ? "Adding…" : "Add item"}

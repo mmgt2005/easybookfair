@@ -99,9 +99,9 @@ export async function computePackingSuggestion(fairId: string) {
     await Promise.all([
       supabase
         .from("allocations")
-        .select("quantity_allocated, catalog_items(id, title, weight_oz)")
+        .select("quantity_allocated, catalog_items(id, title, weight_oz, length_in, width_in, height_in)")
         .eq("fair_id", fairId),
-      supabase.from("carton_specs").select("id, name, max_weight_oz"),
+      supabase.from("carton_specs").select("id, name, max_weight_oz, length_in, width_in, height_in"),
     ]);
 
   if (allocError) withError(fairId, allocError.message);
@@ -113,12 +113,17 @@ export async function computePackingSuggestion(fairId: string) {
         id: string;
         title: string;
         weight_oz: number | null;
+        length_in: number | null;
+        width_in: number | null;
+        height_in: number | null;
       } | null;
       if (!item || row.quantity_allocated <= 0) return null;
+      const hasDimensions = item.length_in && item.width_in && item.height_in;
       return {
         catalog_item_id: item.id,
         title: item.title,
         weight_oz: item.weight_oz ?? 0,
+        volume_in3: hasDimensions ? item.length_in! * item.width_in! * item.height_in! : 0,
         quantity: row.quantity_allocated,
       };
     })
@@ -130,26 +135,33 @@ export async function computePackingSuggestion(fairId: string) {
     withError(fairId, "No carton specs configured");
   }
 
-  const options = cartonSpecs!.map((spec) => ({
-    carton_spec_id: spec.id,
-    name: spec.name,
-    cartons_needed:
-      totalWeightOz === 0 ? 0 : Math.ceil(totalWeightOz / Number(spec.max_weight_oz)),
-  }));
+  // Run the real packing pass per carton option rather than a separate
+  // ceil-division estimate, so the "N cartons needed" summary and the
+  // actual packing list always agree — a simple weight-or-volume/capacity
+  // division can under-count versus what first-fit-decreasing actually
+  // produces (e.g. an item too big for a box needs its own carton).
+  const optionsWithCartons = cartonSpecs!.map((spec) => {
+    const capacity = {
+      maxWeightOz: Number(spec.max_weight_oz),
+      maxVolumeIn3: Number(spec.length_in) * Number(spec.width_in) * Number(spec.height_in),
+    };
+    const cartons = packCartons(packableItems, capacity);
+    return { carton_spec_id: spec.id, name: spec.name, cartons_needed: cartons.length, cartons };
+  });
 
-  const suggested = options.reduce((best, opt) =>
+  const suggested = optionsWithCartons.reduce((best, opt) =>
     opt.cartons_needed < best.cartons_needed ? opt : best,
   );
 
-  const suggestedSpec = cartonSpecs!.find((s) => s.id === suggested.carton_spec_id)!;
-  const cartons = packCartons(packableItems, Number(suggestedSpec.max_weight_oz));
+  const options = optionsWithCartons.map(({ cartons: _cartons, ...rest }) => rest);
+  const cartons = suggested.cartons;
 
   const { error: insertError } = await supabase.from("packing_suggestions").insert({
     fair_id: fairId,
     carton_spec_id: suggested.carton_spec_id,
     suggestion: {
       total_weight_oz: totalWeightOz,
-      note: "Weight-based estimate only — not true volumetric/dimensional packing.",
+      note: "Weight and volume estimate — items without dimensions fall back to weight only. Not true 3D placement with orientation.",
       options,
       cartons,
     },

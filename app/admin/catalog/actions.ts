@@ -11,6 +11,11 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
+function numberOrNull(formData: FormData, key: string): number | null {
+  const raw = formData.get(key);
+  return raw ? Number(raw) : null;
+}
+
 // Restocking an item already in the catalog — adds to stock_on_hand rather
 // than overwriting it, via the receive_stock() RPC so the increment is
 // atomic (see migration 0009).
@@ -72,7 +77,10 @@ export async function createCatalogItem(formData: FormData) {
     category: String(formData.get("category") ?? "").trim() || null,
     tags: parseTags(String(formData.get("tags") ?? "")),
     description: String(formData.get("description") ?? "").trim() || null,
-    weight_oz: formData.get("weight_oz") ? Number(formData.get("weight_oz")) : null,
+    weight_oz: numberOrNull(formData, "weight_oz"),
+    length_in: numberOrNull(formData, "length_in"),
+    width_in: numberOrNull(formData, "width_in"),
+    height_in: numberOrNull(formData, "height_in"),
     lead_time_days: Number(formData.get("lead_time_days") ?? 0),
     stock_on_hand: Number(formData.get("stock_on_hand") ?? 0),
   });
@@ -105,7 +113,10 @@ export async function updateCatalogItem(catalogItemId: string, formData: FormDat
     category: String(formData.get("category") ?? "").trim() || null,
     tags: parseTags(String(formData.get("tags") ?? "")),
     description: String(formData.get("description") ?? "").trim() || null,
-    weight_oz: formData.get("weight_oz") ? Number(formData.get("weight_oz")) : null,
+    weight_oz: numberOrNull(formData, "weight_oz"),
+    length_in: numberOrNull(formData, "length_in"),
+    width_in: numberOrNull(formData, "width_in"),
+    height_in: numberOrNull(formData, "height_in"),
     lead_time_days: Number(formData.get("lead_time_days") ?? 0),
     stock_on_hand: Number(formData.get("stock_on_hand") ?? 0),
   };
@@ -136,9 +147,9 @@ export async function updateCatalogItem(catalogItemId: string, formData: FormDat
 
 // Bulk upload expects a CSV with a header row matching (a subset of) these
 // columns: item_type,title,sku,isbn,cost,price,image_url,category,tags,
-// description,weight_oz,lead_time_days,stock_on_hand. tags is a
-// semicolon-separated list within its cell so it doesn't collide with the
-// CSV's own comma delimiter.
+// description,weight_oz,length_in,width_in,height_in,lead_time_days,
+// stock_on_hand. tags is a semicolon-separated list within its cell so it
+// doesn't collide with the CSV's own comma delimiter.
 export async function bulkUploadCatalogItems(formData: FormData) {
   const supabase = await createClient();
 
@@ -175,6 +186,9 @@ export async function bulkUploadCatalogItems(formData: FormData) {
     tags: row.tags ? row.tags.split(";").map((t) => t.trim()).filter(Boolean) : [],
     description: row.description || null,
     weight_oz: row.weight_oz ? Number(row.weight_oz) : null,
+    length_in: row.length_in ? Number(row.length_in) : null,
+    width_in: row.width_in ? Number(row.width_in) : null,
+    height_in: row.height_in ? Number(row.height_in) : null,
     lead_time_days: row.lead_time_days ? Number(row.lead_time_days) : 0,
     stock_on_hand: row.stock_on_hand ? Number(row.stock_on_hand) : 0,
   }));

@@ -31,27 +31,32 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 ### Catalog and inventory (`/admin/catalog`)
 
 - **Add an item** (`/admin/catalog/new`): quick-add form — title, cost,
-  price, an image file to upload, category, tags, description, weight, lead time,
-  and `stock_on_hand` (how many you actually have on the shelf right
-  now — added in Phase 2 since allocation needs something concrete to
-  check availability against). Applies to books and non-book
-  merchandise (pencils, erasers, posters, journals, etc.) alike — set
-  the item type to distinguish them; ISBN is optional and only used for
-  books.
+  price, an image file to upload, category, tags, description, and a
+  "Packing & shipping" section covering dimensions, weight, lead time, and
+  `stock_on_hand` (how many you actually have on the shelf right now —
+  added in Phase 2 since allocation needs something concrete to check
+  availability against). Dimensions and weight are both optional but feed
+  the packing suggestion (see "Allocating a fair" below) — fill in
+  whichever you have; the suggestion falls back gracefully when one or
+  both are missing. Applies to books and non-book merchandise (pencils,
+  erasers, posters, journals, etc.) alike — set the item type to
+  distinguish them; ISBN is optional and only used for books.
 - **Receive stock**: on the catalog list, each row has a quantity field
   and a **Receive** button — adds to that item's `stock_on_hand` (e.g.
   more copies arrived from the supplier). Use this for routine restocking.
 - **Edit an item** (`/admin/catalog/<id>/edit`, via the **Edit** link on
   each row): change any field — title, cost, price, category, tags,
-  description, weight, lead time, or `stock_on_hand` directly (for
-  corrections; prefer "Receive" above for routine restocking since that's
-  additive rather than an overwrite). Uploading a new image replaces the
-  old one; leaving the image field blank keeps the current image as-is.
+  description, dimensions, weight, lead time, or `stock_on_hand` directly
+  (for corrections; prefer "Receive" above for routine restocking since
+  that's additive rather than an overwrite). Uploading a new image
+  replaces the old one; leaving the image field blank keeps the current
+  image as-is.
 - **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
-  required columns `title`, `cost`, `price`; everything else optional.
-  `tags` within a cell is semicolon-separated (a CSV already uses commas
-  as its own delimiter). `image_url` here is still a URL string, not a
-  file — bulk-imported items are expected to already have hosted images.
+  required columns `title`, `cost`, `price`; everything else (including
+  `length_in`/`width_in`/`height_in`) optional. `tags` within a cell is
+  semicolon-separated (a CSV already uses commas as its own delimiter).
+  `image_url` here is still a URL string, not a file — bulk-imported
+  items are expected to already have hosted images.
 - **Labels**: not built yet — still Phase 6 per the build plan.
 
 ### Carton specs (`/admin/carton-specs`)
@@ -108,12 +113,13 @@ the fair progresses.
    (reduce quantity, substitute, or reschedule) — there's no automatic
    action to take.
 3. **Packing suggestion**: click Recompute to get the recommended carton
-   size (fewest boxes needed for the fair's total allocated weight), plus
-   an actual packing list — "Carton 1: 15× Title A, 10× Title B", and so
-   on — assigning specific items to specific boxes via a first-fit-
-   decreasing bin-packing pass. Still a **weight-only heuristic** (no item
-   dimensions exist yet, so this isn't true volumetric/dimensional
-   packing) — an item with no weight set gets grouped into its own carton
+   size and an actual packing list — "Carton 1: 15× Title A, 10× Title B",
+   and so on — via a first-fit-decreasing bin-packing pass. Checks **both
+   weight and volume** (computed from each item's length/width/height) —
+   a carton fills up on whichever limit it hits first, same as a real box
+   has both a weight rating and a physical size. An item missing one of
+   the two measurements is packed by whichever one it has; an item with
+   neither gets grouped into its own carton
    at the end rather than silently mixed in or dropped from the list.
 4. **Cash drawer setup**: not built yet.
 

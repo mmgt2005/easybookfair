@@ -9,6 +9,21 @@ which point versioning starts.
 
 ### Added
 
+- Per-item dimensions (`length_in`/`width_in`/`height_in`, migration
+  `0011`) on `catalog_items`, all optional/nullable. Added to the catalog
+  add/edit forms and CSV bulk upload, grouped with weight/lead
+  time/stock under a new "Packing & shipping" section with a description
+  of what those fields drive.
+- `lib/packCartons.ts` now packs by **weight and volume together**, not
+  weight alone — a carton fills up on whichever limit it hits first,
+  matching how a real box has both a weight rating and a physical size.
+  An item missing one of the two measurements is packed by whichever it
+  has (verified this doesn't get wrongly blocked by an irrelevant zero on
+  the other axis); an item with neither still gets grouped into its own
+  carton rather than dropped. `computePackingSuggestion` now runs the
+  actual packing pass for every carton option and picks the one with the
+  fewest resulting cartons, instead of a separate ceil-division estimate
+  that could disagree with what the real packing list produced.
 - Packing suggestion now assigns specific items to specific cartons
   ("Carton 1: 15× Title A, 10× Title B"), not just a box count. New
   `lib/packCartons.ts`: first-fit-decreasing bin packing by weight

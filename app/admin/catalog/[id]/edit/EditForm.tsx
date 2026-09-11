@@ -19,6 +19,9 @@ type CatalogItem = {
   tags: string[] | null;
   description: string | null;
   weight_oz: number | null;
+  length_in: number | null;
+  width_in: number | null;
+  height_in: number | null;
   lead_time_days: number;
   stock_on_hand: number;
 };
@@ -102,26 +105,56 @@ export default function EditCatalogItemForm({ item }: { item: CatalogItem }) {
             placeholder="Tags (comma-separated)"
           />
           <Textarea name="description" defaultValue={item.description ?? ""} placeholder="Description" />
-          <div className="grid grid-cols-3 gap-2">
-            <Input
-              name="weight_oz"
-              type="number"
-              step="0.01"
-              defaultValue={item.weight_oz ?? ""}
-              placeholder="Weight (oz)"
-            />
-            <Input
-              name="lead_time_days"
-              type="number"
-              defaultValue={item.lead_time_days}
-              placeholder="Lead time (days)"
-            />
-            <Input
-              name="stock_on_hand"
-              type="number"
-              defaultValue={item.stock_on_hand}
-              placeholder="Stock on hand"
-            />
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
+            <p className="text-xs font-semibold text-neutral-600">
+              Packing &amp; shipping — dimensions and weight drive the packing
+              suggestion (both optional, but fill in what you can); lead time
+              drives allocation availability checks.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                name="length_in"
+                type="number"
+                step="0.1"
+                defaultValue={item.length_in ?? ""}
+                placeholder="Length (in)"
+              />
+              <Input
+                name="width_in"
+                type="number"
+                step="0.1"
+                defaultValue={item.width_in ?? ""}
+                placeholder="Width (in)"
+              />
+              <Input
+                name="height_in"
+                type="number"
+                step="0.1"
+                defaultValue={item.height_in ?? ""}
+                placeholder="Height (in)"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                name="weight_oz"
+                type="number"
+                step="0.01"
+                defaultValue={item.weight_oz ?? ""}
+                placeholder="Weight (oz)"
+              />
+              <Input
+                name="lead_time_days"
+                type="number"
+                defaultValue={item.lead_time_days}
+                placeholder="Lead time (days)"
+              />
+              <Input
+                name="stock_on_hand"
+                type="number"
+                defaultValue={item.stock_on_hand}
+                placeholder="Stock on hand"
+              />
+            </div>
           </div>
           <p className="text-xs text-neutral-500">
             Prefer the &quot;Receive&quot; action on the catalog list for routine
