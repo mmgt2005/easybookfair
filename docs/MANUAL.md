@@ -108,11 +108,12 @@ the fair progresses.
    (reduce quantity, substitute, or reschedule) — there's no automatic
    action to take.
 3. **Packing suggestion**: click Recompute to get a cartons-needed
-   estimate per configured carton size, based on the fair's total
-   allocated weight. This is a **weight-only heuristic** (total weight ÷
-   carton weight capacity, rounded up) — not true volumetric/dimensional
-   bin packing. Good enough to gauge roughly how many boxes you need, not
-   to plan exactly what goes in which box.
+   estimate for the fair's total allocated weight — shows the one carton
+   size that needs the fewest boxes (not every configured size). This is
+   a **weight-only heuristic** (total weight ÷ carton weight capacity,
+   rounded up) — not true volumetric/dimensional bin packing. Good enough
+   to gauge roughly how many boxes you need, not to plan exactly what
+   goes in which box.
 4. **Cash drawer setup**: not built yet.
 
 ### Application review

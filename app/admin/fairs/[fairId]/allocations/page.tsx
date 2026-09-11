@@ -37,7 +37,7 @@ export default async function AllocationsPage({
         .eq("fair_id", fairId),
       supabase
         .from("packing_suggestions")
-        .select("suggestion, created_at")
+        .select("carton_spec_id, suggestion, created_at")
         .eq("fair_id", fairId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -71,6 +71,9 @@ export default async function AllocationsPage({
   const reserveRestockForFair = reserveRestock.bind(null, fairId);
   const computeSuggestionForFair = computePackingSuggestion.bind(null, fairId);
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
+  const recommendedCarton = suggestion?.options.find(
+    (opt) => opt.carton_spec_id === latestSuggestion?.carton_spec_id,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -167,14 +170,13 @@ export default async function AllocationsPage({
         <p className="mb-2 text-xs text-neutral-500">
           Weight-based estimate only — not true volumetric/dimensional packing.
         </p>
-        {suggestion ? (
+        {suggestion && recommendedCarton ? (
           <ul className="text-sm">
             <li>Total weight: {suggestion.total_weight_oz} oz</li>
-            {suggestion.options.map((opt) => (
-              <li key={opt.carton_spec_id}>
-                {opt.name}: {opt.cartons_needed} carton(s)
-              </li>
-            ))}
+            <li>
+              Use <strong>{recommendedCarton.name}</strong> cartons —{" "}
+              {recommendedCarton.cartons_needed} needed
+            </li>
           </ul>
         ) : (
           <p className="text-sm text-neutral-600">No suggestion computed yet.</p>

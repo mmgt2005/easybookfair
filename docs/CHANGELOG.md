@@ -7,6 +7,13 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Changed
+
+- Packing suggestion on the allocation page now shows only the one
+  recommended carton size (fewest boxes needed) instead of listing
+  cartons-needed for every configured size. The underlying computation
+  and stored data are unchanged — this is display-only.
+
 ### Added
 
 - Phase 3 (Stripe Connect and webhooks) — first pieces:
