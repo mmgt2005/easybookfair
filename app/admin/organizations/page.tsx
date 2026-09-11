@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createOrganization } from "./actions";
+import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
 
 export default async function OrganizationsPage() {
   const supabase = await createClient();
@@ -11,68 +12,56 @@ export default async function OrganizationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold">Organizations</h1>
-      <p className="text-sm text-neutral-600">
-        Scaffolding for Phase 2 — creates an already-approved org directly.
-        The real application review (approve/decline, Stripe Connect
-        onboarding) is Phase 3.
-      </p>
+      <PageHeader
+        title="Organizations 🏫"
+        description="Scaffolding for Phase 2 — creates an already-approved org directly. The real application review (approve/decline, Stripe Connect onboarding) is Phase 3."
+      />
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
 
-      <table className="w-full max-w-2xl text-sm">
-        <thead>
-          <tr className="border-b border-neutral-200 text-left">
-            <th className="py-1 pr-4">Name</th>
-            <th className="py-1 pr-4">Contact</th>
-            <th className="py-1 pr-4">Status</th>
-            <th className="py-1 pr-4" />
-          </tr>
-        </thead>
-        <tbody>
-          {organizations?.map((org) => (
-            <tr key={org.id} className="border-b border-neutral-100">
-              <td className="py-1 pr-4">{org.name}</td>
-              <td className="py-1 pr-4">
-                {org.contact_name} {org.contact_email && `<${org.contact_email}>`}
-              </td>
-              <td className="py-1 pr-4">{org.status}</td>
-              <td className="py-1 pr-4">
-                <Link href={`/admin/organizations/${org.id}/edit`} className="underline">
-                  Edit
-                </Link>
-              </td>
+      <Card className="overflow-x-auto p-0">
+        <table className="w-full max-w-2xl text-sm">
+          <thead>
+            <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
+              <th className="py-2 pl-4 pr-4">Name</th>
+              <th className="py-2 pr-4">Contact</th>
+              <th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {organizations?.map((org) => (
+              <tr key={org.id} className="border-b border-neutral-50 last:border-0">
+                <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{org.name}</td>
+                <td className="py-2 pr-4 text-neutral-600">
+                  {org.contact_name} {org.contact_email && `<${org.contact_email}>`}
+                </td>
+                <td className="py-2 pr-4">
+                  <Badge tone={statusTone(org.status)}>{org.status}</Badge>
+                </td>
+                <td className="py-2 pr-4">
+                  <Link
+                    href={`/admin/organizations/${org.id}/edit`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
 
-      <form action={createOrganization} className="flex max-w-sm flex-col gap-2">
-        <h2 className="font-medium">New organization</h2>
-        <input
-          name="name"
-          required
-          placeholder="Organization name"
-          className="rounded border border-neutral-300 px-2 py-1"
-        />
-        <input
-          name="contact_name"
-          placeholder="Contact name"
-          className="rounded border border-neutral-300 px-2 py-1"
-        />
-        <input
-          name="contact_email"
-          type="email"
-          placeholder="Contact email"
-          className="rounded border border-neutral-300 px-2 py-1"
-        />
-        <button
-          type="submit"
-          className="rounded bg-neutral-900 px-3 py-1.5 text-white"
-        >
-          Create
-        </button>
-      </form>
+      <Card className="max-w-sm">
+        <form action={createOrganization} className="flex flex-col gap-3">
+          <h2 className="font-heading font-bold text-neutral-900">New organization</h2>
+          <Input name="name" required placeholder="Organization name" />
+          <Input name="contact_name" placeholder="Contact name" />
+          <Input name="contact_email" type="email" placeholder="Contact email" />
+          <Button type="submit">Create</Button>
+        </form>
+      </Card>
     </div>
   );
 }

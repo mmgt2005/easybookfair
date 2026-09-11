@@ -7,6 +7,20 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Changed
+
+- Visual redesign, platform-wide: a playful/colorful design system
+  (orange primary, purple accent, warm cream background, a rounded
+  heading font) replaces the plain black-and-white admin-tool look.
+  Introduced a shared component library (`components/ui/`: Button,
+  Input, Select, Textarea, Card, Badge, PageHeader, Field) and every
+  existing page — landing, login, unauthorized, and all admin screens —
+  was rebuilt on top of it rather than restyled ad hoc, so future
+  screens (Phase 3+, org portal, storefront) inherit the same look for
+  free. `Badge`'s `statusTone()` helper maps the various status/type
+  enum strings (organizations, fairs, catalog items) to a consistent
+  color meaning across the app.
+
 ### Added
 
 - `/admin/organizations/<id>/edit`: change name, contact info, and

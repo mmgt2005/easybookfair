@@ -58,6 +58,18 @@ under Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones can
 use the "Config" type, `SUPABASE_SERVICE_ROLE_KEY` should stay "Secret".
 Every push to that branch triggers a new deployment automatically.
 
+## Design system
+
+`components/ui/` holds the shared primitives (`Button`, `Input`, `Select`,
+`Textarea`, `Card`, `Badge`, `PageHeader`, `Field`) — build new screens on
+top of these rather than raw Tailwind classes, so the app stays visually
+consistent as it grows. Colors, fonts, and radius are defined once in
+`tailwind.config.ts` (playful orange/purple palette, warm cream background,
+a rounded heading font loaded via `next/font/google` in `app/layout.tsx`).
+`Badge`'s `statusTone()` helper maps the various status/type enum strings
+used across the schema to a consistent color meaning — reuse it rather than
+inventing new colors per page.
+
 ## Known gap
 
 `lib/supabase/types.ts` is still the Phase 1 placeholder — a couple of

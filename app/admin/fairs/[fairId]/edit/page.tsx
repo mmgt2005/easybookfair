@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateFair } from "../../actions";
+import { Button, Card, Field, Input, Select } from "@/components/ui";
 
 export default async function EditFairPage({
   params,
@@ -25,81 +26,47 @@ export default async function EditFairPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Edit fair</h1>
+      <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit fair 🎪</h1>
       <p className="text-sm text-neutral-600">
         {(fair.organizations as unknown as { name: string } | null)?.name}
       </p>
-      <form action={updateFairForFair} className="flex max-w-sm flex-col gap-2">
-        <input
-          name="name"
-          required
-          defaultValue={fair.name}
-          placeholder="Fair name"
-          className="rounded border border-neutral-300 px-2 py-1"
-        />
-        <label className="text-xs text-neutral-600">
-          Start date
-          <input
-            name="start_date"
-            type="date"
-            required
-            defaultValue={fair.start_date}
-            className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1"
-          />
-        </label>
-        <label className="text-xs text-neutral-600">
-          End date
-          <input
-            name="end_date"
-            type="date"
-            required
-            defaultValue={fair.end_date}
-            className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1"
-          />
-        </label>
-        <label className="text-xs text-neutral-600">
-          Return deadline
-          <input
-            name="return_deadline"
-            type="date"
-            required
-            defaultValue={fair.return_deadline}
-            className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1"
-          />
-        </label>
-        <label className="text-xs text-neutral-600">
-          Status
-          <select
-            name="status"
-            defaultValue={fair.status}
-            className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1"
-          >
-            <option value="scheduled">Scheduled</option>
-            <option value="active">Active</option>
-            <option value="return_window">Return window</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-        <label className="text-xs text-neutral-600">
-          Cash sales assumption % (0–1, blank = platform default)
-          <input
-            name="cash_sales_assumption_pct"
-            type="number"
-            step="0.01"
-            min={0}
-            max={1}
-            defaultValue={fair.cash_sales_assumption_pct ?? ""}
-            className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1"
-          />
-        </label>
-        <p className="text-xs text-amber-700">
-          Status doesn&apos;t transition automatically yet (that&apos;s a later
-          phase) — this is a manual override for now.
-        </p>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-white">
-          Save changes
-        </button>
-      </form>
+      <Card className="max-w-sm">
+        <form action={updateFairForFair} className="flex flex-col gap-3">
+          <Input name="name" required defaultValue={fair.name} placeholder="Fair name" />
+          <Field label="Start date">
+            <Input name="start_date" type="date" required defaultValue={fair.start_date} />
+          </Field>
+          <Field label="End date">
+            <Input name="end_date" type="date" required defaultValue={fair.end_date} />
+          </Field>
+          <Field label="Return deadline">
+            <Input name="return_deadline" type="date" required defaultValue={fair.return_deadline} />
+          </Field>
+          <Field label="Status">
+            <Select name="status" defaultValue={fair.status}>
+              <option value="scheduled">Scheduled</option>
+              <option value="active">Active</option>
+              <option value="return_window">Return window</option>
+              <option value="closed">Closed</option>
+            </Select>
+          </Field>
+          <Field label="Cash sales assumption % (0–1, blank = platform default)">
+            <Input
+              name="cash_sales_assumption_pct"
+              type="number"
+              step="0.01"
+              min={0}
+              max={1}
+              defaultValue={fair.cash_sales_assumption_pct ?? ""}
+            />
+          </Field>
+          <p className="text-xs text-amber-700">
+            Status doesn&apos;t transition automatically yet (that&apos;s a later
+            phase) — this is a manual override for now.
+          </p>
+          <Button type="submit">Save changes</Button>
+        </form>
+      </Card>
     </div>
   );
 }
