@@ -29,6 +29,26 @@ export async function allocate(fairId: string, formData: FormData) {
   redirect(pagePath(fairId));
 }
 
+// Reduces an over-allocation and returns the units to stock_on_hand.
+// Refuses to pull back units already sold — deallocate_inventory checks
+// completed sales for this fair/item and rejects if the requested amount
+// exceeds what's actually still unsold (see migration 0012).
+export async function deallocate(fairId: string, formData: FormData) {
+  const catalogItemId = String(formData.get("catalog_item_id"));
+  const quantity = Number(formData.get("quantity"));
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("deallocate_inventory", {
+    p_fair_id: fairId,
+    p_catalog_item_id: catalogItemId,
+    p_quantity: quantity,
+  });
+
+  revalidatePath(pagePath(fairId));
+  if (error) withError(fairId, error.message);
+  redirect(pagePath(fairId));
+}
+
 // "Reorder now": allocates whatever stock is currently available (if any —
 // this may be 0), then reserves a restock_orders row against that
 // allocation for the remaining shortfall. Only offered in the UI when the

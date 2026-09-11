@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { allocate, computePackingSuggestion, reserveRestock } from "./actions";
+import { allocate, deallocate, computePackingSuggestion, reserveRestock } from "./actions";
 import { Button, Card, Input } from "@/components/ui";
 
 type PackingSuggestion = {
@@ -72,6 +72,7 @@ export default async function AllocationsPage({
   );
 
   const allocateForFair = allocate.bind(null, fairId);
+  const deallocateForFair = deallocate.bind(null, fairId);
   const reserveRestockForFair = reserveRestock.bind(null, fairId);
   const computeSuggestionForFair = computePackingSuggestion.bind(null, fairId);
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
@@ -131,6 +132,22 @@ export default async function AllocationsPage({
                         Allocate
                       </Button>
                     </form>
+                    {allocated > 0 && (
+                      <form action={deallocateForFair} className="mt-1 flex gap-1">
+                        <input type="hidden" name="catalog_item_id" value={item.id} />
+                        <Input
+                          name="quantity"
+                          type="number"
+                          min={1}
+                          max={allocated}
+                          required
+                          className="w-20 px-2 py-1"
+                        />
+                        <Button type="submit" size="sm" variant="outline">
+                          Remove
+                        </Button>
+                      </form>
+                    )}
                   </td>
                   <td className="py-2 pr-4">
                     {pendingRestock ? (

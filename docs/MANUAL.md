@@ -105,6 +105,11 @@ the fair progresses.
    the item's stock row, decrements it, and posts the allocation ledger
    entry (Consigned ↔ Unallocated) as one atomic operation. Requesting
    more than available stock is rejected outright with nothing written.
+   If anything is already allocated, a second **Remove** field/button
+   appears below it — reduces the allocation and returns those units to
+   `stock_on_hand`, posting the reverse ledger entry. It refuses to pull
+   back units that have already sold (checks completed sales for this
+   fair/item first) — those copies are gone, not sitting unsold.
 2. If the fair's start date leaves enough lead time for the item, the
    row instead offers **Reorder now**: enter the shortfall and it
    allocates whatever stock exists now (if any), then reserves a

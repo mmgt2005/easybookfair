@@ -9,6 +9,17 @@ which point versioning starts.
 
 ### Added
 
+- `public.deallocate_inventory()` (migration `0012`) and a **Remove**
+  field/button on the allocation page — allocate_inventory only ever
+  added, with no way to correct an over-allocation. Mirrors it: locks
+  the catalog/allocation rows, decrements the allocation, returns units
+  to `stock_on_hand`, and posts the reverse ledger entry
+  (Unallocated ← Consigned). Refuses to pull back units already sold —
+  checks completed sales for the fair/item first and only allows
+  removing up to the unsold remainder. Validated against a real local
+  Postgres instance: admin-only, the reversal entry, rejecting removal
+  beyond what's allocated, and rejecting removal beyond what's unsold
+  once sales exist.
 - Per-item dimensions (`length_in`/`width_in`/`height_in`, migration
   `0011`) on `catalog_items`, all optional/nullable. Added to the catalog
   add/edit forms and CSV bulk upload, grouped with weight/lead
