@@ -122,6 +122,7 @@ Core tables (see `supabase/migrations/0001_init.sql` for full schema):
 | `restock_orders` | Lead-time tracking, reserved against a specific allocation |
 | `promotions` | Bundle/percent discounts, platform-wide |
 | `sales` | One row per unit sold, any channel (online/in-person/cash); `payment_intent_id` groups units from the same checkout for receipts and whole-cart refunds; `status` (`completed`/`refunded`/`disputed`) |
+| `checkout_sessions` | Cart line items for a card/online checkout, keyed by an id referenced in the PaymentIntent's metadata — added in Phase 3 so the payment webhook can look up a cart by `payment_intent_id` instead of trying to fit it into Stripe metadata's size limits. Never used for cash (no PaymentIntent exists for a cash sale at all) |
 | `webhook_events` | Stripe event ID (primary key) + type + received_at, checked before any webhook write is applied — the idempotency guard the payment webhook depends on |
 | `accounts` | Chart of accounts |
 | `journal_entries` / `journal_lines` | Double-entry ledger |

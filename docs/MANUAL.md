@@ -1,9 +1,10 @@
 # User manual
 
-> **Status**: Phase 2 (admin catalog + allocation) is built and described
-> below as it actually works, not just intended behavior. Everything else
-> in this manual still describes intended behavior per
-> [`docs/spec.md`](./spec.md), pending its build-plan phase.
+> **Status**: Phase 2 (admin catalog + allocation) and the Phase 3 pieces
+> that exist so far (Stripe Connect onboarding, the payment webhook) are
+> built and described below as they actually work, not just intended
+> behavior. Everything else in this manual still describes intended
+> behavior per [`docs/spec.md`](./spec.md), pending its build-plan phase.
 
 ## Signing in
 
@@ -66,17 +67,22 @@ suggestion's record.
 
 ### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)
 
-Minimal scaffolding, not the real screens from the spec: creating an
-organization here marks it `approved` immediately with no review step,
-and there's no Stripe Connect onboarding trigger yet (that's Phase 3).
-This exists only so a fair has an org to belong to, and allocation has a
-fair to allocate against.
+The application-review workflow itself is still minimal scaffolding:
+creating an organization here marks it `approved` immediately with no
+review step. This exists so a fair has an org to belong to, and
+allocation has a fair to allocate against.
 
 **Editing an organization** (`/admin/organizations/<id>/edit`): change
-name, contact info, and `status` (pending/approved/declined). Stripe
-Connect's `charges_enabled`/`payouts_enabled` show as read-only here —
-those only ever get set by Stripe's own webhook once real onboarding
-(Phase 3) confirms them, never by hand, so there's no field for them.
+name, contact info, and `status` (pending/approved/declined). Below that,
+a **Stripe Connect** card shows current charges/payouts status and a
+button — "Start Stripe onboarding" the first time, "Continue Stripe
+onboarding" if an account exists but isn't fully set up yet, "Update
+Stripe details" once it is. Clicking it creates (or reuses) a Connect
+Express account and sends you to Stripe's own hosted onboarding flow.
+**Charges/payouts status only updates once Stripe's `account.updated`
+webhook actually confirms it** — not just because the org clicked through
+the link — so it can take a moment (or a page refresh) to reflect after
+finishing onboarding.
 
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
@@ -111,10 +117,25 @@ the fair progresses.
 
 ### Application review
 
-Approve or decline partner org applications. Approving triggers Stripe
-Connect Express onboarding — the org isn't marked active until Stripe
-confirms `charges_enabled` and `payouts_enabled`, not just that they
-clicked the onboarding link.
+Still no dedicated review screen (approve/decline lives on the
+organization edit page's Status field instead — see above), but the
+Stripe half of this is real now: the "Start/Continue Stripe onboarding"
+button on that same page creates the Connect Express account and sends
+the org to Stripe's hosted flow. As designed, the org isn't marked active
+until Stripe confirms `charges_enabled`/`payouts_enabled` via webhook,
+never just from clicking the link.
+
+### Payments (webhook plumbing only — no checkout yet)
+
+The payment webhook (`/api/webhooks/stripe`) and its sale-writing
+functions exist and are tested, but nothing in the app creates a real
+checkout yet — that's the storefront/volunteer checkout in Phase 4.
+Concretely: `payment_intent.succeeded` looks up a `checkout_sessions` row
+by `payment_intent_id` and writes one `sales` row (plus its ledger entry)
+per unit in the cart, atomically. Until Phase 4 exists, nothing populates
+`checkout_sessions`, so this path has no live caller — see the README's
+"Stripe setup" section for how to exercise it manually via the Stripe CLI
+in the meantime.
 
 ### Closing a fair
 

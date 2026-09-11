@@ -9,6 +9,45 @@ which point versioning starts.
 
 ### Added
 
+- Phase 3 (Stripe Connect and webhooks) — first pieces:
+  - Org Stripe Connect onboarding: a "Start/Continue Stripe
+    onboarding" button on the organization edit page creates a Connect
+    Express account (idempotent — reuses the stored id on repeat
+    clicks) and sends the admin to Stripe's hosted onboarding flow.
+  - `/api/webhooks/stripe`: one handler for `account.updated` (updates
+    `stripe_charges_enabled`/`stripe_payouts_enabled` — never set by
+    anything else) and `payment_intent.succeeded`. Verifies Stripe's
+    signature, checks `webhook_events` for a fast dedup path, and
+    returns success (not an error) on a duplicate delivery so Stripe
+    stops retrying it.
+  - `checkout_sessions` table (migration `0010`) holding cart line
+    items keyed by an id referenced in the PaymentIntent's metadata —
+    avoids fitting an entire cart into Stripe metadata's size limits.
+    Never used for cash (no PaymentIntent exists for a cash sale).
+  - `public.record_sale()` — the channel-agnostic sale writer (one
+    write path for card/online and cash, branching only the journal
+    entry pattern). Handles the promotion-below-cost edge case
+    correctly (flips the Org Payable line to a debit rather than
+    going negative) and omits that line entirely when a sale breaks
+    exactly even, since a zero-amount journal line is rejected by
+    `journal_lines`' own check constraint.
+  - `public.record_checkout_sale()` wraps it to process an entire cart
+    atomically from the webhook — all-or-nothing, not a loop of
+    separate calls where a partial failure could leave some units
+    recorded and others not. Idempotency against a redelivered event
+    is enforced here via a `for update` row lock + status check on
+    `checkout_sessions`, not by the `webhook_events` table alone — see
+    the comment on this function for the one gap that leaves (a failed
+    attempt needs manual reconciliation, not automatic retry).
+  - No buyer-facing checkout yet (Phase 4), so `payment_intent.succeeded`
+    has no real caller until then — validated instead via a local
+    Postgres smoke test (multi-unit cart writes atomically; a repeat
+    call safely no-ops; an unknown payment intent no-ops) and an
+    isolated test of the signature-verification logic itself (valid
+    signature accepted; wrong secret, tampered payload, and missing
+    signature all rejected) using the `stripe` package's own test
+    helpers, since the webhook route talks to Supabase over HTTP and
+    can't be run against local Postgres directly.
 - Edit and delete for carton specs. Delete fails with an inline error
   (not a crash) if a past packing suggestion still references that
   spec — the foreign key blocks it rather than orphaning the reference.
