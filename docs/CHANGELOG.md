@@ -7,6 +7,12 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Added
+
+- Edit and delete for carton specs. Delete fails with an inline error
+  (not a crash) if a past packing suggestion still references that
+  spec — the foreign key blocks it rather than orphaning the reference.
+
 ### Changed
 
 - Visual redesign, platform-wide: a playful/colorful design system

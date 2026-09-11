@@ -58,8 +58,11 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 A shared list of generic box sizes (not assigned per catalog item) —
 name, dimensions, and max weight capacity. The packing suggestion on a
 fair's allocation page picks whichever of these needs the fewest boxes
-for that fair's total allocated weight. Add more sizes here if the
-default Small/Medium/Large don't match your actual cartons.
+for that fair's total allocated weight. Add, edit, or delete sizes here
+if the default Small/Medium/Large don't match your actual cartons.
+Deleting one that's still referenced by a past packing suggestion is
+blocked with an inline error rather than silently orphaning that
+suggestion's record.
 
 ### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)
 

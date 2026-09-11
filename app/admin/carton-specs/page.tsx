@@ -1,8 +1,14 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createCartonSpec } from "./actions";
+import { createCartonSpec, deleteCartonSpec } from "./actions";
 import { Button, Card, Input, PageHeader } from "@/components/ui";
 
-export default async function CartonSpecsPage() {
+export default async function CartonSpecsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error: errorMessage } = await searchParams;
   const supabase = await createClient();
   const { data: cartonSpecs, error } = await supabase
     .from("carton_specs")
@@ -17,6 +23,9 @@ export default async function CartonSpecsPage() {
       />
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
+      {errorMessage && (
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full max-w-2xl text-sm">
@@ -25,6 +34,7 @@ export default async function CartonSpecsPage() {
               <th className="py-2 pl-4 pr-4">Name</th>
               <th className="py-2 pr-4">L × W × H (in)</th>
               <th className="py-2 pr-4">Max weight (oz)</th>
+              <th className="py-2 pr-4" />
             </tr>
           </thead>
           <tbody>
@@ -35,6 +45,23 @@ export default async function CartonSpecsPage() {
                   {spec.length_in} × {spec.width_in} × {spec.height_in}
                 </td>
                 <td className="py-2 pr-4 text-neutral-600">{spec.max_weight_oz}</td>
+                <td className="flex gap-3 py-2 pr-4">
+                  <Link
+                    href={`/admin/carton-specs/${spec.id}/edit`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Edit
+                  </Link>
+                  <form action={deleteCartonSpec}>
+                    <input type="hidden" name="id" value={spec.id} />
+                    <button
+                      type="submit"
+                      className="font-semibold text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>
