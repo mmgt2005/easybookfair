@@ -30,6 +30,13 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 
 ## Admin guide
 
+### Manual & version (`/admin/manual`)
+
+The admin nav's "Manual" link renders this file and `docs/CHANGELOG.md`
+directly in the app, alongside the running app's version (from
+`package.json`) — no need to leave the dashboard or dig through the repo
+to check either.
+
 ### Catalog and inventory (`/admin/catalog`)
 
 - **Add an item** (`/admin/catalog/new`): quick-add form — title, cost,
@@ -133,7 +140,11 @@ native mobile SDKs, which a browser can't invoke).
    not from today, so a backdated entry gets the right due date. Without
    enough lead time, the row just flags it for you to decide manually
    (reduce quantity, substitute, or reschedule) — there's no automatic
-   action to take.
+   action to take. Once reserved, that row becomes an editable form in
+   place of the plain summary — correct the quantity, order date, expected
+   arrival, or status (e.g. mark it "Received") any time, independently of
+   each other; a supplier-communicated delay doesn't have to be re-derived
+   from the original order date.
 3. **Packing suggestion**: click Recompute to get the recommended carton
    size and an actual packing list — "Carton 1: 15× Title A, 10× Title B",
    and so on — via a first-fit-decreasing bin-packing pass. Checks **both

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCatalogItem } from "../actions";
 import { compressImage } from "@/lib/compressImage";
-import { Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 
 export default function NewCatalogItemPage() {
   const router = useRouter();
@@ -38,31 +38,48 @@ export default function NewCatalogItemPage() {
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <Card className="max-w-md">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <Select name="item_type" defaultValue="book">
-            <option value="book">Book</option>
-            <option value="merchandise">Merchandise</option>
-          </Select>
-          <Input name="title" required placeholder="Title" />
+          <Field label="Item type">
+            <Select name="item_type" defaultValue="book">
+              <option value="book">Book</option>
+              <option value="merchandise">Merchandise</option>
+            </Select>
+          </Field>
+          <Field label="Title">
+            <Input name="title" required />
+          </Field>
           <div className="grid grid-cols-2 gap-2">
-            <Input name="sku" placeholder="SKU" />
-            <Input name="isbn" placeholder="ISBN (books only)" />
+            <Field label="SKU">
+              <Input name="sku" />
+            </Field>
+            <Field label="ISBN (books only)">
+              <Input name="isbn" />
+            </Field>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Input name="cost" type="number" step="0.01" required placeholder="Wholesale cost" />
-            <Input name="price" type="number" step="0.01" required placeholder="Retail price" />
+            <Field label="Wholesale cost">
+              <Input name="cost" type="number" step="0.01" required />
+            </Field>
+            <Field label="Retail price">
+              <Input name="price" type="number" step="0.01" required />
+            </Field>
           </div>
-          <label className="text-xs font-semibold text-neutral-600">
-            Image (resized/compressed automatically before upload)
+          <Field label="Image" hint="Resized/compressed automatically before upload">
             <input
               name="image"
               type="file"
               accept="image/*"
-              className="mt-1 block w-full text-sm"
+              className="mt-1 block w-full text-sm font-normal"
             />
-          </label>
-          <Input name="category" placeholder="Category" />
-          <Input name="tags" placeholder="Tags (comma-separated)" />
-          <Textarea name="description" placeholder="Description" />
+          </Field>
+          <Field label="Category">
+            <Input name="category" />
+          </Field>
+          <Field label="Tags" hint="Comma-separated">
+            <Input name="tags" />
+          </Field>
+          <Field label="Description">
+            <Textarea name="description" />
+          </Field>
           <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
             <p className="text-xs font-semibold text-neutral-600">
               Packing &amp; shipping — dimensions and weight drive the packing
@@ -70,14 +87,26 @@ export default function NewCatalogItemPage() {
               drives allocation availability checks.
             </p>
             <div className="grid grid-cols-3 gap-2">
-              <Input name="length_in" type="number" step="0.1" placeholder="Length (in)" />
-              <Input name="width_in" type="number" step="0.1" placeholder="Width (in)" />
-              <Input name="height_in" type="number" step="0.1" placeholder="Height (in)" />
+              <Field label="Length (in)">
+                <Input name="length_in" type="number" step="0.1" />
+              </Field>
+              <Field label="Width (in)">
+                <Input name="width_in" type="number" step="0.1" />
+              </Field>
+              <Field label="Height (in)">
+                <Input name="height_in" type="number" step="0.1" />
+              </Field>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <Input name="weight_oz" type="number" step="0.01" placeholder="Weight (oz)" />
-              <Input name="lead_time_days" type="number" defaultValue={0} placeholder="Lead time (days)" />
-              <Input name="stock_on_hand" type="number" defaultValue={0} placeholder="Stock on hand" />
+              <Field label="Weight (oz)">
+                <Input name="weight_oz" type="number" step="0.01" />
+              </Field>
+              <Field label="Lead time (days)">
+                <Input name="lead_time_days" type="number" defaultValue={0} />
+              </Field>
+              <Field label="Stock on hand">
+                <Input name="stock_on_hand" type="number" defaultValue={0} />
+              </Field>
             </div>
           </div>
           <Button type="submit" disabled={isPending}>

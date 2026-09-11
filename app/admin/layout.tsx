@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
+import packageJson from "@/package.json";
 
 const navLinks = [
   { href: "/admin/catalog", label: "Catalog" },
   { href: "/admin/organizations", label: "Organizations" },
   { href: "/admin/fairs", label: "Fairs" },
   { href: "/admin/carton-specs", label: "Carton specs" },
+  { href: "/admin/manual", label: "Manual" },
 ];
 
 export default async function AdminLayout({
@@ -21,6 +23,9 @@ export default async function AdminLayout({
         <Link href="/admin" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair Admin
         </Link>
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-500">
+          v{packageJson.version}
+        </span>
         {navLinks.map((link) => (
           <Link
             key={link.href}

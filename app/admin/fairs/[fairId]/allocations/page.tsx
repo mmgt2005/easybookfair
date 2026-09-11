@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { allocate, deallocate, computePackingSuggestion, reserveRestock } from "./actions";
-import { Button, Card, Input } from "@/components/ui";
+import {
+  allocate,
+  deallocate,
+  computePackingSuggestion,
+  reserveRestock,
+  updateRestockOrder,
+} from "./actions";
+import { Button, Card, Input, Select } from "@/components/ui";
 
 type PackingSuggestion = {
   total_weight_oz: number;
@@ -55,7 +61,7 @@ export default async function AllocationsPage({
     allocationIds.length > 0
       ? await supabase
           .from("restock_orders")
-          .select("catalog_item_id, quantity, status, ordered_at, expected_arrival")
+          .select("id, catalog_item_id, quantity, status, ordered_at, expected_arrival")
           .in("allocation_id", allocationIds)
       : { data: [] };
 
@@ -75,6 +81,7 @@ export default async function AllocationsPage({
   const allocateForFair = allocate.bind(null, fairId);
   const deallocateForFair = deallocate.bind(null, fairId);
   const reserveRestockForFair = reserveRestock.bind(null, fairId);
+  const updateRestockOrderForFair = updateRestockOrder.bind(null, fairId);
   const computeSuggestionForFair = computePackingSuggestion.bind(null, fairId);
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
   const recommendedCarton = suggestion?.options.find(
@@ -152,11 +159,46 @@ export default async function AllocationsPage({
                   </td>
                   <td className="py-2 pr-4">
                     {pendingRestock ? (
-                      <span className="text-xs text-neutral-600">
-                        Restock reserved: {pendingRestock.quantity} ({pendingRestock.status}),
-                        ordered {pendingRestock.ordered_at}, due{" "}
-                        {pendingRestock.expected_arrival}
-                      </span>
+                      <form
+                        action={updateRestockOrderForFair}
+                        className="flex flex-wrap items-center gap-1"
+                      >
+                        <input type="hidden" name="restock_order_id" value={pendingRestock.id} />
+                        <span className="text-xs text-neutral-600">Qty:</span>
+                        <Input
+                          name="quantity"
+                          type="number"
+                          min={1}
+                          required
+                          defaultValue={pendingRestock.quantity}
+                          className="w-16 px-2 py-1"
+                        />
+                        <span className="text-xs text-neutral-600">Ordered:</span>
+                        <Input
+                          name="ordered_at"
+                          type="date"
+                          required
+                          defaultValue={pendingRestock.ordered_at}
+                          className="w-36 px-2 py-1"
+                        />
+                        <span className="text-xs text-neutral-600">Due:</span>
+                        <Input
+                          name="expected_arrival"
+                          type="date"
+                          required
+                          defaultValue={pendingRestock.expected_arrival}
+                          className="w-36 px-2 py-1"
+                        />
+                        <Select name="status" defaultValue={pendingRestock.status} className="w-28">
+                          <option value="pending">Pending</option>
+                          <option value="ordered">Ordered</option>
+                          <option value="received">Received</option>
+                          <option value="cancelled">Cancelled</option>
+                        </Select>
+                        <Button type="submit" size="sm" variant="outline">
+                          Save
+                        </Button>
+                      </form>
                     ) : leadTimeOk ? (
                       <form
                         action={reserveRestockForFair}

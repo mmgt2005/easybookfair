@@ -122,6 +122,42 @@ export async function reserveRestock(fairId: string, formData: FormData) {
   redirect(pagePath(fairId));
 }
 
+// Corrects an already-reserved restock order — e.g. the order date entered
+// when reserving it was wrong, or the supplier gave a new arrival estimate
+// unrelated to the original lead-time math. Both dates are editable
+// directly rather than re-derived, since a corrected expected_arrival isn't
+// always just ordered_at + lead_time_days (a supplier delay doesn't change
+// when the order was placed).
+export async function updateRestockOrder(fairId: string, formData: FormData) {
+  const restockOrderId = String(formData.get("restock_order_id"));
+  const orderedAt = String(formData.get("ordered_at") ?? "");
+  const expectedArrival = String(formData.get("expected_arrival") ?? "");
+  const quantity = Number(formData.get("quantity"));
+  const status = String(formData.get("status") ?? "");
+  const supabase = await createClient();
+
+  if (!orderedAt || !expectedArrival || !status) {
+    withError(fairId, "Order date, expected arrival, and status are required");
+  }
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    withError(fairId, "Quantity must be positive");
+  }
+
+  const { error } = await supabase
+    .from("restock_orders")
+    .update({
+      ordered_at: orderedAt,
+      expected_arrival: expectedArrival,
+      quantity,
+      status,
+    })
+    .eq("id", restockOrderId);
+
+  revalidatePath(pagePath(fairId));
+  if (error) withError(fairId, error.message);
+  redirect(pagePath(fairId));
+}
+
 export async function computePackingSuggestion(fairId: string) {
   const supabase = await createClient();
 

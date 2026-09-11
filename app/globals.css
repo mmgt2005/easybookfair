@@ -9,3 +9,48 @@
     font-family: var(--font-heading);
   }
 }
+
+/* Minimal styling for server-rendered markdown (docs/MANUAL.md,
+   docs/CHANGELOG.md) — no typography plugin installed, just enough for
+   readable headings/lists/code without pulling in a new Tailwind plugin. */
+@layer components {
+  .markdown-body h1 {
+    @apply mb-3 mt-6 text-xl font-bold text-neutral-900 first:mt-0;
+  }
+  .markdown-body h2 {
+    @apply mb-2 mt-5 text-lg font-bold text-neutral-900;
+  }
+  .markdown-body h3 {
+    @apply mb-2 mt-4 text-base font-bold text-neutral-900;
+  }
+  .markdown-body p {
+    @apply mb-3 text-sm leading-relaxed text-neutral-700;
+  }
+  .markdown-body ul {
+    @apply mb-3 ml-5 list-disc text-sm text-neutral-700;
+  }
+  .markdown-body ol {
+    @apply mb-3 ml-5 list-decimal text-sm text-neutral-700;
+  }
+  .markdown-body li {
+    @apply mb-1;
+  }
+  .markdown-body a {
+    @apply text-accent-600 underline;
+  }
+  .markdown-body code {
+    @apply rounded bg-neutral-100 px-1 py-0.5 text-xs;
+  }
+  .markdown-body pre {
+    @apply mb-3 overflow-x-auto rounded-lg bg-neutral-900 p-3 text-xs text-neutral-100;
+  }
+  .markdown-body pre code {
+    @apply bg-transparent p-0 text-neutral-100;
+  }
+  .markdown-body blockquote {
+    @apply mb-3 border-l-4 border-neutral-200 pl-3 text-sm italic text-neutral-500;
+  }
+  .markdown-body hr {
+    @apply my-4 border-neutral-100;
+  }
+}

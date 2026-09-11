@@ -9,6 +9,27 @@ which point versioning starts.
 
 ### Added
 
+- **Manual & version in the admin dashboard** (`/admin/manual`, linked from
+  the admin nav) — renders `docs/MANUAL.md` and `docs/CHANGELOG.md` as HTML
+  (via `marked`) alongside the running app's version, read from
+  `package.json` and also shown as a small badge in the admin nav header.
+  No new styling dependency — a `.markdown-body` class in `globals.css`
+  covers headings/lists/code/links since no Tailwind typography plugin was
+  installed.
+- **Editable restock orders** — a reserved restock row on the allocations
+  page was previously a read-only summary; it's now an editable form
+  (quantity, order date, expected arrival, status), so a wrong order date
+  or a supplier-communicated delay can be corrected after the fact instead
+  of only being settable at creation time via "Reorder now". No schema
+  change — this only exercises the existing `restock_orders_admin_all` RLS
+  policy that already covers updates, the same one `reserveRestock`'s
+  insert already relied on.
+- **Field labels above catalog form inputs** instead of placeholder text
+  doubling as the label (which disappears once you start typing) — the
+  add/edit catalog forms now use the shared `Field` component throughout,
+  consistent with the fairs edit form. `Field`'s `label` prop is now typed
+  as `ReactNode` rather than `string`, since the edit form's image field
+  needs to show the current image thumbnail inline with its label.
 - **In-person checkout with a physical Stripe Terminal reader**
   (`/admin/fairs/<id>/checkout`) — the first real caller of the
   `checkout_sessions`/`payment_intent.succeeded` webhook path built in
