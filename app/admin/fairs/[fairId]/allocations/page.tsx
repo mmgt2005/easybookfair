@@ -55,7 +55,7 @@ export default async function AllocationsPage({
     allocationIds.length > 0
       ? await supabase
           .from("restock_orders")
-          .select("catalog_item_id, quantity, status, expected_arrival")
+          .select("catalog_item_id, quantity, status, ordered_at, expected_arrival")
           .in("allocation_id", allocationIds)
       : { data: [] };
 
@@ -67,6 +67,7 @@ export default async function AllocationsPage({
 
   const fairStart = new Date(fair.start_date);
   const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
   const daysUntilStart = Math.floor(
     (fairStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -152,11 +153,15 @@ export default async function AllocationsPage({
                   <td className="py-2 pr-4">
                     {pendingRestock ? (
                       <span className="text-xs text-neutral-600">
-                        Restock reserved: {pendingRestock.quantity} ({pendingRestock.status}, due{" "}
-                        {pendingRestock.expected_arrival})
+                        Restock reserved: {pendingRestock.quantity} ({pendingRestock.status}),
+                        ordered {pendingRestock.ordered_at}, due{" "}
+                        {pendingRestock.expected_arrival}
                       </span>
                     ) : leadTimeOk ? (
-                      <form action={reserveRestockForFair} className="flex items-center gap-1">
+                      <form
+                        action={reserveRestockForFair}
+                        className="flex flex-wrap items-center gap-1"
+                      >
                         <input type="hidden" name="catalog_item_id" value={item.id} />
                         <input type="hidden" name="available_now" value={item.stock_on_hand} />
                         <input type="hidden" name="lead_time_days" value={item.lead_time_days} />
@@ -167,6 +172,15 @@ export default async function AllocationsPage({
                           min={1}
                           required
                           className="w-16 px-2 py-1"
+                        />
+                        <span className="text-xs text-neutral-600">Ordered on:</span>
+                        <Input
+                          name="ordered_at"
+                          type="date"
+                          defaultValue={todayIso}
+                          max={todayIso}
+                          required
+                          className="w-36 px-2 py-1"
                         />
                         <Button type="submit" size="sm" variant="outline">
                           Reorder now

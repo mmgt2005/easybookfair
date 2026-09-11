@@ -9,6 +9,18 @@ which point versioning starts.
 
 ### Added
 
+- `restock_orders.ordered_at` (migration `0013`) — the date an order was
+  actually placed with the supplier, separate from `created_at` (when the
+  row was entered into the system). Previously `expected_arrival` was
+  always computed as today + lead time at the moment "Reorder now" was
+  clicked, which was wrong if the order was placed days earlier by phone
+  and only logged later. The "Reorder now" form now has an "Ordered on"
+  date field, defaulting to today but backdatable (capped at today —
+  can't order in the future); `expected_arrival` is computed from that
+  date, not from "now". Existing rows backfilled from `created_at`.
+  Validated against a real local Postgres instance: a backdated
+  `ordered_at` correctly shifts `expected_arrival`, and the default still
+  falls back to today when omitted.
 - `public.deallocate_inventory()` (migration `0012`) and a **Remove**
   field/button on the allocation page — allocate_inventory only ever
   added, with no way to correct an over-allocation. Mirrors it: locks

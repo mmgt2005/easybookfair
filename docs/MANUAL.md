@@ -111,9 +111,13 @@ the fair progresses.
    back units that have already sold (checks completed sales for this
    fair/item first) — those copies are gone, not sitting unsold.
 2. If the fair's start date leaves enough lead time for the item, the
-   row instead offers **Reorder now**: enter the shortfall and it
-   allocates whatever stock exists now (if any), then reserves a
-   `restock_orders` row against that allocation for the rest. Without
+   row instead offers **Reorder now**: enter the shortfall and the date
+   you actually placed the order with the supplier (defaults to today,
+   but backdatable — useful if you called it in days ago and are only
+   logging it now), and it allocates whatever stock exists now (if any),
+   then reserves a `restock_orders` row against that allocation for the
+   rest. `expected_arrival` is computed from the order date you enter,
+   not from today, so a backdated entry gets the right due date. Without
    enough lead time, the row just flags it for you to decide manually
    (reduce quantity, substitute, or reschedule) — there's no automatic
    action to take.

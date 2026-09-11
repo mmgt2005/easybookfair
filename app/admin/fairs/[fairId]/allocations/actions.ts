@@ -60,11 +60,20 @@ export async function reserveRestock(fairId: string, formData: FormData) {
   const shortfall = Number(formData.get("shortfall"));
   const availableNow = Number(formData.get("available_now"));
   const leadTimeDays = Number(formData.get("lead_time_days"));
+  const orderedAtInput = String(formData.get("ordered_at") || "");
   const supabase = await createClient();
 
   if (!Number.isFinite(shortfall) || shortfall <= 0) {
     withError(fairId, "Restock quantity must be positive");
   }
+
+  // ordered_at is the date the order was actually placed with the supplier —
+  // may be days before this form is submitted, if you're logging an order
+  // placed by phone/email away from a computer. Defaults to today but is
+  // backdatable; expected_arrival is computed from it, not from "now".
+  const orderedAt = orderedAtInput && !Number.isNaN(Date.parse(orderedAtInput))
+    ? new Date(orderedAtInput)
+    : new Date();
 
   let allocationId: string;
 
@@ -97,13 +106,14 @@ export async function reserveRestock(fairId: string, formData: FormData) {
     }
   }
 
-  const expectedArrival = new Date();
+  const expectedArrival = new Date(orderedAt);
   expectedArrival.setDate(expectedArrival.getDate() + (Number.isFinite(leadTimeDays) ? leadTimeDays : 0));
 
   const { error: restockError } = await supabase.from("restock_orders").insert({
     catalog_item_id: catalogItemId,
     allocation_id: allocationId,
     quantity: shortfall,
+    ordered_at: orderedAt.toISOString().slice(0, 10),
     expected_arrival: expectedArrival.toISOString().slice(0, 10),
   });
 
