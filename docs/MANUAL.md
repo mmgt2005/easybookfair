@@ -1,10 +1,12 @@
 # User manual
 
 > **Status**: Phase 2 (admin catalog + allocation) and the Phase 3 pieces
-> that exist so far (Stripe Connect onboarding, the payment webhook) are
-> built and described below as they actually work, not just intended
-> behavior. Everything else in this manual still describes intended
-> behavior per [`docs/spec.md`](./spec.md), pending its build-plan phase.
+> that exist so far (Stripe Connect onboarding, the payment webhook, and
+> an admin-only in-person checkout using a physical Stripe Terminal
+> reader) are built and described below as they actually work, not just
+> intended behavior. Everything else in this manual still describes
+> intended behavior per [`docs/spec.md`](./spec.md), pending its build-plan
+> phase.
 
 ## Signing in
 
@@ -97,6 +99,17 @@ field for now — nothing transitions it automatically yet (that's tied to
 the settlement/close-fair work in a later phase), so set it yourself as
 the fair progresses.
 
+**Terminal setup** (same page): needed once per fair before the checkout
+screen can charge cards with a physical reader. Fill in the venue's
+address and click "Create Terminal location" — this creates a Stripe
+Terminal Location and is a one-time step per fair. Then register each
+physical reader using the registration code shown on the reader's own
+screen; once it shows `online` here, it's ready to use at
+`/admin/fairs/<id>/checkout`. **Only internet-connected readers work** —
+BBPOS WisePOS E or Stripe Reader S700. Bluetooth readers and Tap to Pay
+on iPhone/Android aren't usable from this web app (both require Stripe's
+native mobile SDKs, which a browser can't invoke).
+
 ### Allocating a fair (`/admin/fairs/<id>/allocations`)
 
 1. Each catalog item's row shows current `stock_on_hand` and how much is
@@ -142,17 +155,29 @@ the org to Stripe's hosted flow. As designed, the org isn't marked active
 until Stripe confirms `charges_enabled`/`payouts_enabled` via webhook,
 never just from clicking the link.
 
-### Payments (webhook plumbing only — no checkout yet)
+### Payments
 
 The payment webhook (`/api/webhooks/stripe`) and its sale-writing
-functions exist and are tested, but nothing in the app creates a real
-checkout yet — that's the storefront/volunteer checkout in Phase 4.
-Concretely: `payment_intent.succeeded` looks up a `checkout_sessions` row
-by `payment_intent_id` and writes one `sales` row (plus its ledger entry)
-per unit in the cart, atomically. Until Phase 4 exists, nothing populates
-`checkout_sessions`, so this path has no live caller — see the README's
-"Stripe setup" section for how to exercise it manually via the Stripe CLI
-in the meantime.
+functions exist and are tested. `payment_intent.succeeded` looks up a
+`checkout_sessions` row by `payment_intent_id` and writes one `sales`
+row (plus its ledger entry) per unit in the cart, atomically.
+
+**In-person checkout with a physical reader** (`/admin/fairs/<id>/checkout`)
+is the first real caller of this path — see "Allocating a fair" → this
+page's parent, and "Terminal setup" on the fair's Edit page, above.
+Build a cart from that fair's available-to-sell stock (allocated minus
+already-completed sales), click "Connect reader" once, then "Charge $X
+with reader" — this creates the `checkout_sessions` row and PaymentIntent,
+collects payment on the physical reader, and the webhook finalizes the
+sale asynchronously once Stripe confirms it (the screen polls briefly and
+shows "Sale recorded" when it lands). This screen is admin-only for now —
+there's no separate org-staff login yet, so it isn't scoped to "whoever
+is running the booth" the way the eventual volunteer checkout will be.
+
+The buyer-facing **online storefront** (self-checkout, no reader) is
+still Phase 4 proper — nothing yet creates an `online`-channel
+`checkout_sessions` row. See the README's "Stripe setup" section for how
+to exercise that path manually via the Stripe CLI in the meantime.
 
 ### Closing a fair
 

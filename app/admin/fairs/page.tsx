@@ -52,6 +52,12 @@ export default async function FairsPage() {
                     Allocate
                   </Link>
                   <Link
+                    href={`/admin/fairs/${fair.id}/checkout`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Checkout
+                  </Link>
+                  <Link
                     href={`/admin/fairs/${fair.id}/edit`}
                     className="font-semibold text-accent-600 hover:underline"
                   >

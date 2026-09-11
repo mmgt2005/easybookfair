@@ -9,6 +9,50 @@ which point versioning starts.
 
 ### Added
 
+- **In-person checkout with a physical Stripe Terminal reader**
+  (`/admin/fairs/<id>/checkout`) — the first real caller of the
+  `checkout_sessions`/`payment_intent.succeeded` webhook path built in
+  Phase 3. Internet-connected readers only (BBPOS WisePOS E, Stripe
+  Reader S700) — Bluetooth readers and Tap to Pay on iPhone/Android need
+  Stripe's native mobile Terminal SDKs, which a browser can't invoke, so
+  they're out of reach for this web app. Pieces added:
+  - `fairs.stripe_terminal_location_id` (migration `0014`) — a Stripe
+    Terminal Location per fair venue.
+  - A "Terminal setup" card on the fair edit page: creates the Location,
+    registers readers by registration code, lists registered readers with
+    live online/offline status.
+  - `/api/terminal/connection-token` — issues the short-lived connection
+    token the Terminal JS SDK needs, admin-gated (401/403 JSON, not a
+    redirect, since it's called from browser JS).
+  - The checkout screen: builds a cart from a fair's available-to-sell
+    stock (allocated minus already-completed sales), connects to a
+    registered reader, and charges it. `createInPersonCheckout()` snapshots
+    price/cost from `catalog_items` server-side (never trusts the client
+    cart's prices), re-checks available-to-sell, creates the
+    `checkout_sessions` row and a `card_present` PaymentIntent, and returns
+    the client secret for the Terminal SDK's `collectPaymentMethod`/
+    `processPayment` calls. The actual `sales`/ledger rows are still
+    written asynchronously by the existing webhook once Stripe confirms
+    payment — this just gives that path a live caller.
+  - Known gap: unlike `allocate_inventory`, the available-to-sell check
+    here isn't row-locked — two carts finishing at the same instant for
+    the last unit of an item could both pass. Fine for one reader/one
+    cashier at a time; would need real locking for multiple concurrent
+    checkout stations.
+  - Fixed a real, pre-existing type conflict surfaced while adding
+    `@stripe/terminal-js`: it depends on an old `stripe@8.x` package
+    purely for types, and that old package declares its types via ambient
+    `declare module 'stripe'` blocks — which, once loaded anywhere in the
+    program, silently overrode the real `stripe@22.x` types used
+    everywhere else (`lib/stripe.ts`, the webhook, org onboarding),
+    breaking `new Stripe(...)`'s expected arguments. Fixed via an npm
+    `overrides` entry forcing that nested dependency to the same version
+    already used at the top level, so there's only one `stripe` package
+    (and one set of correctly-scoped types) in the whole tree.
+  - `lib/stripe.ts` now pins `apiVersion` explicitly in the Stripe client
+    config (the installed SDK's types now require it) rather than
+    leaving it to the SDK's default, so a future unrelated `npm install`
+    can't silently change which Stripe API version the app talks to.
 - `restock_orders.ordered_at` (migration `0013`) — the date an order was
   actually placed with the supplier, separate from `created_at` (when the
   row was entered into the system). Previously `expected_arrival` was

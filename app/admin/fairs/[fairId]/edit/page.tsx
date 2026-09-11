@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { updateFair } from "../../actions";
-import { Button, Card, Field, Input, Select } from "@/components/ui";
+import { updateFair, createTerminalLocation, registerTerminalReader } from "../../actions";
+import { getStripe } from "@/lib/stripe";
+import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
 
 export default async function EditFairPage({
   params,
@@ -13,7 +14,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, organizations(name)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, organizations(name)",
     )
     .eq("id", fairId)
     .single();
@@ -23,6 +24,16 @@ export default async function EditFairPage({
   }
 
   const updateFairForFair = updateFair.bind(null, fairId);
+  const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
+  const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
+
+  const readers = fair.stripe_terminal_location_id
+    ? (
+        await getStripe().terminal.readers.list({
+          location: fair.stripe_terminal_location_id,
+        })
+      ).data
+    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,6 +77,61 @@ export default async function EditFairPage({
           </p>
           <Button type="submit">Save changes</Button>
         </form>
+      </Card>
+
+      <Card className="max-w-sm">
+        <h2 className="font-heading font-bold text-neutral-900">Terminal setup 💳</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          For in-person card payments via a physical reader — internet-connected
+          readers only (BBPOS WisePOS E, Stripe Reader S700), not Bluetooth.
+        </p>
+        {!fair.stripe_terminal_location_id ? (
+          <form action={createTerminalLocationForFair} className="flex flex-col gap-3">
+            <Input name="display_name" required placeholder="Location name (e.g. venue name)" />
+            <Input name="line1" required placeholder="Street address" />
+            <div className="flex gap-2">
+              <Input name="city" required placeholder="City" className="flex-1" />
+              <Input name="state" required placeholder="State" className="w-20" />
+            </div>
+            <div className="flex gap-2">
+              <Input name="postal_code" required placeholder="ZIP" className="flex-1" />
+              <Input name="country" defaultValue="US" className="w-20" />
+            </div>
+            <Button type="submit" size="sm">
+              Create Terminal location
+            </Button>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2 text-sm">
+              {readers.length === 0 && (
+                <li className="text-neutral-600">No readers registered yet.</li>
+              )}
+              {readers.map((reader) => (
+                <li
+                  key={reader.id}
+                  className="flex items-center justify-between rounded-lg bg-neutral-50 p-2"
+                >
+                  <span className="text-neutral-800">{reader.label || reader.id}</span>
+                  <Badge tone={reader.status === "online" ? "success" : "neutral"}>
+                    {reader.status}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+            <form action={registerTerminalReaderForFair} className="flex flex-col gap-2">
+              <Input name="label" placeholder="Reader label (optional, e.g. Front table)" />
+              <Input
+                name="registration_code"
+                required
+                placeholder="Registration code (shown on reader screen)"
+              />
+              <Button type="submit" size="sm" variant="outline">
+                Register reader
+              </Button>
+            </form>
+          </div>
+        )}
       </Card>
     </div>
   );

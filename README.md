@@ -6,12 +6,14 @@ full design, [`docs/MANUAL.md`](./docs/MANUAL.md) for intended usage, and
 
 **Status**: Phase 3 (Stripe Connect and webhooks) in progress — org Stripe
 Connect Express onboarding, the payment webhook (`account.updated`,
-`payment_intent.succeeded`), and channel-agnostic sale writing
-(`record_sale`/`record_checkout_sale`). Phase 2 (admin catalog + allocation)
-is done. Org portal and storefront — the actual buyer-facing checkout that
-creates `checkout_sessions` rows and PaymentIntents — are still ahead
-(Phase 4); until then the webhook's `payment_intent.succeeded` path has no
-real caller yet, though it's validated (see "Stripe setup" below).
+`payment_intent.succeeded`), channel-agnostic sale writing
+(`record_sale`/`record_checkout_sale`), and now a first real caller: an
+admin-only in-person checkout screen (`/admin/fairs/<id>/checkout`) using a
+physical Stripe Terminal reader. Phase 2 (admin catalog + allocation) is
+done. The buyer-facing online storefront — public per-fair browsing and
+self-checkout — is still ahead (Phase 4 proper); the in-person reader flow
+was pulled forward since it plugs into the same `checkout_sessions`/webhook
+path with no dependency on the storefront.
 
 ## Stack
 
@@ -44,6 +46,7 @@ code (everything that needs to be unit-tested).
    - `0011_catalog_item_dimensions.sql`
    - `0012_deallocate_inventory.sql`
    - `0013_restock_order_date.sql`
+   - `0014_fair_terminal_location.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -74,14 +77,26 @@ code (everything that needs to be unit-tested).
    hosted flow. `charges_enabled`/`payouts_enabled` only update once the
    `account.updated` webhook actually confirms them — not just from
    clicking through the link.
-4. There's no buyer-facing checkout yet (Phase 4), so nothing currently
-   creates a `checkout_sessions` row or a real PaymentIntent with matching
-   metadata — the `payment_intent.succeeded` path is validated (signature
-   verification, idempotency, atomic multi-unit writing) but has no live
-   caller until then. To exercise it manually: insert a `checkout_sessions`
-   row via SQL with a `payment_intent_id` you control, then use
-   `stripe trigger payment_intent.succeeded` (Stripe CLI) or the dashboard
-   to fire a matching test event.
+4. In-person checkout (physical reader): on a fair's Edit page
+   (`/admin/fairs/<id>/edit`), the "Terminal setup" card creates a Stripe
+   Terminal Location for that fair's venue, then registers a physical
+   reader to it using the registration code shown on the reader's own
+   screen. **Only internet-connected readers work here** — BBPOS WisePOS E
+   or Stripe Reader S700. Bluetooth readers (BBPOS Chipper 2X BT, Stripe
+   Reader M2) need Stripe's native iOS/Android Terminal SDKs, which this
+   web app doesn't use — Tap to Pay on iPhone/Android is native-SDK-only
+   for the same reason and isn't reachable from a browser at all. Once a
+   reader shows `online`, `/admin/fairs/<id>/checkout` lets you build a
+   cart from that fair's allocated stock and charge it — this creates the
+   `checkout_sessions` row and PaymentIntent for real, so
+   `payment_intent.succeeded` now has a live caller for the in-person
+   channel.
+5. The buyer-facing online storefront (self-checkout, no reader involved)
+   is still Phase 4 proper — nothing yet creates an `online`-channel
+   `checkout_sessions` row. To exercise that path manually in the
+   meantime: insert one via SQL with a `payment_intent_id` you control,
+   then use `stripe trigger payment_intent.succeeded` (Stripe CLI) or the
+   dashboard to fire a matching test event.
 
 ## Deploying
 
