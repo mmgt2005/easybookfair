@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
+import { sendSettlementPayoutEmail, sendSettlementPaymentLinkEmail } from "@/lib/email";
 
 export async function createFair(formData: FormData) {
   const supabase = await createClient();
@@ -101,6 +102,158 @@ export async function closeFair(fairId: string) {
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
   revalidatePath("/admin/fairs");
+}
+
+// Sends the org their net settlement payout via a Stripe Transfer to
+// their connected Express account — the "moving real money" step
+// close_fair() (migration 0036) deliberately stops short of automating.
+// No idempotency key: acceptable at this app's one-admin-clicking-once
+// scale, but a double-click before the first response lands could in
+// principle send twice — the disabled-once-sent button is the real guard
+// here, not a network-level safeguard.
+export async function sendSettlementPayout(fairId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: settlement, error: settlementError } = await supabase
+    .from("settlements")
+    .select("id, org_id, net_payout, stripe_transfer_id")
+    .eq("fair_id", fairId)
+    .single();
+
+  if (settlementError || !settlement) {
+    throw new Error("Settlement not found — close the fair first");
+  }
+  if (settlement.stripe_transfer_id) {
+    throw new Error("A payout has already been sent for this settlement");
+  }
+  if (settlement.net_payout <= 0) {
+    throw new Error("Nothing to pay out — this org isn't owed money on this settlement");
+  }
+
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .select("name, contact_email, stripe_connect_account_id, stripe_payouts_enabled")
+    .eq("id", settlement.org_id)
+    .single();
+
+  if (orgError || !org) {
+    throw new Error("Organization not found");
+  }
+  if (!org.stripe_connect_account_id) {
+    throw new Error("This org hasn't started Stripe Connect onboarding yet");
+  }
+  if (!org.stripe_payouts_enabled) {
+    throw new Error("This org's Stripe payouts aren't enabled yet — finish their Connect onboarding first");
+  }
+
+  const transfer = await getStripe().transfers.create({
+    amount: Math.round(settlement.net_payout * 100),
+    currency: "usd",
+    destination: org.stripe_connect_account_id,
+    description: `EasyBookFair settlement payout (fair ${fairId})`,
+    metadata: { settlement_id: settlement.id, fair_id: fairId },
+  });
+
+  const { error: updateError } = await supabase
+    .from("settlements")
+    .update({ stripe_transfer_id: transfer.id })
+    .eq("id", settlement.id);
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  if (org.contact_email) {
+    const { data: fair } = await supabase.from("fairs").select("name").eq("id", fairId).single();
+    try {
+      await sendSettlementPayoutEmail({
+        to: org.contact_email,
+        fairName: fair?.name ?? "your fair",
+        amount: settlement.net_payout,
+      });
+    } catch (emailError) {
+      console.error("Failed to send settlement payout email", emailError);
+    }
+  }
+
+  revalidatePath(`/admin/fairs/${fairId}/edit`);
+}
+
+// Creates a one-time Stripe Payment Link for the amount the org owes the
+// platform (a negative net_payout — cash sales + equipment rental fee
+// outweighing their card/online margin) and emails it to the org. Runs on
+// the platform's own Stripe account (getStripe()), same merchant-of-
+// record model as every other charge in this app — the org pays the
+// platform directly, not through their own Connect account. The Payment
+// Links API needs an actual Price object, not an inline amount (unlike
+// Checkout Sessions) — prices.create() with product_data makes one on
+// the fly since the amount is different for every settlement.
+export async function createSettlementPaymentLink(fairId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: settlement, error: settlementError } = await supabase
+    .from("settlements")
+    .select("id, org_id, net_payout, stripe_payment_link_id")
+    .eq("fair_id", fairId)
+    .single();
+
+  if (settlementError || !settlement) {
+    throw new Error("Settlement not found — close the fair first");
+  }
+  if (settlement.stripe_payment_link_id) {
+    throw new Error("A payment link already exists for this settlement");
+  }
+  if (settlement.net_payout >= 0) {
+    throw new Error("This org doesn't owe anything on this settlement");
+  }
+
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .select("contact_email")
+    .eq("id", settlement.org_id)
+    .single();
+  if (orgError || !org) {
+    throw new Error("Organization not found");
+  }
+
+  const { data: fair } = await supabase.from("fairs").select("name").eq("id", fairId).single();
+  const amountOwed = -settlement.net_payout;
+
+  const stripe = getStripe();
+  const price = await stripe.prices.create({
+    currency: "usd",
+    unit_amount: Math.round(amountOwed * 100),
+    product_data: { name: `${fair?.name ?? "Book fair"} settlement` },
+  });
+
+  const paymentLink = await stripe.paymentLinks.create({
+    line_items: [{ price: price.id, quantity: 1 }],
+    metadata: { settlement_id: settlement.id, fair_id: fairId },
+  });
+
+  const { error: updateError } = await supabase
+    .from("settlements")
+    .update({ stripe_payment_link_id: paymentLink.id })
+    .eq("id", settlement.id);
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  if (org.contact_email) {
+    try {
+      await sendSettlementPaymentLinkEmail({
+        to: org.contact_email,
+        fairName: fair?.name ?? "your fair",
+        amount: amountOwed,
+        paymentLinkUrl: paymentLink.url,
+      });
+    } catch (emailError) {
+      console.error("Failed to send settlement payment-link email", emailError);
+    }
+  }
+
+  revalidatePath(`/admin/fairs/${fairId}/edit`);
 }
 
 // Creates a Stripe Terminal Location for this fair's venue — required

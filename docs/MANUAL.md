@@ -392,18 +392,34 @@ one irreversible step:
 - **Equipment rental fee**: whatever was set when the reader option was
   approved (or later, on this same page) — netted against payout the same
   way.
-- **Net payout**: payout due minus everything owed. Positive means the
-  org is still owed money (an actual Stripe Transfer to their Connect
-  account is a manual follow-up, not automated); negative means the org
-  owes the platform (a Payment Link for that amount is also a manual
-  follow-up).
+- **Net payout**: payout due minus everything owed.
 
 Once closed, the figures are shown right there on the edit page (and on
-the org's own dashboard, as a "Payout"/"Owe" column). **Missing-inventory
-cost is always $0** — there's no returns-recording feature yet to compute
-it from, so nothing is billed for stock that never comes back. A refund
-requested after a fair has closed does not reopen the settlement — that
-part of the full design also isn't built yet (see "Not yet supported").
+the org's own dashboard, as a "Payout"/"Owe" column), along with a button
+to actually move the money:
+
+- **Positive net payout** (the org is owed money): **"Send $X payout via
+  Stripe"** fires a real Stripe Transfer to the org's connected Express
+  account. Disabled with an explanation if that org hasn't finished
+  Stripe Connect onboarding yet, or if their payouts aren't enabled —
+  finish that first (see "Editing an organization" above). Once sent,
+  the transfer id is shown in place of the button.
+- **Negative net payout** (the org owes the platform): **"Create $X
+  payment link"** generates a one-time Stripe Payment Link and emails it
+  to the org's contact address, for them to pay directly. The link is
+  shown (and stays clickable) once created.
+
+Either button can only be clicked once per settlement — there's no
+"resend" or "undo." Neither one currently confirms the money actually
+arrived: the button records that the attempt was made (a transfer/
+payment-link id), not that it succeeded — check Stripe's own dashboard
+to confirm a transfer landed or a payment link got paid.
+
+**Missing-inventory cost is always $0** — there's no returns-recording
+feature yet to compute it from, so nothing is billed for stock that
+never comes back. A refund requested after a fair has closed does not
+reopen the settlement — that part of the full design also isn't built
+yet (see "Not yet supported").
 
 ## Org staff guide
 
@@ -452,9 +468,11 @@ fair's edit page).
 Once an admin closes a fair (see the admin guide's "Closing a fair"),
 your dashboard's fairs table shows a **Payout** column — a dollar amount
 if you're owed money, or "Owe $X" if cash sales and/or an equipment
-rental fee outweighed your card/online margin. Actually moving that
-money (a transfer to you, or collecting what you owe) is still a manual
-step on the admin's end for now, not automatic.
+rental fee outweighed your card/online margin. Moving the money is a
+button on the admin's end, not automatic on close — if you're owed
+money, it arrives as a transfer to your organization's connected Stripe
+account (once Stripe Connect onboarding is finished); if you owe money,
+you'll get an email with a link to pay it directly.
 
 ## Buyer guide
 
@@ -522,9 +540,12 @@ submit something new.
   different — created automatically on approval, no manual step.)
 - Missing-inventory cost as part of closing a fair (needs a
   returns-recording feature this app doesn't have yet — see "Closing a
-  fair"), and automating the actual money movement (Stripe Transfer or
-  Payment Link) once a fair is closed.
+  fair").
 - A returns/manifest workflow at all — `allocations.quantity_returned`
   exists in the schema but nothing in the app writes to it yet.
+- Confirming a settlement payout/payment link actually completed — the
+  "Send payout"/"Create payment link" buttons record the attempt (a
+  Stripe transfer or payment-link id), not its outcome; check Stripe's
+  own dashboard.
 
 These are called out as deferred, not silently missing.

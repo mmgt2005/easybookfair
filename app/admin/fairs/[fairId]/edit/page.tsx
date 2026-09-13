@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { updateFair, createTerminalLocation, registerTerminalReader, closeFair } from "../../actions";
+import {
+  updateFair,
+  createTerminalLocation,
+  registerTerminalReader,
+  closeFair,
+  sendSettlementPayout,
+  createSettlementPaymentLink,
+} from "../../actions";
 import { getStripe } from "@/lib/stripe";
 import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
 
@@ -14,7 +21,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, organizations(name, is_school)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
     )
     .eq("id", fairId)
     .single();
@@ -23,20 +30,31 @@ export default async function EditFairPage({
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
 
-  const org = fair.organizations as unknown as { name: string; is_school: boolean } | null;
+  const org = fair.organizations as unknown as {
+    name: string;
+    is_school: boolean;
+    stripe_connect_account_id: string | null;
+    stripe_payouts_enabled: boolean;
+  } | null;
 
   const { data: settlement } = await supabase
     .from("settlements")
     .select(
-      "payout_due, cash_wholesale_owed, missing_inventory_cost, equipment_rental_fee, total_owed_by_org, net_payout, closed_at",
+      "payout_due, cash_wholesale_owed, missing_inventory_cost, equipment_rental_fee, total_owed_by_org, net_payout, closed_at, stripe_transfer_id, stripe_payment_link_id",
     )
     .eq("fair_id", fairId)
     .maybeSingle();
+
+  const paymentLinkUrl = settlement?.stripe_payment_link_id
+    ? (await getStripe().paymentLinks.retrieve(settlement.stripe_payment_link_id)).url
+    : null;
 
   const updateFairForFair = updateFair.bind(null, fairId);
   const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
   const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
   const closeFairForFair = closeFair.bind(null, fairId);
+  const sendSettlementPayoutForFair = sendSettlementPayout.bind(null, fairId);
+  const createSettlementPaymentLinkForFair = createSettlementPaymentLink.bind(null, fairId);
 
   const readers = fair.stripe_terminal_location_id
     ? (
@@ -233,10 +251,59 @@ export default async function EditFairPage({
             <p className="text-xs text-neutral-500">
               Closed {new Date(settlement.closed_at).toLocaleString()}
             </p>
-            <p className="mt-2 text-xs text-amber-700">
-              This is a computed record only — moving the actual money (a Stripe transfer, or a
-              payment link if the org owes) is still a manual follow-up step for now.
-            </p>
+
+            <div className="mt-2 border-t border-neutral-100 pt-2">
+              {settlement.net_payout > 0 &&
+                (settlement.stripe_transfer_id ? (
+                  <p className="text-sm text-green-700">
+                    ✅ Payout sent — Stripe transfer <code>{settlement.stripe_transfer_id}</code>
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {!org?.stripe_connect_account_id ? (
+                      <p className="text-xs text-amber-700">
+                        This org hasn&apos;t started Stripe Connect onboarding yet — set that up
+                        from their organization page before sending a payout.
+                      </p>
+                    ) : !org.stripe_payouts_enabled ? (
+                      <p className="text-xs text-amber-700">
+                        This org&apos;s Stripe payouts aren&apos;t enabled yet — finish their
+                        Connect onboarding first.
+                      </p>
+                    ) : null}
+                    <form action={sendSettlementPayoutForFair}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!org?.stripe_connect_account_id || !org.stripe_payouts_enabled}
+                      >
+                        Send ${settlement.net_payout.toFixed(2)} payout via Stripe
+                      </Button>
+                    </form>
+                  </div>
+                ))}
+
+              {settlement.net_payout < 0 &&
+                (paymentLinkUrl ? (
+                  <p className="text-sm text-neutral-700">
+                    💳 Payment link sent —{" "}
+                    <a
+                      href={paymentLinkUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      {paymentLinkUrl}
+                    </a>
+                  </p>
+                ) : (
+                  <form action={createSettlementPaymentLinkForFair}>
+                    <Button type="submit" size="sm" variant="outline">
+                      Create ${Math.abs(settlement.net_payout).toFixed(2)} payment link
+                    </Button>
+                  </form>
+                ))}
+            </div>
           </div>
         ) : (
           <div className="mt-2 flex flex-col gap-2">

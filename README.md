@@ -36,9 +36,13 @@ A big batch pulling several later-phase pieces forward at once:
   wallet). See `lib/promotions.ts`.
 - **Closing a fair** (`/admin/fairs/<id>/edit`): a real, if deliberately
   scoped-down, `close_fair()` — computes payout (or amount owed) straight
-  from the ledger, nets the equipment rental fee, and locks it. Missing-
-  inventory cost isn't computed yet (no returns-recording feature exists
-  to drive it) and moving the actual money is still manual.
+  from the ledger, nets the equipment rental fee, and locks it. A button
+  right there then actually moves the money: **Send payout** fires a
+  Stripe Transfer to the org's Connect account (net payout owed to them),
+  or **Create payment link** generates a one-time Stripe Payment Link and
+  emails it to the org (net amount they owe the platform). Missing-
+  inventory cost still isn't computed (no returns-recording feature
+  exists to drive it).
 - **Wallet close-out donation notice**: closing a fair's wallets now emails
   each parent with unspent balance a link to a printable/downloadable
   receipt (`/fairs/<id>/wallet/receipt/<walletId>`).
@@ -66,8 +70,8 @@ A big batch pulling several later-phase pieces forward at once:
 
 Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
 companion app — not reachable from a browser), and missing-inventory
-cost / automatic Stripe transfer-or-payment-link as part of closing a
-fair (both need a real returns-recording feature first).
+cost as part of closing a fair (needs a real returns-recording feature
+first).
 
 ## Stack
 
@@ -211,6 +215,15 @@ code (everything that needs to be unit-tested).
    real delivery needs your own verified sending domain). Sent after a
    successful online order or wallet funding — best-effort, a delivery
    failure never fails the underlying payment (see `lib/email.ts`).
+8. Settlement payouts: once a fair is closed (`/admin/fairs/<id>/edit`,
+   "Settlement" card), **Send payout** fires a real Stripe Transfer to the
+   org's Connect account — needs that org to have finished onboarding
+   (`stripe_payouts_enabled`, from step 3) and the platform's own Stripe
+   balance to actually cover the amount (in test mode, top up the
+   platform's test balance, or expect an "insufficient funds" error from
+   Stripe if you haven't). **Create payment link** (shown instead when the
+   org owes the platform) needs no special setup — it's a normal one-time
+   Stripe Payment Link on the platform's own account.
 
 ## Deploying
 
@@ -271,9 +284,17 @@ inventing new colors per page.
   ledger already shows for card/online margin and cash-sale wholesale
   owed, but `missing_inventory_cost` is hardcoded `0` (no
   returns-recording feature exists to drive it — `allocations.
-  quantity_returned` exists in the schema but nothing ever writes it), and
-  actually moving money (a Stripe Transfer, or a Payment Link if the org
-  owes) is still a manual follow-up step, not automated.
+  quantity_returned` exists in the schema but nothing ever writes it).
+  Moving the money is a real button now (`sendSettlementPayout`/
+  `createSettlementPaymentLink`, `app/admin/fairs/actions.ts`), but
+  neither has reconciliation: nothing listens for the Transfer actually
+  landing or the Payment Link actually getting paid — `stripe_transfer_
+  id`/`stripe_payment_link_id` just record that the attempt was made, not
+  its outcome. Check Stripe's own dashboard to confirm either succeeded.
+  There's also no idempotency key on the Transfer/Price/Payment Link
+  calls — the disabled-once-sent button is the real guard against a
+  double-send, not a network-level safeguard, which is fine at this
+  app's one-admin-clicking-once scale.
 - The onboarding tour's "seen it" state is per-browser (`localStorage`),
   not per-account — a new browser/device shows it again regardless of
   whether that person has seen it elsewhere. Acceptable since the "🎓 Take
@@ -428,3 +449,16 @@ inventing new colors per page.
   deliberately stopped trusting a client-supplied `author_user_id` once
   this policy existed). `submitted_by_admin_id` keeps the resulting row
   truthful about who actually clicked submit.
+- `settlements.stripe_transfer_id`/`stripe_payment_link_id` (columns from
+  Phase 1's original `settlements` table, migration `0003` — nothing
+  wrote to either until now) are set by `sendSettlementPayout()`/
+  `createSettlementPaymentLink()` (`app/admin/fairs/actions.ts`) once an
+  admin clicks the corresponding button on a closed fair's edit page —
+  no new migration needed for this. A Payment Link needs an actual
+  `Price` object, unlike a Checkout Session (which accepts inline
+  `price_data`) — `createSettlementPaymentLink()` calls
+  `stripe.prices.create()` with `product_data` to make a one-off Price
+  on the fly, since the amount differs per settlement. Both run on the
+  platform's own Stripe account (`getStripe()`), the same
+  merchant-of-record model as every other charge in this app — a payment
+  link charges the org, it doesn't originate from their Connect account.

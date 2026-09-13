@@ -9,6 +9,33 @@ which point versioning starts.
 
 ### Added
 
+- **Settlement payouts and payment links**
+  (`app/admin/fairs/actions.ts`): closing a fair (`close_fair()`,
+  migration `0036`) previously stopped at recording the settlement — the
+  fair's edit page now has real buttons for the "move the money" step.
+  **Send payout** (shown when `net_payout > 0`) fires a Stripe Transfer
+  to the org's connected Express account, guarded on their Connect
+  onboarding actually being done (`stripe_connect_account_id`/
+  `stripe_payouts_enabled`) and disabled once already sent. **Create
+  payment link** (shown when `net_payout < 0`) creates a one-time Stripe
+  Payment Link for the amount owed and emails it to the org's
+  `contact_email`; Payment Links need an actual `Price` object, unlike a
+  Checkout Session's inline `price_data`, so this calls
+  `stripe.prices.create()` with `product_data` to mint a one-off price
+  on the fly (the amount differs per settlement). Both write into
+  `settlements.stripe_transfer_id`/`stripe_payment_link_id` — columns
+  that existed since Phase 1's original `settlements` table (migration
+  `0003`) with nothing ever writing to them until now, so no new
+  migration was needed. Neither button confirms the money actually
+  arrived — they record that the attempt was made, not its outcome; a
+  human still checks Stripe's own dashboard for that, and there's no
+  webhook-driven reconciliation. Best-effort confirmation emails
+  (`sendSettlementPayoutEmail`/`sendSettlementPaymentLinkEmail`,
+  `lib/email.ts`) fire after each.
+  - Validated: `npm run typecheck`/`npm run build` both clean. Not
+    exercised against live Stripe (no test-mode Connect account/balance
+    set up in this environment) — same reasoning as every other
+    Stripe-touching batch this session.
 - **Admin "view as" an org or author** (migration `0041`, `lib/viewAs.ts`):
   a "View as" link on each row of `/admin/organizations`/`/admin/authors`
   (new page) switches an admin's session into that org's `/org` or that

@@ -115,6 +115,52 @@ export async function sendWalletDonationReceiptEmail(params: {
   });
 }
 
+// Sent after an admin sends a settlement payout via Stripe Transfer
+// (app/admin/fairs/actions.ts, sendSettlementPayout) — a receipt, not a
+// notice they need to act on (unlike the payment-link email below).
+export async function sendSettlementPayoutEmail(params: {
+  to: string;
+  fairName: string;
+  amount: number;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Payout sent — ${params.fairName}`,
+    html: `
+      <p>Your payout of <strong>$${params.amount.toFixed(2)}</strong> for
+      <strong>${params.fairName}</strong> has been sent to your connected
+      Stripe account.</p>
+      <p>It should reach your bank on Stripe's normal payout schedule for
+      your account — check your Stripe dashboard for the exact timing.</p>
+    `,
+  });
+}
+
+// Sent after an admin creates a settlement payment link (the org owes the
+// platform net) — this one the org does need to act on, so it's the
+// primary way they'd ever see the link, not just a courtesy copy.
+export async function sendSettlementPaymentLinkEmail(params: {
+  to: string;
+  fairName: string;
+  amount: number;
+  paymentLinkUrl: string;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Amount due — ${params.fairName}`,
+    html: `
+      <p><strong>${params.fairName}</strong> has closed out, and your
+      organization owes <strong>$${params.amount.toFixed(2)}</strong>
+      (cash sales collected directly, plus any equipment rental fee,
+      exceeded your card/online payout).</p>
+      <p><a href="${params.paymentLinkUrl}">Pay $${params.amount.toFixed(2)}
+      now</a> to settle up.</p>
+    `,
+  });
+}
+
 export async function sendWalletFundingEmail(params: {
   to: string;
   studentName: string;
