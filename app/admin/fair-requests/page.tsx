@@ -13,7 +13,7 @@ export default async function FairRequestsPage({
   const { data: requests } = await supabase
     .from("fair_requests")
     .select(
-      "id, requested_name, requested_start_date, requested_end_date, allow_online, allow_wallet, allow_in_person, allow_cash, status, admin_note, organizations(name)",
+      "id, requested_name, requested_start_date, requested_end_date, allow_online, allow_wallet, allow_in_person, allow_cash, status, admin_note, submitted_by_admin_id, organizations(name)",
     )
     .order("created_at", { ascending: false });
 
@@ -54,6 +54,11 @@ export default async function FairRequestsPage({
                   <p className="mt-1 text-xs text-neutral-500">
                     Payment options requested: {channels.join(", ") || "none"}
                   </p>
+                  {request.submitted_by_admin_id && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      👁️ Submitted by an admin viewing as this org, not the org itself.
+                    </p>
+                  )}
                 </div>
                 <Badge tone={statusTone(request.status)}>{request.status}</Badge>
               </div>

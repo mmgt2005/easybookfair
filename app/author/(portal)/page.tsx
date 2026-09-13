@@ -3,14 +3,20 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
 
 export default async function AuthorDashboard() {
-  const { name } = await requireAuthor();
+  const { name, authorUserId } = await requireAuthor();
   const supabase = await createClient();
 
+  // Explicit author_user_id filter, not just RLS (author_submissions_
+  // select already scopes a genuine author's own session via auth.uid())
+  // — an admin "viewing as" this author (lib/viewAs.ts) has full RLS
+  // visibility via app.is_platform_admin(), so without this filter
+  // they'd see every author's submissions mixed together here.
   const { data: submissions } = await supabase
     .from("author_submissions")
     .select(
       "id, title, item_type, suggested_retail_price, wholesale_price, status, admin_note, catalog_item_id, created_at",
     )
+    .eq("author_user_id", authorUserId)
     .order("created_at", { ascending: false });
 
   const catalogItemIds = (submissions ?? [])

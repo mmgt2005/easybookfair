@@ -9,6 +9,46 @@ which point versioning starts.
 
 ### Added
 
+- **Admin "view as" an org or author** (migration `0041`, `lib/viewAs.ts`):
+  a "View as" link on each row of `/admin/organizations`/`/admin/authors`
+  (new page) switches an admin's session into that org's `/org` or that
+  author's `/author` portal — an amber banner (shown on `/org`/`/author`,
+  and on `/admin` itself if still active there) makes it unmistakable,
+  with "Stop viewing as" to switch back. Deliberately **not** a real
+  session swap — an httpOnly cookie is just a routing signal,
+  re-verified against `app.is_platform_admin()` on the caller's own real
+  session every time it's read (`requireOrgStaff()`/`requireAuthor()`),
+  never trusted by itself. Two write-side consequences: (1) `/org`/
+  `/author` pages that previously relied on RLS to auto-scope a genuine
+  member's session now filter explicitly by the id `requireOrgStaff()`/
+  `requireAuthor()` returns — an admin's own RLS access already sees
+  every org/author's rows, so without an explicit filter they'd see
+  everyone's data mixed together instead of just the one being
+  previewed. (2) New unconditional admin insert policies
+  (`fair_requests_admin_insert`/`author_submissions_admin_insert`) let an
+  admin write a row attributed to an org/author they aren't themselves,
+  which the existing insert policies (checking the row against the
+  caller's own `auth.uid()`) can't allow — so it's the application code,
+  not RLS, responsible for setting `org_id`/`author_user_id` to the
+  correct impersonated target; `submitAuthorSubmission` stopped trusting
+  a client-supplied `author_user_id` once that policy existed, deriving
+  it server-side from the view-as cookie (or the caller's own `authors`
+  row) instead. Every such write gets a new `submitted_by_admin_id`
+  (both `fair_requests` and `author_submissions`) recording who actually
+  clicked submit — `org_id`/`author_user_id` stay pointed at the real
+  target, so the row behaves identically everywhere else, but
+  `/admin/fair-requests`/`/admin/author-submissions` flag it inline so
+  it's never mistaken for the org/author's own submission. An admin
+  submitting a fair request while viewing as an org sends the approval
+  email to that org's own `contact_email` (falling back to the admin's
+  if unset) rather than to the admin's own inbox.
+  - Validated against a real local Postgres instance: an admin can insert
+    a `fair_requests`/`author_submissions` row for an org/author they are
+    not themselves a member/owner of (the new admin policies), a regular
+    org member's own normal submission still works unaffected, and a
+    non-admin, non-matching user is still rejected attempting the same
+    thing an admin can do. `npm run typecheck`/`npm run build` both
+    clean.
 - **Promotions, a scoped-down fair-close settlement, author submissions,
   an onboarding tour, and a demo fair** (migrations `0033`–`0040`) — a
   large batch pulling several later-phase pieces forward at once:

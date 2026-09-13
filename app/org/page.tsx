@@ -4,26 +4,32 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
 
 export default async function OrgDashboard() {
-  await requireOrgStaff();
+  const { orgIds } = await requireOrgStaff();
   const supabase = await createClient();
 
-  // RLS (fairs_select/fair_requests_org_select) already scopes both
-  // queries to this user's org(s) via app.current_org_ids() — no explicit
-  // org_id filter needed here.
+  // Explicit org_id filters, not just RLS (fairs_select/
+  // fair_requests_org_select already scope a genuine org member's own
+  // session via app.current_org_ids()) — an admin "viewing as" this org
+  // (lib/viewAs.ts) has full RLS visibility via app.is_platform_admin(),
+  // so without these filters they'd see every org's fairs/requests/
+  // settlements here instead of just the one they're supposed to be
+  // previewing.
   const [{ data: fairs }, { data: requests }, { data: settlements }] = await Promise.all([
     supabase
       .from("fairs")
       .select(
         "id, name, status, start_date, end_date, allow_online, allow_wallet, organizations(is_school)",
       )
+      .in("org_id", orgIds)
       .order("start_date", { ascending: false }),
     supabase
       .from("fair_requests")
       .select(
         "id, requested_name, requested_start_date, requested_end_date, status, admin_note, created_at",
       )
+      .in("org_id", orgIds)
       .order("created_at", { ascending: false }),
-    supabase.from("settlements").select("fair_id, net_payout"),
+    supabase.from("settlements").select("fair_id, net_payout").in("org_id", orgIds),
   ]);
 
   const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s.net_payout]));

@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrgStaff } from "@/lib/auth";
 
-// RLS (fair_requests_org_insert) is the real boundary — this org_id check
-// is just so a mismatched request gets a clear error instead of a bare
-// RLS rejection.
+// RLS (fair_requests_org_insert, or fair_requests_admin_insert while an
+// admin is "viewing as" this org — migration 0041) is the real boundary;
+// this org_id check is just so a mismatched request gets a clear error
+// instead of a bare RLS rejection.
 export async function createFairRequest(formData: FormData) {
-  const { user, orgIds } = await requireOrgStaff();
+  const { user, orgIds, viewingAs, adminId } = await requireOrgStaff();
   const supabase = await createClient();
 
   const orgId = String(formData.get("org_id") ?? "");
@@ -28,10 +29,26 @@ export async function createFairRequest(formData: FormData) {
     throw new Error("All fields are required");
   }
 
+  // requested_by stays truthful (the real person who clicked submit,
+  // admin included when viewingAs) — requested_by_email is what the
+  // approval notification actually goes to, so when an admin submits on
+  // an org's behalf it should reach the org's own contact, not the
+  // admin's inbox.
+  let requestedByEmail = user.email ?? null;
+  if (viewingAs) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("contact_email")
+      .eq("id", orgId)
+      .single();
+    requestedByEmail = org?.contact_email ?? requestedByEmail;
+  }
+
   const { error } = await supabase.from("fair_requests").insert({
     org_id: orgId,
     requested_by: user.id,
-    requested_by_email: user.email,
+    requested_by_email: requestedByEmail,
+    submitted_by_admin_id: viewingAs ? adminId : null,
     requested_name: requestedName,
     requested_start_date: startDate,
     requested_end_date: endDate,

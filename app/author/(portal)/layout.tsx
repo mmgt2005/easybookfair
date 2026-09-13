@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAuthor } from "@/lib/auth";
 import { Tour, TourLauncherButton } from "@/components/Tour";
+import { ViewAsBanner } from "@/components/ViewAsBanner";
 import packageJson from "@/package.json";
 
 const navLinks = [
@@ -29,10 +30,11 @@ export default async function AuthorLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await requireAuthor();
+  const { name, viewingAs } = await requireAuthor();
 
   return (
     <div className="min-h-screen">
+      {viewingAs && <ViewAsBanner label={name} />}
       <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm">
         <Link href="/author" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair — Author Portal

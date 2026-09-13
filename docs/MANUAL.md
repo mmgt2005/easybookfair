@@ -150,7 +150,9 @@ shows **Approve** and **Decline** buttons:
 
 Once reviewed, a request is final — there's no re-opening a declined
 request or un-approving one; create a new fair (or edit the resulting
-one) instead.
+one) instead. A request submitted by an admin "viewing as" that org (see
+below) is flagged inline so it's never mistaken for something the org
+submitted themselves.
 
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
@@ -291,7 +293,26 @@ overridden). Each pending submission shows **Approve** and **Decline**:
 A submitter who already has an author account (from a prior approval)
 can skip the public form and submit again from `/author/submit` while
 signed in — it pre-fills their name/email and links the new submission to
-their account immediately, without waiting for another approval.
+their account immediately, without waiting for another approval. A
+submission made by an admin "viewing as" that author (see below) is
+flagged inline the same way an admin-submitted fair request is.
+
+### Viewing as an org or author (`/admin/organizations`, `/admin/authors`)
+
+Each row on either list has a **View as** link — switches your admin
+session into that org's `/org` or that author's `/author` portal, so you
+can see (and, for support/onboarding, act on) exactly what they would.
+An amber banner stays visible the whole time so it's never mistaken for
+your own admin session, with a **Stop viewing as** link to switch back.
+
+This is **not** a real login as that org/author — you never hold their
+actual credentials, and nothing about their real account changes. It's a
+scoped preview: your own admin session renders the org/author portal as
+if you were them, and any action you take there (submitting a fair
+request, submitting an item) is recorded truthfully as admin-submitted
+on their behalf, not silently attributed to them as if they'd typed it
+themselves. `/admin/fair-requests` and `/admin/author-submissions` both
+flag rows created this way.
 
 ### Payments
 

@@ -13,7 +13,7 @@ export default async function AuthorSubmissionsPage({
   const { data: submissions } = await supabase
     .from("author_submissions")
     .select(
-      "id, author_name, author_email, title, item_type, category, image_url, suggested_retail_price, wholesale_price, status, admin_note, created_at",
+      "id, author_name, author_email, title, item_type, category, image_url, suggested_retail_price, wholesale_price, status, admin_note, submitted_by_admin_id, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -54,6 +54,11 @@ export default async function AuthorSubmissionsPage({
                       {s.suggested_retail_price.toFixed(2)}, wholesale $
                       {s.wholesale_price.toFixed(2)}
                     </p>
+                    {s.submitted_by_admin_id && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        👁️ Submitted by an admin viewing as this author.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <Badge tone={statusTone(s.status)}>{s.status}</Badge>

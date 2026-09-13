@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createOrganization } from "./actions";
+import { startViewAsOrg } from "../view-as/actions";
 import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
 
 export default async function OrganizationsPage() {
@@ -39,13 +40,21 @@ export default async function OrganizationsPage() {
                 <td className="py-2 pr-4">
                   <Badge tone={statusTone(org.status)}>{org.status}</Badge>
                 </td>
-                <td className="py-2 pr-4">
+                <td className="flex gap-3 py-2 pr-4">
                   <Link
                     href={`/admin/organizations/${org.id}/edit`}
                     className="font-semibold text-accent-600 hover:underline"
                   >
                     Edit
                   </Link>
+                  <form action={startViewAsOrg.bind(null, org.id)}>
+                    <button
+                      type="submit"
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      View as
+                    </button>
+                  </form>
                 </td>
               </tr>
             ))}

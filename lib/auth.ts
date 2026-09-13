@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getViewAsOrgId, getViewAsAuthorId } from "@/lib/viewAs";
 
 /**
  * Guard for admin Server Components/Actions. Redirects to /login if
@@ -42,6 +43,13 @@ export async function requireAdmin() {
  * A person can belong to more than one org (org_members has no
  * uniqueness constraint on user_id alone) — this returns all of them,
  * since nothing in the schema assumes a single-org membership.
+ *
+ * An admin "viewing as" an org (lib/viewAs.ts) skips the org_members
+ * lookup entirely and returns just that one org id instead — but only
+ * once their admin status is re-checked here, against their own real
+ * session; the view-as cookie is never trusted by itself. Callers get
+ * `viewingAs`/`adminId` back so pages can show a banner and writes can
+ * attribute correctly (see e.g. app/org/actions.ts).
  */
 export async function requireOrgStaff() {
   const supabase = await createClient();
@@ -53,6 +61,19 @@ export async function requireOrgStaff() {
     redirect("/login");
   }
 
+  const viewAsOrgId = await getViewAsOrgId();
+  if (viewAsOrgId) {
+    const { data: adminRow } = await supabase
+      .from("platform_admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (adminRow) {
+      return { user, orgIds: [viewAsOrgId], viewingAs: true, adminId: user.id };
+    }
+  }
+
   const { data: memberships } = await supabase
     .from("org_members")
     .select("org_id, role")
@@ -62,7 +83,12 @@ export async function requireOrgStaff() {
     redirect("/unauthorized");
   }
 
-  return { user, orgIds: memberships.map((m) => m.org_id) };
+  return {
+    user,
+    orgIds: memberships.map((m) => m.org_id),
+    viewingAs: false,
+    adminId: null as string | null,
+  };
 }
 
 /**
@@ -72,6 +98,15 @@ export async function requireOrgStaff() {
  * a submission, migration 0040 — there's no self-serve signup). RLS
  * (author_submissions_select) is what actually enforces which rows an
  * author sees; this is the UX gate.
+ *
+ * An admin "viewing as" an author (lib/viewAs.ts) skips the `authors`
+ * lookup for the *signed-in* user and instead looks up the impersonated
+ * author's own profile — but only once their admin status is re-checked
+ * here. The returned `authorUserId` is what callers must filter by
+ * explicitly (see app/author/(portal)/page.tsx) — admin's own RLS access
+ * already sees every author's rows, so without an explicit filter an
+ * impersonating admin would see everyone's submissions mixed together,
+ * not just the one they're supposed to be viewing as.
  */
 export async function requireAuthor() {
   const supabase = await createClient();
@@ -81,6 +116,31 @@ export async function requireAuthor() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  const viewAsAuthorId = await getViewAsAuthorId();
+  if (viewAsAuthorId) {
+    const { data: adminRow } = await supabase
+      .from("platform_admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (adminRow) {
+      const { data: authorProfile } = await supabase
+        .from("authors")
+        .select("name")
+        .eq("user_id", viewAsAuthorId)
+        .maybeSingle();
+
+      return {
+        user,
+        authorUserId: viewAsAuthorId,
+        name: authorProfile?.name ?? "Unknown author",
+        viewingAs: true,
+        adminId: user.id,
+      };
+    }
   }
 
   const { data: authorRow } = await supabase
@@ -93,5 +153,11 @@ export async function requireAuthor() {
     redirect("/unauthorized");
   }
 
-  return { user, name: authorRow.name };
+  return {
+    user,
+    authorUserId: authorRow.user_id,
+    name: authorRow.name,
+    viewingAs: false,
+    adminId: null as string | null,
+  };
 }

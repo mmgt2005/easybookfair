@@ -54,6 +54,15 @@ A big batch pulling several later-phase pieces forward at once:
   invites the author to a real account and adds the item to the catalog.
   A minimal author portal (`/author`) shows submission status and, once
   approved, units sold/revenue.
+- **Admin "view as"** (`/admin/organizations`, `/admin/authors`): an admin
+  can preview and act in the org or author portal as a specific
+  org/author — a "View as" link switches into it (an amber banner makes
+  it unmistakable), and "Stop viewing as" switches back. This is a scoped
+  cookie-based preview, **not a real session swap** — the admin never
+  holds that org/author's actual credentials, and every write made this
+  way is still truthfully attributed to the admin (`submitted_by_admin_id`
+  on the resulting row) alongside the org/author it was made on behalf
+  of, rather than forging who physically clicked submit.
 
 Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
 companion app — not reachable from a browser), and missing-inventory
@@ -118,6 +127,7 @@ code (everything that needs to be unit-tested).
    - `0038_promotions_fair_scope.sql`
    - `0039_spend_from_wallet_promotions.sql`
    - `0040_author_submissions.sql`
+   - `0041_admin_view_as.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -277,6 +287,13 @@ inventing new colors per page.
   `admin.listUsers()` rather than a direct lookup (supabase-js has no
   `getUserByEmail`) — fine at this app's scale, not for a very large user
   base.
+- Admin "view as" only covers the org and author portals — there's
+  nothing to impersonate on the buyer storefront (`/fairs/<id>` is
+  already public with no login, so an admin can just open it directly).
+  Its "seen" state and everything about the underlying session belongs to
+  the admin's own real login; the view-as cookie only changes which
+  org/author the org/author portal renders as, not who's actually
+  authenticated.
 
 ## Database notes
 
@@ -386,3 +403,28 @@ inventing new colors per page.
   author` is an additive RLS policy (Postgres OR's multiple permissive
   policies for the same command together) — it doesn't touch or replace
   `sales_select`'s existing org/admin scoping.
+- Admin "view as" (migration `0041`, `lib/viewAs.ts`) is deliberately
+  **not** a real session swap — an admin never holds an org/author's
+  actual credentials, only a routing cookie that `requireOrgStaff()`/
+  `requireAuthor()` honor after independently re-checking
+  `app.is_platform_admin()` against the caller's own real session; the
+  cookie carries no authority by itself. Two consequences fall out of
+  that: (1) `/org`/`/author` pages that previously relied on RLS to
+  auto-scope a genuine member's own session (`org_id in
+  app.current_org_ids()`, `author_user_id = auth.uid()`) now filter
+  explicitly by the id `requireOrgStaff()`/`requireAuthor()` returns
+  instead — an admin's own RLS access already sees every org/author's
+  rows via `is_platform_admin()`, so without an explicit filter they'd
+  see everyone's data mixed together rather than just the one they're
+  previewing. (2) Writing as an impersonated org/author needs its own
+  insert policies (`fair_requests_admin_insert`/
+  `author_submissions_admin_insert`, unconditional for any admin) since
+  the existing ones check the row against the *caller's* `auth.uid()`,
+  which is the admin's own id, never the target's. Those new policies
+  drop the "does this insert belong to you" check entirely, so it's the
+  application code — not RLS — that's responsible for setting
+  `org_id`/`author_user_id` to the correct impersonated target rather
+  than trusting client input (see `submitAuthorSubmission`, which
+  deliberately stopped trusting a client-supplied `author_user_id` once
+  this policy existed). `submitted_by_admin_id` keeps the resulting row
+  truthful about who actually clicked submit.

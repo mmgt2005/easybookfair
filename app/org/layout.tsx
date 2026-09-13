@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireOrgStaff } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { Tour, TourLauncherButton } from "@/components/Tour";
+import { ViewAsBanner } from "@/components/ViewAsBanner";
 import packageJson from "@/package.json";
 
 const navLinks = [
@@ -36,10 +38,22 @@ export default async function OrgLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await requireOrgStaff();
+  const { orgIds, viewingAs } = await requireOrgStaff();
+
+  let orgName = "";
+  if (viewingAs) {
+    const supabase = await createClient();
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", orgIds[0])
+      .single();
+    orgName = org?.name ?? "this organization";
+  }
 
   return (
     <div className="min-h-screen">
+      {viewingAs && <ViewAsBanner label={orgName} />}
       <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm">
         <Link href="/org" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair — Org Portal

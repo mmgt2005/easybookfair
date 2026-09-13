@@ -2,16 +2,52 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getViewAsAuthorId } from "@/lib/viewAs";
 
-// Public — no login required (RLS's author_submissions_insert policy
-// allows anon, requiring author_user_id be null in that case; a signed-in
-// author submitting a follow-up item passes their own id via the hidden
-// field the page sets, and RLS rejects anything else, so there's nothing
-// extra to check here).
+// Public — no login required. author_user_id is derived here, server-side
+// — never trusted from a hidden form field — since migration 0041 added
+// an unconditional admin insert policy (needed so an admin "viewing as"
+// an author, lib/viewAs.ts, can submit on their behalf); trusting client
+// input for this once that policy exists would let any authenticated
+// admin claim to be any author. A plain signed-in author (not an admin)
+// submitting a follow-up item still only ever gets their own id, via the
+// same `authors` lookup requireAuthor() uses.
 export async function submitAuthorSubmission(formData: FormData) {
   const supabase = await createClient();
 
-  const authorUserId = String(formData.get("author_user_id") ?? "").trim() || null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let authorUserId: string | null = null;
+  let submittedByAdminId: string | null = null;
+
+  if (user) {
+    const viewAsAuthorId = await getViewAsAuthorId();
+    if (viewAsAuthorId) {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (adminRow) {
+        authorUserId = viewAsAuthorId;
+        submittedByAdminId = user.id;
+      }
+    }
+
+    if (!authorUserId) {
+      const { data: authorRow } = await supabase
+        .from("authors")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (authorRow) {
+        authorUserId = authorRow.user_id;
+      }
+    }
+  }
+
   const authorName = String(formData.get("author_name") ?? "").trim();
   const authorEmail = String(formData.get("author_email") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -52,6 +88,7 @@ export async function submitAuthorSubmission(formData: FormData) {
 
   const { error } = await supabase.from("author_submissions").insert({
     author_user_id: authorUserId,
+    submitted_by_admin_id: submittedByAdminId,
     author_name: authorName,
     author_email: authorEmail,
     title,

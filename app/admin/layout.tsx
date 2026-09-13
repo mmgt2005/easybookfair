@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { getViewAsOrgId, getViewAsAuthorId } from "@/lib/viewAs";
+import { stopViewAs } from "./view-as/actions";
 import { Tour, TourLauncherButton } from "@/components/Tour";
 import packageJson from "@/package.json";
 
 const navLinks = [
   { href: "/admin/catalog", label: "Catalog" },
   { href: "/admin/organizations", label: "Organizations" },
+  { href: "/admin/authors", label: "Authors" },
   { href: "/admin/fairs", label: "Fairs" },
   { href: "/admin/fair-requests", label: "Fair requests" },
   { href: "/admin/author-submissions", label: "Author submissions" },
@@ -52,8 +56,48 @@ export default async function AdminLayout({
 }>) {
   await requireAdmin();
 
+  // A view-as cookie can still be set even while browsing /admin itself
+  // (an admin who wandered back without clicking "Stop viewing as") —
+  // surface it here too, not just on /org or /author, so it's never
+  // silently active in the background.
+  const [viewAsOrgId, viewAsAuthorId] = await Promise.all([
+    getViewAsOrgId(),
+    getViewAsAuthorId(),
+  ]);
+  let viewingAsLabel: string | null = null;
+  if (viewAsOrgId) {
+    const supabase = await createClient();
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", viewAsOrgId)
+      .single();
+    viewingAsLabel = `org "${org?.name ?? viewAsOrgId}"`;
+  } else if (viewAsAuthorId) {
+    const supabase = await createClient();
+    const { data: author } = await supabase
+      .from("authors")
+      .select("name")
+      .eq("user_id", viewAsAuthorId)
+      .single();
+    viewingAsLabel = `author "${author?.name ?? viewAsAuthorId}"`;
+  }
+
   return (
     <div className="min-h-screen">
+      {viewingAsLabel && (
+        <div className="flex items-center justify-between gap-3 bg-amber-100 px-6 py-2 text-sm text-amber-900">
+          <span>
+            👁️ Still viewing as {viewingAsLabel} — visit <code>/org</code> or <code>/author</code>{" "}
+            to continue, or stop here.
+          </span>
+          <form action={stopViewAs}>
+            <button type="submit" className="font-semibold underline hover:no-underline">
+              Stop viewing as
+            </button>
+          </form>
+        </div>
+      )}
       <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm">
         <Link href="/admin" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair Admin

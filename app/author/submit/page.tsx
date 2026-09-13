@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getViewAsAuthorId } from "@/lib/viewAs";
 import { submitAuthorSubmission } from "./actions";
 import { PriceInput } from "./PriceInput";
 import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
@@ -16,14 +17,40 @@ export default async function AuthorSubmitPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Prefill from either the signed-in author's own profile, or — if an
+  // admin is currently "viewing as" an author (lib/viewAs.ts) — that
+  // author's profile instead. Purely a display convenience: the action
+  // (submitAuthorSubmission) re-derives the real author_user_id itself
+  // server-side rather than trusting anything from this page.
   let authorProfile: { name: string; email: string } | null = null;
+  let viewingAsAuthor = false;
   if (user) {
-    const { data } = await supabase
-      .from("authors")
-      .select("name, email")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    authorProfile = data;
+    const viewAsAuthorId = await getViewAsAuthorId();
+    if (viewAsAuthorId) {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (adminRow) {
+        const { data } = await supabase
+          .from("authors")
+          .select("name, email")
+          .eq("user_id", viewAsAuthorId)
+          .maybeSingle();
+        authorProfile = data;
+        viewingAsAuthor = true;
+      }
+    }
+
+    if (!authorProfile && !viewingAsAuthor) {
+      const { data } = await supabase
+        .from("authors")
+        .select("name, email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      authorProfile = data;
+    }
   }
 
   return (
@@ -42,6 +69,12 @@ export default async function AuthorSubmitPage({
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
+      {viewingAsAuthor && (
+        <p className="rounded-xl bg-amber-100 px-3 py-2 text-sm text-amber-900">
+          👁️ Admin mode — this submission will be attributed to {authorProfile?.name}, not this
+          admin account.
+        </p>
+      )}
 
       <Card>
         <form
@@ -49,8 +82,6 @@ export default async function AuthorSubmitPage({
           encType="multipart/form-data"
           className="flex flex-col gap-3"
         >
-          {authorProfile && <input type="hidden" name="author_user_id" value={user!.id} />}
-
           <Field label="Your name">
             <Input name="author_name" required defaultValue={authorProfile?.name ?? ""} />
           </Field>
