@@ -34,6 +34,16 @@ which point versioning starts.
   in-window promotions and runs the same `applyPromotions()` call to
   preview the real discounted total and tag discounted lines (🏷️) before
   the button is even clicked.
+- **Public storefront never previewed promotions either** — the same bug,
+  one screen over: `createGuestCheckout()` (`app/fairs/[fairId]/actions.ts`)
+  already computed the real discounted total server-side before creating
+  the PaymentIntent, but `StorefrontClient.tsx`'s cart list and "Total"
+  summed plain catalog price the whole time a buyer was shopping, so what
+  they saw while browsing didn't match what they were actually about to
+  pay. Fixed the same way as the checkout screen: fetch active,
+  in-window promotions in `page.tsx`, pass them down, and run the same
+  `applyPromotions()` call to preview the real total and tag discounted
+  lines before checkout.
 
 ### Added
 

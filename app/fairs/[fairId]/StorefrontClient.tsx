@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { getStripeClient } from "@/lib/stripeClient";
 import { createGuestCheckout } from "./actions";
+import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
 import { Button, Card, Input, Select } from "@/components/ui";
 
 type Item = {
@@ -19,7 +20,15 @@ type Item = {
 
 type SortKey = "title" | "price-asc" | "price-desc";
 
-export function StorefrontClient({ fairId, items }: { fairId: string; items: Item[] }) {
+export function StorefrontClient({
+  fairId,
+  items,
+  promotions,
+}: {
+  fairId: string;
+  items: Item[];
+  promotions: ActivePromotion[];
+}) {
   const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
@@ -55,10 +64,33 @@ export function StorefrontClient({ fairId, items }: { fairId: string; items: Ite
     return sorted;
   }, [items, search, category, sort]);
 
-  const total = items.reduce(
-    (sum, item) => sum + (cart[item.catalog_item_id] ?? 0) * item.price,
-    0,
+  // Cost is irrelevant to a price preview (only price_charged is displayed
+  // here) — 0 is a safe placeholder, never sent anywhere; createGuestCheckout
+  // (app/fairs/[fairId]/actions.ts) looks up the real wholesale_cost again
+  // server-side when the order is actually placed.
+  const catalogById = useMemo(() => {
+    const map = new Map<string, CatalogPriceInfo>();
+    for (const item of items) {
+      map.set(item.catalog_item_id, { price: item.price, cost: 0 });
+    }
+    return map;
+  }, [items]);
+
+  const cartLines = useMemo(
+    () => Object.entries(cart).map(([catalog_item_id, quantity]) => ({ catalog_item_id, quantity })),
+    [cart],
   );
+
+  // Preview only — the same applyPromotions() call createGuestCheckout()
+  // makes when the order is actually placed (lib/promotions.ts), so the
+  // cart shown here matches what the buyer is really charged instead of
+  // silently pricing from full catalog price.
+  const pricedLines = useMemo(
+    () => applyPromotions(cartLines, catalogById, promotions),
+    [cartLines, catalogById, promotions],
+  );
+
+  const total = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
 
   function updateQty(catalogItemId: string, qty: number) {
     setCart((prev) => {
@@ -193,15 +225,19 @@ export function StorefrontClient({ fairId, items }: { fairId: string; items: Ite
           your name and this confirmation.
         </p>
         <ul className="mb-3 flex flex-col gap-1 text-sm">
-          {Object.entries(cart).map(([catalogItemId, qty]) => {
-            const item = items.find((i) => i.catalog_item_id === catalogItemId);
+          {pricedLines.map((line, i) => {
+            const item = items.find((it) => it.catalog_item_id === line.catalog_item_id);
             if (!item) return null;
+            const discounted = line.promotion_id !== null;
             return (
-              <li key={catalogItemId} className="flex justify-between">
+              <li key={`${line.catalog_item_id}-${i}`} className="flex justify-between">
                 <span>
-                  {qty}× {item.title}
+                  {line.quantity}× {item.title}
+                  {discounted && (
+                    <span className="ml-1 text-xs font-semibold text-accent-600">🏷️ discount</span>
+                  )}
                 </span>
-                <span>${(qty * item.price).toFixed(2)}</span>
+                <span>${(line.quantity * line.price_charged).toFixed(2)}</span>
               </li>
             );
           })}

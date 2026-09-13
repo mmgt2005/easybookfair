@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformAdmin } from "@/lib/auth";
 import { StorefrontClient } from "./StorefrontClient";
+import { isPromotionInWindow, type ActivePromotion } from "@/lib/promotions";
 
 type StorefrontItem = {
   catalog_item_id: string;
@@ -34,14 +35,27 @@ export default async function FairStorefrontPage({
   const { fairId } = await params;
   const supabase = await createClient();
 
-  const [{ data: fairInfo }, { data: items }] = await Promise.all([
+  const [{ data: fairInfo }, { data: items }, { data: promotionRows }] = await Promise.all([
     supabase.rpc("fair_public_info", { p_fair_id: fairId }).maybeSingle<FairPublicInfo>(),
     supabase.rpc("fair_storefront_items", { p_fair_id: fairId }),
+    supabase
+      .from("promotions")
+      .select("id, kind, config, starts_at, ends_at")
+      .eq("fair_id", fairId)
+      .eq("active", true),
   ]);
 
   if (!fairInfo) {
     return <p className="p-6 text-sm text-red-600">Fair not found.</p>;
   }
+
+  // Active, in-window promotions for this fair — passed down so the
+  // storefront can preview the same discounted total createGuestCheckout()
+  // (app/fairs/[fairId]/actions.ts) actually charges, instead of the cart
+  // silently pricing from full catalog price the whole time (lib/promotions.ts).
+  const activePromotions = (promotionRows ?? []).filter((p) =>
+    isPromotionInWindow(p),
+  ) as ActivePromotion[];
 
   // The demo fair's public pages are admin-only (and can be switched off
   // entirely) — real fairs are unaffected, since is_demo is only ever
@@ -90,7 +104,11 @@ export default async function FairStorefrontPage({
         </p>
       </div>
       {fairInfo.allow_online ? (
-        <StorefrontClient fairId={fairId} items={(items as StorefrontItem[]) ?? []} />
+        <StorefrontClient
+          fairId={fairId}
+          items={(items as StorefrontItem[]) ?? []}
+          promotions={activePromotions}
+        />
       ) : (
         <p className="text-sm text-neutral-600">
           Online ordering isn&apos;t available for this fair — check with the organization for
