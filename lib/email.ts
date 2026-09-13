@@ -14,6 +14,18 @@ function emailFrom(): string {
   return from;
 }
 
+// Absolute base URL for links inside emails — these are sent from Server
+// Actions with no browser `window` to read an origin from. Falls back to
+// Vercel's own env var (set automatically on every deployment, host only,
+// no protocol) so most deployments need no extra configuration; override
+// with NEXT_PUBLIC_SITE_URL for a custom domain or local testing against a
+// tunnel.
+export function siteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 export async function sendOrderConfirmationEmail(params: {
   to: string;
   buyerName: string | null;
@@ -42,6 +54,63 @@ export async function sendOrderConfirmationEmail(params: {
       <p><strong>Total: $${total.toFixed(2)}</strong></p>
       <p>Pick up your order at the fair — nothing ships.
       <a href="${params.orderUrl}">View your order</a>.</p>
+    `,
+  });
+}
+
+// Sent when an admin approves a fair request — the requester's only way to
+// find their org's dashboard again short of remembering the URL, since
+// there's no site-wide "your organizations" landing page. Links straight to
+// /org rather than /login: middleware sends an unauthenticated visitor to
+// /login?next=/org automatically, and an already-signed-in one goes right
+// through — either way this is the correct link, not a login-flow one.
+export async function sendFairApprovedEmail(params: {
+  to: string;
+  fairName: string;
+  startDate: string;
+  endDate: string;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Your fair "${params.fairName}" was approved 🎉`,
+    html: `
+      <p>Good news — <strong>${params.fairName}</strong>
+      (${params.startDate} – ${params.endDate}) has been approved and is now
+      scheduled.</p>
+      <p><a href="${siteUrl()}/org">Sign in to your dashboard</a> to see it,
+      share its buyer links, and track requests for future fairs.</p>
+    `,
+  });
+}
+
+// Sent when an admin closes out a fair's wallets (close_wallets_for_fair,
+// migration 0022/0037) — the parent's only notice that their child's
+// unspent balance became a donation to the org rather than a refund. Links
+// to a printable receipt page rather than attaching a PDF, keeping this
+// consistent with every other "no PDF generation" choice in the app;
+// browser print-to-PDF covers "download" well enough for a book fair's
+// scale.
+export async function sendWalletDonationReceiptEmail(params: {
+  to: string;
+  studentName: string;
+  fairName: string;
+  donatedAmount: number;
+  receiptUrl: string;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `${params.studentName}'s leftover wallet balance — ${params.fairName}`,
+    html: `
+      <p>${params.fairName} has wrapped up, and ${params.studentName} had
+      <strong>$${params.donatedAmount.toFixed(2)}</strong> left in their
+      wallet.</p>
+      <p>As shared when the wallet was funded, unspent balance isn't
+      refunded — it becomes an additional donation toward the
+      organization. Thank you!</p>
+      <p><a href="${params.receiptUrl}">View or print a receipt</a> for your
+      records.</p>
     `,
   });
 }

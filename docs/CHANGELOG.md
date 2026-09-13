@@ -9,6 +9,124 @@ which point versioning starts.
 
 ### Added
 
+- **Promotions, a scoped-down fair-close settlement, author submissions,
+  an onboarding tour, and a demo fair** (migrations `0033`–`0040`) — a
+  large batch pulling several later-phase pieces forward at once:
+  - **Fair URLs visible to admins too** (not just the org): the fairs
+    list and a fair's edit page now show the same storefront/wallet
+    links the org portal already displayed.
+  - **Fair-approval email**: `fair_requests` gained `requested_by_email`
+    (migration `0033`, captured at submit time from the session, since a
+    Server Action has no browser session to look it up from later).
+    Approving now emails that address a link straight to `/org` —
+    `lib/email.ts` gained `sendFairApprovedEmail()` and a `siteUrl()`
+    helper (falls back to Vercel's `VERCEL_URL`, then localhost;
+    `NEXT_PUBLIC_SITE_URL` overrides) for building absolute links from
+    server-only code that has no `window.location`.
+  - **Onboarding tour** (`components/Tour.tsx`): a small floating
+    step-through card, auto-shown once per browser (`localStorage`) in
+    both `/admin` and `/org`, and reachable afterward from a persistent
+    "🎓 Take the tour" nav link that reopens it regardless of the stored
+    flag — deliberately not tied to the three specific trigger events
+    from the original ask (fair approval, being added as staff, first
+    login), since all three collapse to "the first time this person
+    lands on their dashboard" in practice.
+  - **Demo/training fair** (migration `0035`): a seeded, permanent
+    `organizations.is_demo` org with a fair and five `[Demo]`-prefixed
+    catalog items already allocated to it. `reset_demo_fair()` (admin-
+    gated) clears every sale/checkout/wallet/settlement made against it
+    and restores stock/allocation to a fixed starting point — a new
+    `/admin/demo` page surfaces the fair's own admin links plus a "Reset
+    demo data" button.
+  - **Equipment rental fee + `close_fair()`** (migrations `0034`,
+    `0036`): `fairs` gained `equipment_rental_fee` (admin-set at approval
+    or later, only meaningful with the in-person reader on). `close_fair()`
+    is a real, if deliberately scoped-down, settlement: `payout_due`/
+    `cash_wholesale_owed` are read straight off the ledger (the net
+    balance of Org Payable `2000`/A/R `1300` for that fair, which already
+    nets in refunds and wallet close-out credits automatically), netted
+    against the rental fee into `net_payout`; `missing_inventory_cost` is
+    hardcoded `0` since there's no returns-recording feature to compute
+    it from yet. `settlements` gained a matching `equipment_rental_fee`
+    column, folded into its `total_owed_by_org` check constraint (had to
+    `drop constraint`/re-add — Postgres names unnamed multi-column table
+    checks `<table>_check`, `<table>_check1`, not by column). New
+    "Settlement" card on the fair's edit page (a "Close this fair" button
+    before close, the computed figures after); the org dashboard's fairs
+    table gained a "Payout" column reading the same `settlements` row
+    (already org-scoped by existing RLS).
+  - **Wallet close-out donation notice** (migration `0037`):
+    `student_wallets` gained `donated_amount`/`closed_at`, set by
+    `close_wallets_for_fair()` when it zeroes a wallet's balance — needed
+    since the balance itself doesn't survive close-out. A new anon-safe
+    `wallet_donation_receipt()` RPC (only ever returns a closed wallet
+    with something actually donated) backs a printable
+    `/fairs/<id>/wallet/receipt/<walletId>` page (a plain "print/save as
+    PDF" button — no PDF-generation library, same posture as everywhere
+    else in this app). Closing a fair's wallets now emails each parent
+    with unspent balance (found via their most recent `wallet_fundings.
+    parent_email`) a link to it.
+  - **Promotions/bundle discounts** (migrations `0038`–`0039`):
+    `promotions` gained `fair_id` (previously unused, platform-wide, no
+    checkout path read it at all). `lib/promotions.ts`'s
+    `applyPromotions()` is pure and framework-free, shared by all three
+    checkout paths rather than reimplemented per path or in SQL — bundle
+    promotions resolve first (against a richest-item-first pool, so the
+    buyer gets the best deal), then percent discounts against whatever's
+    left, then anything unclaimed at full price; a promotion can split
+    one cart line into more than one output line since
+    `checkout_sessions.line_items`/`record_sale()` already snapshot one
+    price per line. `spend_from_wallet()` now accepts an explicit
+    `price_charged`/`promotion_id` per line (falling back to the catalog
+    price when omitted) instead of always pricing from `catalog_items`
+    itself. New `/admin/fairs/<id>/promotions` CRUD screen (percent-off
+    or bundle, with an item-eligibility checklist drawn from that fair's
+    allocations).
+  - **Author submissions** (migration `0040`): a public, no-login
+    `/author/submit` form (title, description, category, image,
+    suggested retail price — `wholesale_price` is a **generated column**,
+    `round(suggested_retail_price * 0.65, 2)`, so it can never be
+    submitted or edited independently of retail price). `author_
+    submissions`/`authors` mirror the `fair_requests`/`fairs` review
+    pattern — no update policy for `authenticated`, only an admin can
+    move `status`. Approving (`/admin/author-submissions`) invites the
+    author to a real Supabase auth account (falling back to finding an
+    existing one via `admin.listUsers()` if the email's already
+    registered — supabase-js has no direct `getUserByEmail`), creates the
+    catalog item, and links both back to the submission. A minimal
+    author portal (`requireAuthor()`, `/author`) lists submission status
+    and — once approved and selling — units sold/revenue, via an
+    additive `sales_select_author` RLS policy (Postgres OR's multiple
+    permissive policies together; doesn't touch `sales_select`'s existing
+    org/admin scoping). A new `author-submissions` storage bucket
+    (public read, anon/authenticated insert, admin-only update/delete)
+    holds submission images.
+  - Validated against a real local Postgres instance (fresh `0001`–`0040`
+    chain): `close_fair()` correctly nets a mixed cash+card+rental-fee
+    fair to the right `net_payout` (verified both signs — org owed and
+    org owing), clears Org Payable to zero either way, rejects a
+    non-admin caller and a second close; `close_wallets_for_fair()`
+    correctly snapshots `donated_amount`/`closed_at` and
+    `wallet_donation_receipt()` only ever returns a wallet with something
+    actually donated; `spend_from_wallet()` honors an explicit
+    `price_charged`/`promotion_id` and falls back to catalog price when
+    omitted; `author_submissions` RLS rejects an anonymous self-link
+    attempt, scopes an author to only their own rows, and the additive
+    `sales_select_author` policy correctly scopes sales visibility per
+    author. `lib/promotions.ts` also has its own standalone test script
+    (five scenarios — no promotions, a bundle consuming the richest
+    items first with a leftover at full price, a percent promotion below
+    and at its minimum quantity, and a bundle remainder smaller than its
+    own buy-quantity) run via `npx tsx`, independent of the database.
+    `npm run typecheck`/`npm run build` both clean. Not validated in a
+    live browser against real data — same reasoning as prior batches'
+    entries (this environment's `.env.local` points at the user's real
+    Supabase project).
+  - **Explicitly still not built**, called out in README/MANUAL rather
+    than silently missing: missing-inventory cost as part of closing a
+    fair, and automating the actual money movement (Stripe Transfer or
+    Payment Link) once a fair is closed — both need a real
+    returns-recording feature this batch doesn't build.
 - **Org staff portal + fair-request workflow** (migrations `0029`–`0032`):
   an org now requests a fair instead of an admin creating one directly,
   choosing which buyer payment options it wants — each explained before

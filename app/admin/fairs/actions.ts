@@ -52,6 +52,8 @@ export async function updateFair(fairId: string, formData: FormData) {
   const allowOnline = formData.get("allow_online") === "on";
   const allowWallet = formData.get("allow_wallet") === "on";
   const allowCash = formData.get("allow_cash") === "on";
+  const rentalFeeInput = formData.get("equipment_rental_fee");
+  const equipmentRentalFee = rentalFeeInput ? Number(rentalFeeInput) : 0;
 
   if (!name || !startDate || !endDate || !returnDeadline || !status) {
     throw new Error("All fields are required");
@@ -70,6 +72,7 @@ export async function updateFair(fairId: string, formData: FormData) {
       allow_online: allowOnline,
       allow_wallet: allowWallet,
       allow_cash: allowCash,
+      equipment_rental_fee: allowInPerson ? equipmentRentalFee : 0,
     })
     .eq("id", fairId);
 
@@ -80,6 +83,24 @@ export async function updateFair(fairId: string, formData: FormData) {
   revalidatePath("/admin/fairs");
   revalidatePath(`/admin/fairs/${fairId}/allocations`);
   redirect("/admin/fairs");
+}
+
+// Computes and locks the fair's settlement (migration 0036) — irreversible
+// (close_fair() itself rejects a second call for the same fair via
+// settlements' unique fair_id). requireAdmin() here is just the UX gate;
+// close_fair() re-checks app.is_platform_admin() itself since it's
+// SECURITY DEFINER and bypasses RLS.
+export async function closeFair(fairId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("close_fair", { p_fair_id: fairId });
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/admin/fairs/${fairId}/edit`);
+  revalidatePath("/admin/fairs");
 }
 
 // Creates a Stripe Terminal Location for this fair's venue — required

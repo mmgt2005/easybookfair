@@ -7,8 +7,12 @@
 > just intended behavior. An org staff portal (`/org`) also now exists —
 > an org requests a fair instead of an admin creating one directly, and
 > chooses which payment options it wants (each explained before they
-> choose). Everything else in this manual still describes intended
-> behavior per [`docs/spec.md`](./spec.md), pending its build-plan phase.
+> choose). Also built, pulled forward from later phases: promotions/bundle
+> discounts, a deliberately scoped-down "close this fair" settlement, an
+> author-submission flow with its own minimal portal, an onboarding tour,
+> and a demo/training fair. Everything else in this manual still describes
+> intended behavior per [`docs/spec.md`](./spec.md), pending its build-plan
+> phase.
 
 ## Signing in
 
@@ -22,18 +26,34 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 Org staff screens live under `/org` and work the same way, except your
 user id needs to be a row in `org_members` instead (also added directly
 in the database for now by an existing admin — see "Local setup" in the
-README).
+README). Once a fair request is approved, the requester gets an email
+pointing them at `/org` — signing in there works the same magic-link way.
+
+Author screens live under `/author` and are different from the other
+two: there's no manual database insert — your account is created
+automatically the first time an admin approves something you submitted
+at `/author/submit` (see "Author guide" below).
+
+Everywhere a portal exists, a **"🎓 Take the tour"** link sits in its nav
+— a short walkthrough of that portal's own screens. It shows itself
+automatically the first time you visit (per browser, not per account),
+but the nav link relaunches it any time after that too, first visit or
+not.
 
 ## Roles
 
-- **Platform admin** — manages the catalog, reviews org applications and
-  fair requests, assigns allocations, closes fairs. (Phase 7 adds tenant
-  admin and platform super-admin above this.)
+- **Platform admin** — manages the catalog, reviews org applications,
+  fair requests, and author submissions, assigns allocations, closes
+  fairs. (Phase 7 adds tenant admin and platform super-admin above this.)
 - **Org staff** (`org_admin` / `org_staff` in `org_members`) — requests a
   fair for their organization (choosing which payment options it should
-  offer) and tracks its status from `/org`. Running checkout, live sales
-  tracking, and payout status are still admin-only for now — see "Org
-  staff guide" below for exactly what's built versus still intended.
+  offer) and tracks its status, including its eventual payout, from
+  `/org`. Running checkout and a live sales feed are still admin-only for
+  now — see "Org staff guide" below for exactly what's built versus still
+  intended.
+- **Author** — submits books/merchandise for the platform to carry
+  (`/author/submit`, no account needed) and, once approved, tracks their
+  submissions and sales from `/author`. See "Author guide" below.
 - **Buyer** — browses and checks out on the public, per-fair storefront.
   No account required.
 
@@ -118,9 +138,13 @@ reader, online storefront, student wallets, cash). Each pending request
 shows **Approve** and **Decline** buttons:
 
 - **Approve** creates the real `fairs` row from the requested name,
-  dates, and payment-option choices, and links the request to it. From
-  there it behaves exactly like a fair created directly (allocate stock,
-  set up a Terminal reader, etc. — see below).
+  dates, and payment-option choices, links the request to it, and emails
+  the requester a link to their dashboard. If they asked for the
+  in-person reader, an **equipment rental fee** field appears (defaults to
+  $25) — set however much makes sense; it's netted against the org's
+  payout when the fair closes (see "Closing a fair" below). From there it
+  behaves exactly like a fair created directly (allocate stock, set up a
+  Terminal reader, etc. — see below).
 - **Decline** takes an optional note (shown back to the org on their
   dashboard) and does not create a fair.
 
@@ -143,7 +167,13 @@ one off actually disables that channel, not just hides it: the public
 storefront/wallet pages stop offering it, and the underlying checkout/
 funding actions reject it even if called directly. The cash checkbox is
 the exception — it's captured but not enforced anywhere, since there's no
-cash-sale-recording UI in the app yet.
+cash-sale-recording UI in the app yet. When in-person is on, an
+**equipment rental fee** field appears next to it — same figure set at
+approval, adjustable here any time before the fair closes.
+
+**Public links** (same page, near the top): the same storefront/
+student-wallet links the org sees on their own dashboard — handy for
+sharing directly, or double-checking what a buyer would actually see.
 
 **Terminal setup** (same page): needed once per fair before the checkout
 screen can charge cards with a physical reader. Fill in the venue's
@@ -195,6 +225,29 @@ native mobile SDKs, which a browser can't invoke).
    at the end rather than silently mixed in or dropped from the list.
 4. **Cash drawer setup**: not built yet.
 
+### Promotions (`/admin/fairs/<id>/promotions`)
+
+Bundle deals and percent-off discounts, scoped to one fair and applied
+**automatically** at checkout — buyers never choose or enter a code, and
+neither does whoever's running the register; it just comes off the
+total.
+
+- **Percent off**: a flat percent off either every item at the fair, or a
+  specific subset you pick — optionally only once the cart holds at least
+  some minimum quantity of those items.
+- **Bundle** ("any N for $X"): pick a pool of eligible items, a quantity,
+  and a flat price for that quantity — e.g. "any 3 of these books for
+  $15." If a cart holds more than the pool needs, the extra units are
+  still charged at full price; the discount always favors the buyer by
+  bundling the highest-priced eligible items first.
+
+A promotion applies to **online, in-person, and wallet** checkouts alike
+— there's one shared implementation (`lib/promotions.ts`), not a
+per-channel reimplementation. Deactivate (rather than delete) a promotion
+to pause it without losing its settings; delete removes it outright.
+Dates are optional — leave start/end blank for "always active while
+turned on."
+
 ### Application review
 
 Still no dedicated review screen (approve/decline lives on the
@@ -204,6 +257,41 @@ button on that same page creates the Connect Express account and sends
 the org to Stripe's hosted flow. As designed, the org isn't marked active
 until Stripe confirms `charges_enabled`/`payouts_enabled` via webhook,
 never just from clicking the link.
+
+### Demo fair (`/admin/demo`)
+
+A permanent, resettable sandbox fair (seeded by migration `0035`) for
+training — five `[Demo]`-prefixed catalog items already allocated to it,
+with allow-online/wallet/in-person/cash all turned on, so you (or an org
+you add to it) can click through allocation, checkout, the public
+storefront, and student wallets without touching real data. **Reset demo
+data** clears every sale/checkout/wallet/settlement made against it and
+puts the catalog stock/allocation back to the same starting point —
+irreversible, but safe any time since nothing there is real. To try the
+org side of it too, add someone to `org_members` for the demo
+organization the normal manual way (see "Local setup" in the README).
+
+### Reviewing author submissions (`/admin/author-submissions`)
+
+Authors and vendors submit books/merchandise from the public,
+no-login `/author/submit` form — title, description, category, an
+optional cover image, and a suggested retail price (the platform's
+wholesale cost, 65% of that, is computed automatically and can't be
+overridden). Each pending submission shows **Approve** and **Decline**:
+
+- **Approve** finds or creates a real account for the author (Supabase's
+  own invite-by-email — a different email than Resend's confirmation
+  emails, so it needs the Supabase project's own auth email set up to
+  actually arrive), adds the item to the catalog at its price/computed
+  wholesale cost, and links the submission to both. From there it's an
+  ordinary catalog item — allocate it to a fair like anything else.
+- **Decline** takes an optional note (shown back to the author on their
+  own dashboard once they have one) and doesn't touch the catalog.
+
+A submitter who already has an author account (from a prior approval)
+can skip the public form and submit again from `/author/submit` while
+signed in — it pre-fills their name/email and links the new submission to
+their account immediately, without waiting for another approval.
 
 ### Payments
 
@@ -267,23 +355,34 @@ every remaining balance into that fair's org payout as additional
 revenue, and is irreversible. Do this once the fair's pickup window has
 ended.
 
-### Closing a fair
+### Closing a fair (`/admin/fairs/<id>/edit`, "Settlement" card)
 
-A fair's settlement is computed **once**, after the return deadline
-passes (not at the fair's end date — see "Fair lifecycle" in the spec).
-At that point:
+A real settlement is computed here — not just spec — but deliberately
+scoped down from the full design below; read "Not yet supported" for
+exactly what's missing. **"Close this fair"** computes and locks it in
+one irreversible step:
 
-- Wholesale owed, org payout, returns, and any missing/unreturned
-  inventory are calculated together.
-- One settlement journal entry posts and locks the fair.
-- A payout statement and return manifest are generated.
-- If the org is owed money, a Transfer moves it to their Connect
-  account; if the org owes money instead (cash sales + missing
-  inventory exceeded their card/online payout), they receive a single
-  Stripe Payment Link for the net amount.
+- **Payout due**: the card/online (and wallet) margin the org has earned
+  so far, read straight off the ledger.
+- **Cash wholesale owed**: the wholesale cost of every cash sale recorded
+  for this fair — orgs keep the cash they collect directly, so they owe
+  the platform the wholesale portion, netted here rather than collected
+  separately.
+- **Equipment rental fee**: whatever was set when the reader option was
+  approved (or later, on this same page) — netted against payout the same
+  way.
+- **Net payout**: payout due minus everything owed. Positive means the
+  org is still owed money (an actual Stripe Transfer to their Connect
+  account is a manual follow-up, not automated); negative means the org
+  owes the platform (a Payment Link for that amount is also a manual
+  follow-up).
 
-A refund requested after a fair has closed does **not** reopen the
-settlement — it posts as a separate adjustment entry referencing it.
+Once closed, the figures are shown right there on the edit page (and on
+the org's own dashboard, as a "Payout"/"Owe" column). **Missing-inventory
+cost is always $0** — there's no returns-recording feature yet to compute
+it from, so nothing is billed for stock that never comes back. A refund
+requested after a fair has closed does not reopen the settlement — that
+part of the full design also isn't built yet (see "Not yet supported").
 
 ## Org staff guide
 
@@ -317,10 +416,24 @@ picking before you submit, not after:
 - **Cash** — on by default; captured as a flag but not enforced, since
   there's no cash-recording screen yet either way.
 
+An equipment rental fee applies if you choose the in-person reader — set
+by the admin at approval, netted against your payout when the fair
+closes, not something you set yourself.
+
 Submitting creates a `fair_requests` row for an admin to review — you
-can't approve your own request. Once approved, it becomes a real fair
-with those same payment options (an admin can still adjust them
-afterward from the fair's edit page).
+can't approve your own request. Once approved, you'll get an email
+pointing you back to `/org`, and it becomes a real fair with those same
+payment options (an admin can still adjust them afterward from the
+fair's edit page).
+
+### Your payout
+
+Once an admin closes a fair (see the admin guide's "Closing a fair"),
+your dashboard's fairs table shows a **Payout** column — a dollar amount
+if you're owed money, or "Owe $X" if cash sales and/or an equipment
+rental fee outweighed your card/online margin. Actually moving that
+money (a transfer to you, or collecting what you owe) is still a manual
+step on the admin's end for now, not automatic.
 
 ## Buyer guide
 
@@ -341,29 +454,56 @@ schools, with quick $10/$20/$50 buttons or any amount you choose) so they
 can shop the fair independently, without carrying cash — they spend it
 down themselves at the checkout table by giving their name. Any amount
 left unspent after the fair becomes an additional donation toward the
-school — **it isn't refunded or carried over to next time**.
+school — **it isn't refunded or carried over to next time**. Once the
+fair closes out its wallets, you'll get an email with a link to a
+printable/downloadable receipt showing exactly what was donated.
 
-Promotions/bundle discounts, if any are active, are meant to apply
-automatically at checkout — not built yet (see below).
+Promotions/bundle discounts, when the org running the fair has set any
+up, apply **automatically** at checkout — you don't enter a code or
+choose anything, the discount is just reflected in your total.
+
+## Author guide
+
+Submit a book or piece of merchandise for EasyBookFair to carry at
+`/author/submit` — no account needed the first time. Give your name,
+email, a title, and a **suggested retail price**; the page shows you the
+wholesale price you'd be paid per unit as you type (65% of retail,
+computed automatically — you can't set it independently).
+
+A platform admin reviews every submission. If approved:
+
+- You'll get an email to set up a real account (a different email from
+  the rest of this app's — it's Supabase's own account-invite flow, not
+  Resend).
+- Your item joins the platform catalog at the price/wholesale cost you
+  submitted, ready to be allocated to a fair like anything else.
+- Signing in takes you to `/author`, which lists everything you've
+  submitted with its review status, and — once an item is actually
+  allocated to a fair and selling — how many units have sold and how much
+  you've earned so far.
+
+Already have an account? `/author/submit` recognizes you when signed in
+and pre-fills your name/email — no need to wait for another approval to
+submit something new.
 
 ## Not yet supported
 
 - Sales tax calculation or remittance.
 - Chargeback/dispute reconciliation beyond a basic refund.
-- Promotions/bundle discounts (schema exists, no checkout logic reads it
-  yet).
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't
   invoke from a browser.
-- Running checkout, a live sales feed, or payout status from the org
-  portal — those stay admin-only for now (see "Org staff guide" above).
+- Running checkout or a live sales feed from the org portal — those stay
+  admin-only for now (see "Org staff guide" above); payout status is
+  built (see "Your payout"), just not those two.
 - Self-serve invites for platform admins or org staff — both are added
-  directly in the database by an existing admin.
-- A software onboarding tour (on fair approval, on being added as staff,
-  or on first org login), a demo/training fair, a donation-notice
-  receipt for a parent when a closed fair's unused wallet balance
-  becomes the org's, and an author submission flow (public form with a
-  suggested-retail-price input auto-calculating a 65% wholesale cost,
-  admin review, and an author account on approval).
+  directly in the database by an existing admin. (Author accounts are
+  different — created automatically on approval, no manual step.)
+- Missing-inventory cost as part of closing a fair (needs a
+  returns-recording feature this app doesn't have yet — see "Closing a
+  fair"), and automating the actual money movement (Stripe Transfer or
+  Payment Link) once a fair is closed.
+- A returns/manifest workflow at all — `allocations.quantity_returned`
+  exists in the schema but nothing in the app writes to it yet.
 
 These are called out as deferred, not silently missing.

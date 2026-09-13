@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
+import { applyPromotions, type ActivePromotion } from "@/lib/promotions";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -69,8 +70,7 @@ export async function createGuestCheckout(
   );
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
-  let totalCents = 0;
-  const lineItems = cart.map((line) => {
+  for (const line of cart) {
     const item = catalogById.get(line.catalog_item_id);
     if (!item) {
       throw new Error(`Catalog item ${line.catalog_item_id} not found`);
@@ -85,17 +85,33 @@ export async function createGuestCheckout(
     if (line.quantity > available) {
       throw new Error(`Only ${available} of "${item.title}" available`);
     }
+  }
 
-    totalCents += Math.round(item.price * 100) * line.quantity;
+  // Active, in-window promotions for this fair — applied automatically,
+  // not something the buyer chooses (docs/spec.md, "promotions/bundle
+  // discounts"). May split one cart line into more than one output line
+  // (e.g. some units bundled, the remainder at full price) — see
+  // lib/promotions.ts.
+  const nowIso = new Date().toISOString();
+  const { data: promotionRows } = await service
+    .from("promotions")
+    .select("id, kind, config, starts_at, ends_at")
+    .eq("fair_id", fairId)
+    .eq("active", true);
+  const activePromotions = (promotionRows ?? []).filter(
+    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  ) as ActivePromotion[];
 
-    return {
-      catalog_item_id: item.id,
-      title: item.title,
-      quantity: line.quantity,
-      price_charged: item.price,
-      wholesale_cost: item.cost,
-    };
-  });
+  const pricedLines = applyPromotions(cart, catalogById, activePromotions);
+  const lineItems = pricedLines.map((line) => ({
+    ...line,
+    title: catalogById.get(line.catalog_item_id)?.title ?? "",
+  }));
+
+  const totalCents = lineItems.reduce(
+    (sum, line) => sum + Math.round(line.price_charged * 100) * line.quantity,
+    0,
+  );
 
   if (totalCents <= 0) {
     throw new Error("Total must be greater than zero");

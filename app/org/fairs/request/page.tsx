@@ -75,7 +75,9 @@ export default async function RequestFairPage({
                 <span className="block text-xs text-neutral-500">
                   A volunteer rings up sales at a table using a physical Stripe card reader.
                   Requires setting up a Stripe Terminal reader once the fair is approved
-                  (internet-connected readers only — see the manual).
+                  (internet-connected readers only — see the manual). An equipment rental fee
+                  (set by the admin at approval) applies and is deducted from your payout when
+                  the fair closes.
                 </span>
               </span>
             </label>

@@ -60,7 +60,20 @@ export default async function FairRequestsPage({
 
               {request.status === "pending" && (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <form action={approveForRequest}>
+                  <form action={approveForRequest} className="flex items-center gap-2">
+                    {request.allow_in_person && (
+                      <label className="flex items-center gap-1 text-xs text-neutral-600">
+                        Reader rental fee $
+                        <Input
+                          name="equipment_rental_fee"
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          defaultValue="25.00"
+                          className="w-20"
+                        />
+                      </label>
+                    )}
                     <Button type="submit" size="sm">
                       Approve
                     </Button>

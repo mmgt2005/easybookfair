@@ -3,18 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { sendFairApprovedEmail } from "@/lib/email";
 
 // Approving copies the request's dates and payment-option choices into a
 // real `fairs` row (fairs_admin_write already permits this for an admin
 // session) and links the request back to it — org staff never write
 // `fairs` directly, only requests.
-export async function approveFairRequest(requestId: string) {
+export async function approveFairRequest(requestId: string, formData: FormData) {
   const supabase = await createClient();
+  const rentalFeeInput = formData.get("equipment_rental_fee");
+  const equipmentRentalFee = rentalFeeInput ? Number(rentalFeeInput) : 0;
 
   const { data: request, error: fetchError } = await supabase
     .from("fair_requests")
     .select(
-      "org_id, requested_name, requested_start_date, requested_end_date, requested_return_deadline, allow_online, allow_wallet, allow_in_person, allow_cash, status",
+      "org_id, requested_name, requested_start_date, requested_end_date, requested_return_deadline, allow_online, allow_wallet, allow_in_person, allow_cash, requested_by_email, status",
     )
     .eq("id", requestId)
     .single();
@@ -38,6 +41,7 @@ export async function approveFairRequest(requestId: string) {
       allow_wallet: request!.allow_wallet,
       allow_in_person: request!.allow_in_person,
       allow_cash: request!.allow_cash,
+      equipment_rental_fee: request!.allow_in_person ? equipmentRentalFee : 0,
     })
     .select("id")
     .single();
@@ -55,6 +59,22 @@ export async function approveFairRequest(requestId: string) {
   revalidatePath("/admin/fairs");
   if (updateError) {
     redirect(`/admin/fair-requests?error=${encodeURIComponent(updateError.message)}`);
+  }
+
+  // Best-effort, same reasoning as every other transactional email in this
+  // app (lib/email.ts) — the fair is already created and approved either
+  // way; a delivery failure here is only logged.
+  if (request!.requested_by_email) {
+    try {
+      await sendFairApprovedEmail({
+        to: request!.requested_by_email,
+        fairName: request!.requested_name,
+        startDate: request!.requested_start_date,
+        endDate: request!.requested_end_date,
+      });
+    } catch (emailError) {
+      console.error("Failed to send fair-approved email", emailError);
+    }
   }
 
   redirect("/admin/fair-requests");

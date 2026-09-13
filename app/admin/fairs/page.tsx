@@ -9,7 +9,9 @@ export default async function FairsPage() {
   const [{ data: fairs, error: fairsError }, { data: organizations }] = await Promise.all([
     supabase
       .from("fairs")
-      .select("id, name, status, start_date, end_date, organizations(name, is_school)")
+      .select(
+        "id, name, status, start_date, end_date, allow_online, allow_wallet, organizations(name, is_school)",
+      )
       .order("start_date", { ascending: false }),
     supabase.from("organizations").select("id, name").order("name"),
   ]);
@@ -34,7 +36,31 @@ export default async function FairsPage() {
           <tbody>
             {fairs?.map((fair) => (
               <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
-                <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{fair.name}</td>
+                <td className="py-2 pl-4 pr-4">
+                  <span className="font-semibold text-neutral-800">{fair.name}</span>
+                  <div className="mt-1 flex flex-col gap-0.5 text-xs">
+                    {fair.allow_online && (
+                      <Link
+                        href={`/fairs/${fair.id}`}
+                        target="_blank"
+                        className="text-accent-600 hover:underline"
+                      >
+                        Storefront ↗
+                      </Link>
+                    )}
+                    {fair.allow_wallet &&
+                      (fair.organizations as unknown as { is_school: boolean } | null)
+                        ?.is_school && (
+                        <Link
+                          href={`/fairs/${fair.id}/wallet`}
+                          target="_blank"
+                          className="text-accent-600 hover:underline"
+                        >
+                          Wallet ↗
+                        </Link>
+                      )}
+                  </div>
+                </td>
                 <td className="py-2 pr-4 text-neutral-600">
                   {(fair.organizations as unknown as { name: string } | null)?.name}
                 </td>
@@ -62,6 +88,12 @@ export default async function FairsPage() {
                     className="font-semibold text-accent-600 hover:underline"
                   >
                     Pickup
+                  </Link>
+                  <Link
+                    href={`/admin/fairs/${fair.id}/promotions`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Promotions
                   </Link>
                   {(fair.organizations as unknown as { is_school: boolean } | null)?.is_school && (
                     <Link

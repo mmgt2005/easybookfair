@@ -10,7 +10,7 @@ export default async function OrgDashboard() {
   // RLS (fairs_select/fair_requests_org_select) already scopes both
   // queries to this user's org(s) via app.current_org_ids() — no explicit
   // org_id filter needed here.
-  const [{ data: fairs }, { data: requests }] = await Promise.all([
+  const [{ data: fairs }, { data: requests }, { data: settlements }] = await Promise.all([
     supabase
       .from("fairs")
       .select(
@@ -23,7 +23,10 @@ export default async function OrgDashboard() {
         "id, requested_name, requested_start_date, requested_end_date, status, admin_note, created_at",
       )
       .order("created_at", { ascending: false }),
+    supabase.from("settlements").select("fair_id, net_payout"),
   ]);
+
+  const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s.net_payout]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,12 +42,14 @@ export default async function OrgDashboard() {
               <th className="py-2 pl-4 pr-4">Fair</th>
               <th className="py-2 pr-4">Dates</th>
               <th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4">Payout</th>
               <th className="py-2 pr-4">Share with buyers</th>
             </tr>
           </thead>
           <tbody>
             {(fairs ?? []).map((fair) => {
               const org = fair.organizations as unknown as { is_school: boolean } | null;
+              const netPayout = settlementByFair.get(fair.id);
               return (
                 <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{fair.name}</td>
@@ -53,6 +58,19 @@ export default async function OrgDashboard() {
                   </td>
                   <td className="py-2 pr-4">
                     <Badge tone={statusTone(fair.status)}>{fair.status}</Badge>
+                  </td>
+                  <td className="py-2 pr-4 text-neutral-600">
+                    {netPayout === undefined ? (
+                      "—"
+                    ) : netPayout >= 0 ? (
+                      <span className="font-semibold text-green-700">
+                        ${netPayout.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-red-700">
+                        Owe ${Math.abs(netPayout).toFixed(2)}
+                      </span>
+                    )}
                   </td>
                   <td className="flex flex-col gap-1 py-2 pr-4">
                     {fair.allow_online && (
@@ -82,7 +100,7 @@ export default async function OrgDashboard() {
             })}
             {(fairs ?? []).length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 pl-4 text-neutral-500">
+                <td colSpan={5} className="py-4 pl-4 text-neutral-500">
                   No fairs yet — request one to get started.
                 </td>
               </tr>

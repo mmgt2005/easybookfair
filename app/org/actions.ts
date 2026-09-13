@@ -31,6 +31,7 @@ export async function createFairRequest(formData: FormData) {
   const { error } = await supabase.from("fair_requests").insert({
     org_id: orgId,
     requested_by: user.id,
+    requested_by_email: user.email,
     requested_name: requestedName,
     requested_start_date: startDate,
     requested_end_date: endDate,

@@ -1,0 +1,83 @@
+import { requireAuthor } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
+
+export default async function AuthorDashboard() {
+  const { name } = await requireAuthor();
+  const supabase = await createClient();
+
+  const { data: submissions } = await supabase
+    .from("author_submissions")
+    .select(
+      "id, title, item_type, suggested_retail_price, wholesale_price, status, admin_note, catalog_item_id, created_at",
+    )
+    .order("created_at", { ascending: false });
+
+  const catalogItemIds = (submissions ?? [])
+    .map((s) => s.catalog_item_id)
+    .filter((id): id is string => id !== null);
+
+  // RLS (sales_select_author, migration 0040) already scopes this to only
+  // the author's own catalog items — no explicit filter needed beyond the
+  // id list itself.
+  const { data: sales } =
+    catalogItemIds.length > 0
+      ? await supabase
+          .from("sales")
+          .select("catalog_item_id, price_charged")
+          .in("catalog_item_id", catalogItemIds)
+          .eq("status", "completed")
+      : { data: [] };
+
+  const salesByItem = new Map<string, { units: number; revenue: number }>();
+  for (const sale of sales ?? []) {
+    const entry = salesByItem.get(sale.catalog_item_id) ?? { units: 0, revenue: 0 };
+    entry.units += 1;
+    entry.revenue += sale.price_charged;
+    salesByItem.set(sale.catalog_item_id, entry);
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={`Welcome, ${name} 👋`}
+        description="Everything you've submitted, its review status, and — once approved — how it's selling."
+      />
+
+      <div className="flex flex-col gap-4">
+        {(submissions ?? []).map((s) => {
+          const sold = s.catalog_item_id ? salesByItem.get(s.catalog_item_id) : undefined;
+          return (
+            <Card key={s.id} className="max-w-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-heading font-bold text-neutral-900">{s.title}</h3>
+                  <p className="text-sm text-neutral-600">
+                    Retail ${s.suggested_retail_price.toFixed(2)} — you earn $
+                    {s.wholesale_price.toFixed(2)}/unit
+                  </p>
+                </div>
+                <Badge tone={statusTone(s.status)}>{s.status}</Badge>
+              </div>
+              {s.status === "declined" && s.admin_note && (
+                <p className="mt-2 text-sm text-neutral-600">Reason: {s.admin_note}</p>
+              )}
+              {s.status === "approved" && (
+                <p className="mt-2 text-sm text-neutral-700">
+                  {sold
+                    ? `${sold.units} sold so far — $${sold.revenue.toFixed(2)} earned`
+                    : "On sale — nothing sold yet"}
+                </p>
+              )}
+            </Card>
+          );
+        })}
+        {(submissions ?? []).length === 0 && (
+          <p className="text-sm text-neutral-500">
+            You haven&apos;t submitted anything yet — use &quot;Submit new item&quot; above.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

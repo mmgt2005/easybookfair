@@ -21,15 +21,44 @@ An **org staff portal** (`/org`) now exists too: an org requests a fair
 (with each buyer payment option explained before they choose it) instead
 of an admin creating one directly, and an admin reviews/approves it from
 `/admin/fair-requests` — approving copies the requested dates and payment
-choices into a real `fairs` row. Payment options are enforced per fair
-(online/wallet/in-person can each be turned off), not just decorative.
+choices into a real `fairs` row, sends the requester an email pointing
+them at their dashboard, and (if they asked for the in-person reader) sets
+an equipment rental fee that's netted against their payout. Payment
+options are enforced per fair (online/wallet/in-person can each be turned
+off), not just decorative — both the org portal and the fair's admin edit
+page show the actual buyer-facing links.
+
+A big batch pulling several later-phase pieces forward at once:
+
+- **Promotions/bundle discounts** (`/admin/fairs/<id>/promotions`): percent-off
+  or "any N for $X" bundle deals, scoped per fair, applied automatically —
+  not buyer-chosen — across all three checkout paths (online, in-person,
+  wallet). See `lib/promotions.ts`.
+- **Closing a fair** (`/admin/fairs/<id>/edit`): a real, if deliberately
+  scoped-down, `close_fair()` — computes payout (or amount owed) straight
+  from the ledger, nets the equipment rental fee, and locks it. Missing-
+  inventory cost isn't computed yet (no returns-recording feature exists
+  to drive it) and moving the actual money is still manual.
+- **Wallet close-out donation notice**: closing a fair's wallets now emails
+  each parent with unspent balance a link to a printable/downloadable
+  receipt (`/fairs/<id>/wallet/receipt/<walletId>`).
+- **A demo/training fair** (`/admin/demo`), seeded and resettable, for
+  clicking through catalog/allocation/checkout/storefront/wallet flows
+  without touching real data.
+- **An onboarding tour** in both `/admin` and `/org` — auto-shows once per
+  browser, and stays reachable afterward from a "🎓 Take the tour" nav
+  link.
+- **Author submissions** (`/author/submit`, public, no login): authors
+  submit books/merchandise with a suggested retail price (65% wholesale
+  auto-calculated); admin review at `/admin/author-submissions`; approving
+  invites the author to a real account and adds the item to the catalog.
+  A minimal author portal (`/author`) shows submission status and, once
+  approved, units sold/revenue.
 
 Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
-companion app — not reachable from a browser), promotions/bundle
-discounts (schema exists, no checkout path reads it yet), an author
-submission flow, a software tour, a demo/training fair, and a
-donation-notice email when a closed fair's unused wallet balance sweeps
-into the org's payout.
+companion app — not reachable from a browser), and missing-inventory
+cost / automatic Stripe transfer-or-payment-link as part of closing a
+fair (both need a real returns-recording feature first).
 
 ## Stack
 
@@ -81,6 +110,14 @@ code (everything that needs to be unit-tested).
    - `0030_fair_requests.sql`
    - `0031_fair_public_info_payment_options.sql`
    - `0032_fair_storefront_items_allow_online.sql`
+   - `0033_fair_requests_email.sql`
+   - `0034_fairs_equipment_rental_fee.sql`
+   - `0035_demo_fair.sql`
+   - `0036_close_fair.sql`
+   - `0037_wallet_donation_receipt.sql`
+   - `0038_promotions_fair_scope.sql`
+   - `0039_spend_from_wallet_promotions.sql`
+   - `0040_author_submissions.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -97,7 +134,14 @@ code (everything that needs to be unit-tested).
    ```
 6. Set up Stripe (see "Stripe setup" below) if you want to exercise org
    onboarding or the payment webhook — everything else works without it.
-7. Run the app:
+7. The demo/training fair (`/admin/demo`) and its five `[Demo]`-prefixed
+   catalog items are already seeded by migration `0035` — nothing to set
+   up, just sign in as an admin and click through it. An author account
+   only exists after you approve a submission from
+   `/admin/author-submissions` (try `/author/submit` yourself first, with
+   any email — Supabase's own invite email needs the project's SMTP/auth
+   email configured to actually arrive; the submission itself doesn't).
+8. Run the app:
    ```
    npm run dev
    ```
@@ -193,8 +237,6 @@ inventing new colors per page.
   throws and is caught the same way, so email is silently skipped rather
   than breaking checkout — the confirmation page and `/fairs/<id>/orders`
   lookup remain the reliable fallback either way.
-- No promotions/bundle discounts — the `promotions` table exists in the
-  schema but no checkout path (online, in-person, or wallet) reads it.
 - Available-to-sell checks (online checkout, wallet spending, in-person
   checkout) aren't row-locked the way `allocate_inventory` is — two carts
   finishing at the same instant for the last unit of an item could both
@@ -209,18 +251,32 @@ inventing new colors per page.
   there's no cash-sale-recording UI anywhere in the app (cash sales only
   exist at the database/ledger level, from Phase 1). Turning it off
   changes nothing yet.
-- No self-serve invite flow for either `platform_admins` or `org_members`
-  — both are manual `insert` statements run directly against the
-  database (see "Local setup" above). An org admin can't add their own
-  staff from the UI yet.
-- No onboarding/software tour, no demo/training fair, and no
-  wallet-balance donation notice (a printable/downloadable receipt for a
-  parent when a closed fair's unused wallet balance becomes the org's) —
-  all sized but not yet built.
-- No author submission flow (a public form for authors to submit
-  books/merchandise with a suggested retail price and an auto-calculated
-  65% wholesale cost, reviewed by an admin, approving creates an author
-  account) — sized but not yet built.
+- No self-serve invite flow for `platform_admins` or `org_members` —
+  both are manual `insert` statements run directly against the database
+  (see "Local setup" above). An org admin can't add their own staff from
+  the UI yet. (`authors` is different — it's populated automatically when
+  an admin approves a submission, no manual insert needed.)
+- `close_fair()` (migration `0036`) is deliberately scoped down from the
+  full settlement spec: it nets the equipment rental fee and whatever the
+  ledger already shows for card/online margin and cash-sale wholesale
+  owed, but `missing_inventory_cost` is hardcoded `0` (no
+  returns-recording feature exists to drive it — `allocations.
+  quantity_returned` exists in the schema but nothing ever writes it), and
+  actually moving money (a Stripe Transfer, or a Payment Link if the org
+  owes) is still a manual follow-up step, not automated.
+- The onboarding tour's "seen it" state is per-browser (`localStorage`),
+  not per-account — a new browser/device shows it again regardless of
+  whether that person has seen it elsewhere. Acceptable since the "🎓 Take
+  the tour" nav link makes it available on demand either way, not just on
+  a tracked first visit.
+- Author accounts are created via Supabase Auth's own
+  `admin.inviteUserByEmail` (a separate email from Resend's — needs the
+  Supabase project's own auth email/SMTP configured to actually be
+  delivered, `RESEND_API_KEY`/`EMAIL_FROM` don't cover it). A returning
+  author whose email is already registered is detected by paging through
+  `admin.listUsers()` rather than a direct lookup (supabase-js has no
+  `getUserByEmail`) — fine at this app's scale, not for a very large user
+  base.
 
 ## Database notes
 
@@ -293,3 +349,40 @@ inventing new colors per page.
   wallet-funding server actions re-check them before writing — so even a
   direct RPC call against a disabled channel is rejected, not just a
   hidden button.
+- `close_fair()` (migration `0036`) reads `payout_due`/`cash_wholesale_owed`
+  straight off the ledger — the net balance of Org Payable (`2000`) and
+  Accounts Receivable (`1300`) for that fair — rather than re-deriving them
+  from `sales`. That's deliberate: it automatically nets in refunds and the
+  wallet close-out credit (`close_wallets_for_fair()`, migration `0022`)
+  without this function needing to know about either. Its own settlement
+  entry always nets to a debit of exactly `payout_due` against Org
+  Payable, clearing it to zero regardless of whether the org is owed money
+  or owes it — see the migration's comment for the derivation. `fairs`
+  gained `equipment_rental_fee` (migration `0034`, admin-set — the org
+  doesn't price the hardware it's renting) and `settlements` gained a
+  matching column, folded into `total_owed_by_org`'s check constraint.
+- `promotions` (migration `0038` adds `fair_id`, scoping what was
+  previously an unused platform-wide table to one fair) drives
+  `lib/promotions.ts`'s `applyPromotions()` — pure, framework-free, and
+  shared by all three checkout paths (guest, in-person, wallet) rather
+  than reimplemented per path or in SQL. It can split one cart line into
+  more than one output line (e.g. some units bundled at a flat price, the
+  remainder at full price) since `checkout_sessions.line_items` and
+  `record_sale()` both already snapshot one price per line — see the
+  module comment for the full algorithm (bundles resolved first, against
+  a richest-item-first pool; percent discounts against whatever's left).
+  `spend_from_wallet()` (migration `0039`) now accepts an explicit
+  `price_charged`/`promotion_id` per line instead of always pricing from
+  `catalog_items` itself, falling back to the catalog price when a line
+  doesn't specify one.
+- `author_submissions`/`authors` (migration `0040`) mirror the
+  `fair_requests`/`fairs` review pattern: a staging table with no update
+  policy for `authenticated` (only `app.is_platform_admin()` can move
+  `status`), approving creates the "real" rows (here, a Supabase auth user
+  plus a `catalog_items` row) and links back via `author_user_id`/
+  `catalog_item_id`. `wholesale_price` is a generated column
+  (`round(suggested_retail_price * 0.65, 2)`) rather than app-computed, so
+  it can never drift from the retail price independently. `sales_select_
+  author` is an additive RLS policy (Postgres OR's multiple permissive
+  policies for the same command together) — it doesn't touch or replace
+  `sales_select`'s existing org/admin scoping.

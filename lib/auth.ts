@@ -64,3 +64,34 @@ export async function requireOrgStaff() {
 
   return { user, orgIds: memberships.map((m) => m.org_id) };
 }
+
+/**
+ * Guard for the author portal (/author) — mirrors requireOrgStaff().
+ * Redirects to /login if unauthenticated, or /unauthorized if
+ * authenticated but not in `authors` (only created by an admin approving
+ * a submission, migration 0040 — there's no self-serve signup). RLS
+ * (author_submissions_select) is what actually enforces which rows an
+ * author sees; this is the UX gate.
+ */
+export async function requireAuthor() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: authorRow } = await supabase
+    .from("authors")
+    .select("user_id, name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!authorRow) {
+    redirect("/unauthorized");
+  }
+
+  return { user, name: authorRow.name };
+}

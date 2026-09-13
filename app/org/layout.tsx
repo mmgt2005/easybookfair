@@ -1,10 +1,34 @@
 import Link from "next/link";
 import { requireOrgStaff } from "@/lib/auth";
+import { Tour, TourLauncherButton } from "@/components/Tour";
 import packageJson from "@/package.json";
 
 const navLinks = [
   { href: "/org", label: "Dashboard" },
   { href: "/org/fairs/request", label: "Request a fair" },
+];
+
+const orgTourSteps = [
+  {
+    title: "Welcome to your org portal 👋",
+    description:
+      "From here you request fairs and track their status — no more emailing back and forth with a platform admin.",
+  },
+  {
+    title: "Dashboard",
+    description:
+      "See your organization's fairs (with shareable buyer links once approved) and the status of every request you've submitted.",
+  },
+  {
+    title: "Request a fair",
+    description:
+      "Pick dates and which ways buyers can pay — each option is explained before you choose. An admin reviews the request before it becomes a real fair.",
+  },
+  {
+    title: "Come back to this any time",
+    description:
+      "Click \"🎓 Take the tour\" in the nav whenever you want to see this again — it doesn't go away after the first time.",
+  },
 ];
 
 export default async function OrgLayout({
@@ -32,8 +56,10 @@ export default async function OrgLayout({
             {link.label}
           </Link>
         ))}
+        <TourLauncherButton storageKey="org_v1" />
       </nav>
       <div className="px-6 py-6">{children}</div>
+      <Tour storageKey="org_v1" steps={orgTourSteps} />
     </div>
   );
 }

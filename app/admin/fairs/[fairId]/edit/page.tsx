@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { updateFair, createTerminalLocation, registerTerminalReader } from "../../actions";
+import { updateFair, createTerminalLocation, registerTerminalReader, closeFair } from "../../actions";
 import { getStripe } from "@/lib/stripe";
 import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
 
@@ -14,7 +14,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, organizations(name)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, organizations(name, is_school)",
     )
     .eq("id", fairId)
     .single();
@@ -23,9 +23,20 @@ export default async function EditFairPage({
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
 
+  const org = fair.organizations as unknown as { name: string; is_school: boolean } | null;
+
+  const { data: settlement } = await supabase
+    .from("settlements")
+    .select(
+      "payout_due, cash_wholesale_owed, missing_inventory_cost, equipment_rental_fee, total_owed_by_org, net_payout, closed_at",
+    )
+    .eq("fair_id", fairId)
+    .maybeSingle();
+
   const updateFairForFair = updateFair.bind(null, fairId);
   const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
   const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
+  const closeFairForFair = closeFair.bind(null, fairId);
 
   const readers = fair.stripe_terminal_location_id
     ? (
@@ -38,9 +49,44 @@ export default async function EditFairPage({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit fair 🎪</h1>
-      <p className="text-sm text-neutral-600">
-        {(fair.organizations as unknown as { name: string } | null)?.name}
-      </p>
+      <p className="text-sm text-neutral-600">{org?.name}</p>
+
+      <Card className="max-w-sm">
+        <h2 className="font-heading font-bold text-neutral-900">Public links 🔗</h2>
+        <p className="mb-2 text-xs text-neutral-500">
+          The same links this org sees on their own dashboard — share these with buyers, or hand
+          them to the org directly.
+        </p>
+        <div className="flex flex-col gap-1 text-sm">
+          {fair.allow_online ? (
+            <a
+              href={`/fairs/${fair.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              Storefront: /fairs/{fair.id} →
+            </a>
+          ) : (
+            <span className="text-xs text-neutral-400">Online storefront is turned off.</span>
+          )}
+          {fair.allow_wallet && org?.is_school ? (
+            <a
+              href={`/fairs/${fair.id}/wallet`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              Student wallet: /fairs/{fair.id}/wallet →
+            </a>
+          ) : (
+            <span className="text-xs text-neutral-400">
+              Student wallets are turned off{!org?.is_school ? " (not a school)" : ""}.
+            </span>
+          )}
+        </div>
+      </Card>
+
       <Card className="max-w-sm">
         <form action={updateFairForFair} className="flex flex-col gap-3">
           <Input name="name" required defaultValue={fair.name} placeholder="Fair name" />
@@ -95,6 +141,18 @@ export default async function EditFairPage({
               <input type="checkbox" name="allow_cash" defaultChecked={fair.allow_cash} />
               Cash (no recording UI yet — this flag isn&apos;t enforced anywhere)
             </label>
+            {fair.allow_in_person && (
+              <Field label="Equipment rental fee ($) — deducted from payout at fair close">
+                <Input
+                  name="equipment_rental_fee"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={fair.equipment_rental_fee}
+                  className="w-28"
+                />
+              </Field>
+            )}
           </div>
           <Button type="submit">Save changes</Button>
         </form>
@@ -149,6 +207,48 @@ export default async function EditFairPage({
               />
               <Button type="submit" size="sm" variant="outline">
                 Register reader
+              </Button>
+            </form>
+          </div>
+        )}
+      </Card>
+
+      <Card className="max-w-sm">
+        <h2 className="font-heading font-bold text-neutral-900">Settlement 💰</h2>
+        {settlement ? (
+          <div className="mt-2 flex flex-col gap-1 text-sm text-neutral-700">
+            <p>Payout due (card/online margin): ${settlement.payout_due.toFixed(2)}</p>
+            <p>Cash wholesale owed: ${settlement.cash_wholesale_owed.toFixed(2)}</p>
+            {settlement.missing_inventory_cost > 0 && (
+              <p>Missing inventory: ${settlement.missing_inventory_cost.toFixed(2)}</p>
+            )}
+            {settlement.equipment_rental_fee > 0 && (
+              <p>Equipment rental fee: ${settlement.equipment_rental_fee.toFixed(2)}</p>
+            )}
+            <p className="mt-1 font-semibold text-neutral-900">
+              {settlement.net_payout >= 0
+                ? `Net payout to org: $${settlement.net_payout.toFixed(2)}`
+                : `Org owes platform: $${Math.abs(settlement.net_payout).toFixed(2)}`}
+            </p>
+            <p className="text-xs text-neutral-500">
+              Closed {new Date(settlement.closed_at).toLocaleString()}
+            </p>
+            <p className="mt-2 text-xs text-amber-700">
+              This is a computed record only — moving the actual money (a Stripe transfer, or a
+              payment link if the org owes) is still a manual follow-up step for now.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-col gap-2">
+            <p className="text-xs text-neutral-500">
+              Computes the payout (or amount owed) from every sale recorded against this fair —
+              netting the equipment rental fee above — and locks it. Missing-inventory cost isn&apos;t
+              computed yet (no returns-recording feature exists), so it&apos;s always $0 for now.
+              Irreversible.
+            </p>
+            <form action={closeFairForFair}>
+              <Button type="submit" variant="outline" size="sm">
+                Close this fair
               </Button>
             </form>
           </div>

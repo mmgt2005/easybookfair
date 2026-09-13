@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
+import { applyPromotions, type ActivePromotion } from "@/lib/promotions";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -76,8 +77,7 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
   );
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
-  let totalCents = 0;
-  const lineItems = cart.map((line) => {
+  for (const line of cart) {
     const item = catalogById.get(line.catalog_item_id);
     if (!item) {
       throw new Error(`Catalog item ${line.catalog_item_id} not found`);
@@ -92,17 +92,30 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
     if (line.quantity > available) {
       throw new Error(`Only ${available} of "${item.title}" available to sell`);
     }
+  }
 
-    totalCents += Math.round(item.price * 100) * line.quantity;
+  // Active, in-window promotions for this fair — applied automatically,
+  // same as the public storefront's guest checkout (lib/promotions.ts).
+  const nowIso = new Date().toISOString();
+  const { data: promotionRows } = await supabase
+    .from("promotions")
+    .select("id, kind, config, starts_at, ends_at")
+    .eq("fair_id", fairId)
+    .eq("active", true);
+  const activePromotions = (promotionRows ?? []).filter(
+    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  ) as ActivePromotion[];
 
-    return {
-      catalog_item_id: item.id,
-      title: item.title,
-      quantity: line.quantity,
-      price_charged: item.price,
-      wholesale_cost: item.cost,
-    };
-  });
+  const pricedLines = applyPromotions(cart, catalogById, activePromotions);
+  const lineItems = pricedLines.map((line) => ({
+    ...line,
+    title: catalogById.get(line.catalog_item_id)?.title ?? "",
+  }));
+
+  const totalCents = lineItems.reduce(
+    (sum, line) => sum + Math.round(line.price_charged * 100) * line.quantity,
+    0,
+  );
 
   if (totalCents <= 0) {
     throw new Error("Total must be greater than zero");
@@ -193,6 +206,13 @@ export async function searchWallets(fairId: string, query: string): Promise<Wall
 // cash, using the same cart the admin already built. Unlike the reader
 // path, this settles synchronously (no webhook involved — spend_from_wallet
 // writes the sales/ledger rows directly), so there's nothing to poll.
+//
+// Promotions are computed here (not inside spend_from_wallet itself) for
+// the same reason the guest/in-person checkout actions compute them in
+// TypeScript rather than SQL: lib/promotions.ts is shared, tested logic,
+// not duplicated across a third PL/pgSQL implementation. spend_from_wallet
+// (migration 0039) accepts the resulting price_charged/promotion_id per
+// line instead of always pricing from catalog_items itself.
 export async function chargeWallet(fairId: string, walletId: string, cart: CartLine[]) {
   await requireAdmin();
   if (!cart.length) {
@@ -200,10 +220,32 @@ export async function chargeWallet(fairId: string, walletId: string, cart: CartL
   }
 
   const supabase = await createClient();
+
+  const catalogItemIds = cart.map((line) => line.catalog_item_id);
+  const { data: catalogItems, error: catalogError } = await supabase
+    .from("catalog_items")
+    .select("id, title, price, cost")
+    .in("id", catalogItemIds);
+  if (catalogError) throw new Error(catalogError.message);
+
+  const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
+
+  const nowIso = new Date().toISOString();
+  const { data: promotionRows } = await supabase
+    .from("promotions")
+    .select("id, kind, config, starts_at, ends_at")
+    .eq("fair_id", fairId)
+    .eq("active", true);
+  const activePromotions = (promotionRows ?? []).filter(
+    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  ) as ActivePromotion[];
+
+  const pricedLines = applyPromotions(cart, catalogById, activePromotions);
+
   const { error } = await supabase.rpc("spend_from_wallet", {
     p_wallet_id: walletId,
     p_fair_id: fairId,
-    p_line_items: cart,
+    p_line_items: pricedLines,
   });
 
   if (error) throw new Error(error.message);
