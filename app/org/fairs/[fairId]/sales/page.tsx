@@ -40,6 +40,8 @@ export default async function OrgSalesFeedPage({
         initialSales={initial.sales}
         initialTotalUnits={initial.totalUnits}
         initialTotalRevenue={initial.totalRevenue}
+        initialPayout={initial.payout}
+        initialPayoutIsFinal={initial.payoutIsFinal}
       />
     </div>
   );

@@ -49,6 +49,16 @@ cursor — two sales can land in the same instant, since
 loop). No new schema or RLS needed — `sales_select` (migration `0005`)
 already scoped this correctly for both admin and org staff.
 
+The same action also computes a live **payout estimate** — `close_fair()`'s
+own formula (migration `0036`: the credit balance of Org Payable `2000`,
+minus the debit balance of A/R `1300`, minus the fair's equipment rental
+fee), read straight from `journal_entries`/`journal_lines` rather than
+waiting for the fair to actually close. Verified against `close_fair()`
+directly (recorded a card and a cash sale, read the live estimate, closed
+the fair, confirmed `settlements.net_payout` matched exactly). Once a
+`settlements` row exists for the fair, the feed shows that locked-in
+figure instead and labels it "Final payout" rather than an estimate.
+
 A big batch pulling several later-phase pieces forward at once:
 
 - **Promotions/bundle discounts** (`/admin/fairs/<id>/promotions`): percent-off

@@ -19,15 +19,21 @@ export function SalesFeedClient({
   initialSales,
   initialTotalUnits,
   initialTotalRevenue,
+  initialPayout,
+  initialPayoutIsFinal,
 }: {
   fairId: string;
   initialSales: SaleRow[];
   initialTotalUnits: number;
   initialTotalRevenue: number;
+  initialPayout: number;
+  initialPayoutIsFinal: boolean;
 }) {
   const [sales, setSales] = useState(initialSales);
   const [totalUnits, setTotalUnits] = useState(initialTotalUnits);
   const [totalRevenue, setTotalRevenue] = useState(initialTotalRevenue);
+  const [payout, setPayout] = useState(initialPayout);
+  const [payoutIsFinal, setPayoutIsFinal] = useState(initialPayoutIsFinal);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const seenIds = useRef(new Set(initialSales.map((s) => s.id)));
 
@@ -50,6 +56,8 @@ export function SalesFeedClient({
         setSales(result.sales);
         setTotalUnits(result.totalUnits);
         setTotalRevenue(result.totalRevenue);
+        setPayout(result.payout);
+        setPayoutIsFinal(result.payoutIsFinal);
 
         if (freshIds.size > 0) {
           setNewIds(freshIds);
@@ -86,6 +94,23 @@ export function SalesFeedClient({
           <p className="font-heading text-2xl font-bold text-neutral-900">
             ${totalRevenue.toFixed(2)}
           </p>
+        </Card>
+        <Card className="flex-1">
+          <p className="text-xs font-semibold text-neutral-500">
+            {payoutIsFinal ? "Final payout" : "Payout if closed now"}
+          </p>
+          <p
+            className={`font-heading text-2xl font-bold ${
+              payout >= 0 ? "text-green-700" : "text-red-700"
+            }`}
+          >
+            {payout >= 0 ? `$${payout.toFixed(2)}` : `Owe $${Math.abs(payout).toFixed(2)}`}
+          </p>
+          {!payoutIsFinal && (
+            <p className="mt-0.5 text-xs text-neutral-400">
+              Estimate — updates as sales come in, not locked in until closed
+            </p>
+          )}
         </Card>
       </div>
 

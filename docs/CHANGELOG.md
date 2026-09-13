@@ -48,7 +48,14 @@ which point versioning starts.
   row per unit in a tight loop and two sales can land with the identical
   timestamp (confirmed while testing this). No new schema or RLS was
   needed — `sales_select` (migration `0005`) already scoped reads
-  correctly for both an admin and that fair's own org staff.
+  correctly for both an admin and that fair's own org staff. The feed
+  also shows a live **payout estimate** — `close_fair()`'s own formula
+  (migration `0036`), read straight from `journal_entries`/
+  `journal_lines` instead of waiting for the fair to close, and verified
+  to match `settlements.net_payout` exactly when the fair is actually
+  closed right after. Once a `settlements` row exists, the feed switches
+  to showing that locked-in figure, labeled "Final payout" instead of an
+  estimate.
 - **Org staff can run their own fair day-of** (migration `0046`):
   checkout, pickup, and wallets were effectively admin-only — not just the
   UI (`requireAdmin()`), but the underlying RPCs

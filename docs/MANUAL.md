@@ -401,6 +401,15 @@ transaction volumes without taking on Realtime infrastructure. A row that
 just arrived is briefly highlighted so you can see it land. Also
 available to that fair's own org staff (`/org/fairs/<id>/sales`).
 
+A third card shows **the payout as of right now** — the same math
+`close_fair()` uses (card/online margin owed, minus cash-sale wholesale
+cost owed, minus the equipment rental fee), computed live from the
+ledger rather than waiting for the fair to close. Labeled "Payout if
+closed now" and updates every poll, right up until the fair actually
+closes — at that point it switches to "Final payout" and shows the real,
+locked-in `settlements` figure instead (which can differ slightly if,
+say, wallets get closed out between an earlier live read and closing).
+
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an
