@@ -250,3 +250,45 @@ export async function chargeWallet(fairId: string, walletId: string, cart: CartL
 
   if (error) throw new Error(error.message);
 }
+
+// Records a cash sale — the fourth tender, alongside the reader and
+// wallet, and the last of the four payment options to actually get a UI
+// (migration 0043). Settles synchronously like the wallet path, not
+// asynchronously like the reader (no PaymentIntent/webhook involved for
+// cash at all).
+export async function chargeCash(fairId: string, cart: CartLine[]) {
+  await requireAdmin();
+  if (!cart.length) {
+    throw new Error("Cart is empty");
+  }
+
+  const supabase = await createClient();
+
+  const catalogItemIds = cart.map((line) => line.catalog_item_id);
+  const { data: catalogItems, error: catalogError } = await supabase
+    .from("catalog_items")
+    .select("id, title, price, cost")
+    .in("id", catalogItemIds);
+  if (catalogError) throw new Error(catalogError.message);
+
+  const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
+
+  const nowIso = new Date().toISOString();
+  const { data: promotionRows } = await supabase
+    .from("promotions")
+    .select("id, kind, config, starts_at, ends_at")
+    .eq("fair_id", fairId)
+    .eq("active", true);
+  const activePromotions = (promotionRows ?? []).filter(
+    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  ) as ActivePromotion[];
+
+  const pricedLines = applyPromotions(cart, catalogById, activePromotions);
+
+  const { error } = await supabase.rpc("record_cash_sale", {
+    p_fair_id: fairId,
+    p_line_items: pricedLines,
+  });
+
+  if (error) throw new Error(error.message);
+}

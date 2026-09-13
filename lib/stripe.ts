@@ -22,3 +22,16 @@ export function getStripe(): Stripe {
   }
   return cached;
 }
+
+// Read from the key's own prefix, not a Stripe API call — Stripe key
+// prefixes (sk_test_/sk_live_) are a reliable, well-documented signal of
+// which mode a key belongs to, so this needs no network round trip.
+// Surfaced to admins (the demo fair's enable/disable prompt) so a real
+// card can't get charged against seeded demo data without them noticing
+// live mode is active first.
+export function stripeMode(): "test" | "live" | "unconfigured" {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) return "unconfigured";
+  if (secretKey.startsWith("sk_live_") || secretKey.startsWith("rk_live_")) return "live";
+  return "test";
+}

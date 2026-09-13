@@ -7,6 +7,7 @@ import {
   getCheckoutSessionStatus,
   searchWallets,
   chargeWallet,
+  chargeCash,
   type WalletMatch,
 } from "./actions";
 import { Button, Card, Input } from "@/components/ui";
@@ -20,11 +21,13 @@ export function CheckoutClient({
   items,
   terminalLocationId,
   allowWallet,
+  allowCash,
 }: {
   fairId: string;
   items: Item[];
   terminalLocationId: string | null;
   allowWallet: boolean;
+  allowCash: boolean;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>("idle");
@@ -216,6 +219,29 @@ export function CheckoutClient({
     }
   }
 
+  async function chargeCashTender() {
+    const lines = Object.entries(cart).map(([catalog_item_id, quantity]) => ({
+      catalog_item_id,
+      quantity,
+    }));
+    if (lines.length === 0) {
+      setMessage("Cart is empty");
+      return;
+    }
+
+    setCharging(true);
+    setMessage("Recording cash sale…");
+    try {
+      await chargeCash(fairId, lines);
+      setMessage(`Recorded $${total.toFixed(2)} cash sale ✅`);
+      setCart({});
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Cash sale failed");
+    } finally {
+      setCharging(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <Card className="flex-1 overflow-x-auto p-0">
@@ -372,6 +398,20 @@ export function CheckoutClient({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {allowCash && (
+          <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
+            <p className="text-xs font-semibold text-neutral-600">Or take cash</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={charging || total <= 0}
+              onClick={chargeCashTender}
+            >
+              {charging ? "Recording…" : `Charge $${total.toFixed(2)} in cash`}
+            </Button>
           </div>
         )}
 

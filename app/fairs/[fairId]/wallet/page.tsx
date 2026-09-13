@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isPlatformAdmin } from "@/lib/auth";
 import { WalletClient } from "./WalletClient";
 import { Card } from "@/components/ui";
 
@@ -11,6 +12,8 @@ type FairPublicInfo = {
   allow_online: boolean;
   allow_wallet: boolean;
   allow_in_person: boolean;
+  is_demo: boolean;
+  is_demo_enabled: boolean;
 };
 
 export default async function WalletFundingPage({
@@ -30,6 +33,23 @@ export default async function WalletFundingPage({
 
   if (!fairInfo) {
     return <p className="p-6 text-sm text-red-600">Fair not found.</p>;
+  }
+
+  if (fairInfo.is_demo) {
+    if (!fairInfo.is_demo_enabled) {
+      return (
+        <p className="p-6 text-sm text-neutral-600">
+          The demo fair is currently disabled by an admin.
+        </p>
+      );
+    }
+    if (!(await isPlatformAdmin())) {
+      return (
+        <p className="p-6 text-sm text-neutral-600">
+          This is a demo fair for admin training only — it isn&apos;t open to the public.
+        </p>
+      );
+    }
   }
 
   if (!fairInfo.is_school || !fairInfo.allow_wallet) {

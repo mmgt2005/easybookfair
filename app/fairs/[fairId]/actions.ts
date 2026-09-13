@@ -3,6 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
 import { applyPromotions, type ActivePromotion } from "@/lib/promotions";
+import { isPlatformAdmin } from "@/lib/auth";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -31,9 +32,21 @@ export async function createGuestCheckout(
 
   const service = createServiceClient();
 
-  const { data: fair } = await service.from("fairs").select("allow_online").eq("id", fairId).single();
+  const { data: fair } = await service
+    .from("fairs")
+    .select("allow_online, organizations(is_demo, is_demo_enabled)")
+    .eq("id", fairId)
+    .single();
   if (!fair?.allow_online) {
     throw new Error("Online ordering isn't available for this fair");
+  }
+
+  const org = fair.organizations as unknown as {
+    is_demo: boolean;
+    is_demo_enabled: boolean;
+  } | null;
+  if (org?.is_demo && (!org.is_demo_enabled || !(await isPlatformAdmin()))) {
+    throw new Error("This demo fair isn't available");
   }
 
   const catalogItemIds = cart.map((line) => line.catalog_item_id);

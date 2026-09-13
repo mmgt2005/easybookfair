@@ -9,9 +9,10 @@ full design, [`docs/MANUAL.md`](./docs/MANUAL.md) for intended usage, and
 buy: a physical Stripe Terminal reader at the table
 (`/admin/fairs/<id>/checkout`), a public online storefront with same-day
 pickup at the fair (`/fairs/<id>`), a parent-funded student wallet a kid
-spends down independently (`/fairs/<id>/wallet`, schools only), and plain
-cash (already existed). All four write through the same channel-agnostic
-`record_sale()`/ledger core. Phase 2 (admin catalog + allocation) is done.
+spends down independently (`/fairs/<id>/wallet`, schools only), and a
+"Charge $X in cash" button right on the checkout screen (migration
+`0043`, `record_cash_sale()`). All four write through the same
+channel-agnostic `record_sale()`/ledger core. Phase 2 (admin catalog + allocation) is done.
 Buyer-facing polish since then: cover-image storefront browsing with
 search/category/sort, order recovery by email, item titles carried through
 to the pickup/confirmation screens, and confirmation emails via Resend for
@@ -132,6 +133,9 @@ code (everything that needs to be unit-tested).
    - `0039_spend_from_wallet_promotions.sql`
    - `0040_author_submissions.sql`
    - `0041_admin_view_as.sql`
+   - `0042_settlement_reconciliation.sql`
+   - `0043_record_cash_sale.sql`
+   - `0044_demo_admin_lockdown.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -150,11 +154,16 @@ code (everything that needs to be unit-tested).
    onboarding or the payment webhook — everything else works without it.
 7. The demo/training fair (`/admin/demo`) and its five `[Demo]`-prefixed
    catalog items are already seeded by migration `0035` — nothing to set
-   up, just sign in as an admin and click through it. An author account
-   only exists after you approve a submission from
-   `/admin/author-submissions` (try `/author/submit` yourself first, with
-   any email — Supabase's own invite email needs the project's SMTP/auth
-   email configured to actually arrive; the submission itself doesn't).
+   up, just sign in as an admin and click through it. Its public
+   storefront/wallet links (migration `0044`) only render for a signed-in
+   admin and can be switched off entirely from `/admin/demo`, which also
+   shows whether `STRIPE_SECRET_KEY` is currently in test or live mode —
+   worth checking before clicking through demo checkout with live keys
+   configured. An author account only exists after you approve a
+   submission from `/admin/author-submissions` (try `/author/submit`
+   yourself first, with any email — Supabase's own invite email needs the
+   project's SMTP/auth email configured to actually arrive; the submission
+   itself doesn't).
 8. Run the app:
    ```
    npm run dev
@@ -280,10 +289,6 @@ inventing new colors per page.
   Stripe's native iOS/Android Terminal SDK, unreachable from a browser.
   Would need a separate native (or React Native) companion app talking to
   the same backend.
-- `allow_cash` on `fairs`/`fair_requests` is captured but not enforced —
-  there's no cash-sale-recording UI anywhere in the app (cash sales only
-  exist at the database/ledger level, from Phase 1). Turning it off
-  changes nothing yet.
 - No self-serve invite flow for `platform_admins` or `org_members` —
   both are manual `insert` statements run directly against the database
   (see "Local setup" above). An org admin can't add their own staff from
@@ -496,3 +501,30 @@ inventing new colors per page.
   — harmless, since its `metadata.kind` won't match either branch and
   `record_checkout_sale()` no-ops on a `payment_intent_id` with no
   matching `checkout_sessions` row.
+- `record_cash_sale()` (migration `0043`) is the RPC behind the checkout
+  screen's "Charge $X in cash" button — the fourth and last tender to get
+  a UI, mirroring `spend_from_wallet`'s shape exactly: `SECURITY DEFINER`,
+  gated internally by `app.is_platform_admin()` (callable by
+  `authenticated` directly, not routed through RLS), re-checks
+  `allow_cash` and current availability the same way every other checkout
+  path does, and accepts a `price_charged`/`promotion_id` per line
+  (computed by `lib/promotions.ts` in the calling Server Action) rather
+  than pricing from `catalog_items` itself.
+- Demo-fair admin lockdown (migration `0044`) adds
+  `organizations.is_demo_enabled` (a kill switch, default `true`) and
+  extends `fair_public_info()` with `is_demo`/`is_demo_enabled` so the
+  anon-callable storefront/wallet pages can decide whether to render at
+  all. When `is_demo` is true, the public pages (`app/fairs/[fairId]`,
+  `app/fairs/[fairId]/wallet`) and their Server Actions
+  (`createGuestCheckout`, `createWalletFunding`) refuse everyone unless
+  `is_demo_enabled` is true **and** the visitor is a signed-in platform
+  admin (`isPlatformAdmin()`, `lib/auth.ts` — a non-redirecting check, so
+  a stray buyer sees a plain "not open to the public" message instead of
+  a `/login` bounce). Only the write paths are gated this way — the
+  anon-callable `fair_storefront_items` RPC still returns demo catalog
+  item names, since leaking read-only `[Demo]`-prefixed titles carries no
+  real risk. `stripeMode()` (`lib/stripe.ts`) reads whether
+  `STRIPE_SECRET_KEY` is a live or test key from its own prefix (no
+  network call) and is shown on `/admin/demo` alongside the enable/disable
+  toggle, so an admin can't flip the demo fair on without first seeing
+  whether doing so risks a real card being charged.

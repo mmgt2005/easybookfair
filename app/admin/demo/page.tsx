@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { resetDemoFair } from "./actions";
+import { DemoToggleButton } from "./DemoToggleButton";
+import { stripeMode } from "@/lib/stripe";
 import { Badge, Button, Card, PageHeader, statusTone } from "@/components/ui";
 
 export default async function DemoFairPage() {
@@ -8,9 +10,16 @@ export default async function DemoFairPage() {
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, start_date, end_date, status, organizations!inner(is_demo)")
+    .select(
+      "id, name, start_date, end_date, status, organizations!inner(is_demo, is_demo_enabled)",
+    )
     .eq("organizations.is_demo", true)
     .maybeSingle();
+
+  const isDemoEnabled = (
+    fair?.organizations as unknown as { is_demo_enabled: boolean } | null
+  )?.is_demo_enabled ?? true;
+  const mode = stripeMode();
 
   return (
     <div className="flex flex-col gap-6">
@@ -18,6 +27,22 @@ export default async function DemoFairPage() {
         title="Demo fair 🎓"
         description="A sandbox fair for training — click through allocation, checkout, the storefront, and student wallets without touching real data."
       />
+
+      <Card
+        className={`max-w-lg text-sm ${
+          mode === "live"
+            ? "border border-red-200 bg-red-50 text-red-800"
+            : mode === "test"
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border border-amber-200 bg-amber-50 text-amber-800"
+        }`}
+      >
+        {mode === "live"
+          ? "⚠️ Stripe is configured in LIVE mode — payments against the demo fair charge real cards."
+          : mode === "test"
+            ? "Stripe is configured in TEST mode — payments against the demo fair use sample cards only."
+            : "Stripe isn't configured — payments against the demo fair will fail."}
+      </Card>
 
       {!fair ? (
         <p className="text-sm text-red-600">
@@ -32,7 +57,12 @@ export default async function DemoFairPage() {
                 {fair.start_date} – {fair.end_date}
               </p>
             </div>
-            <Badge tone={statusTone(fair.status)}>{fair.status}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge tone={isDemoEnabled ? "success" : "neutral"}>
+                {isDemoEnabled ? "Enabled" : "Disabled"}
+              </Badge>
+              <Badge tone={statusTone(fair.status)}>{fair.status}</Badge>
+            </div>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-3 text-sm">
@@ -91,6 +121,21 @@ export default async function DemoFairPage() {
             >
               Public wallet funding ↗
             </a>
+            {!isDemoEnabled && (
+              <p className="text-xs text-neutral-500">
+                Both links currently refuse everyone, including admins, since the demo fair is
+                disabled below.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 border-t border-neutral-100 pt-3">
+            <p className="mb-2 text-xs text-neutral-500">
+              When enabled, the demo&apos;s public storefront and wallet-funding pages only render
+              for a signed-in admin — never for a stray visitor with the link. Disabling turns them
+              off entirely, admin included.
+            </p>
+            <DemoToggleButton enabled={isDemoEnabled} stripeMode={mode} />
           </div>
 
           <form action={resetDemoFair} className="mt-4 border-t border-neutral-100 pt-3">

@@ -167,11 +167,10 @@ when requesting the fair (in-person reader, online storefront, student
 wallets, cash) live here too and can be adjusted after approval — turning
 one off actually disables that channel, not just hides it: the public
 storefront/wallet pages stop offering it, and the underlying checkout/
-funding actions reject it even if called directly. The cash checkbox is
-the exception — it's captured but not enforced anywhere, since there's no
-cash-sale-recording UI in the app yet. When in-person is on, an
-**equipment rental fee** field appears next to it — same figure set at
-approval, adjustable here any time before the fair closes.
+funding actions (including the checkout screen's cash button) reject it
+even if called directly. When in-person is on, an **equipment rental
+fee** field appears next to it — same figure set at approval, adjustable
+here any time before the fair closes.
 
 **Public links** (same page, near the top): the same storefront/
 student-wallet links the org sees on their own dashboard — handy for
@@ -273,6 +272,15 @@ irreversible, but safe any time since nothing there is real. To try the
 org side of it too, add someone to `org_members` for the demo
 organization the normal manual way (see "Local setup" in the README).
 
+This page also shows whether `STRIPE_SECRET_KEY` is currently in **test**
+or **live** mode, and an **Enable/Disable demo fair** toggle — its public
+storefront/wallet links (`/fairs/<id>`, `/fairs/<id>/wallet`) only ever
+render for a signed-in admin, and disabling the toggle turns them off for
+everyone, admin included. Clicking the toggle shows a confirmation
+mentioning the current Stripe mode first, since a real card could
+otherwise get charged against seeded demo data if live keys happen to be
+configured.
+
 ### Reviewing author submissions (`/admin/author-submissions`)
 
 Authors and vendors submit books/merchandise from the public,
@@ -337,8 +345,11 @@ second-class:
    "Order pickup" below.
 3. **Student wallet** — a parent-funded balance a student spends down
    themselves at the checkout table. See "Student wallets" below.
-4. **Cash** — recorded the same as before (`channel = cash`), no reader or
-   online step involved.
+4. **Cash** — same checkout screen (`/admin/fairs/<id>/checkout`), build a
+   cart and click "Charge $X in cash" instead of using the reader. Records
+   the sale (`channel = cash`) immediately, synchronously — no reader,
+   PaymentIntent, or webhook involved at all. Only shown when the fair's
+   cash payment option is on.
 
 Card-in-person, online, and wallet spends all funnel into the same
 `payment_intent.succeeded` webhook handler (cash doesn't, since there's no
@@ -455,8 +466,8 @@ picking before you submit, not after:
   organization is marked "a school"; parents load money onto a named
   student's balance and the student spends it down themselves at
   checkout.
-- **Cash** — on by default; captured as a flag but not enforced, since
-  there's no cash-recording screen yet either way.
+- **Cash** — on by default; recorded from a button right on the admin
+  checkout screen, enforced the same way as the other three options.
 
 An equipment rental fee applies if you choose the in-person reader — set
 by the admin at approval, netted against your payout when the fair

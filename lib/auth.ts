@@ -34,6 +34,31 @@ export async function requireAdmin() {
 }
 
 /**
+ * Non-redirecting admin check — for pages that are normally public (the
+ * storefront/wallet-funding pages) but need to know "is this specific
+ * visitor an admin" to decide whether to render at all, rather than
+ * gating the whole page behind requireAdmin()'s /login redirect (which
+ * would wrongly suggest a buyer needs an account). Returns false for an
+ * anonymous visitor, same as everyone else.
+ */
+export async function isPlatformAdmin(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  const { data: adminRow } = await supabase
+    .from("platform_admins")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return adminRow !== null;
+}
+
+/**
  * Guard for org-staff Server Components/Actions — mirrors requireAdmin().
  * Redirects to /login if unauthenticated, or /unauthorized if
  * authenticated but not a member of any organization. RLS

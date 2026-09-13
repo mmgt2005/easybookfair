@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isPlatformAdmin } from "@/lib/auth";
 import { StorefrontClient } from "./StorefrontClient";
 
 type StorefrontItem = {
@@ -21,6 +22,8 @@ type FairPublicInfo = {
   allow_online: boolean;
   allow_wallet: boolean;
   allow_in_person: boolean;
+  is_demo: boolean;
+  is_demo_enabled: boolean;
 };
 
 export default async function FairStorefrontPage({
@@ -38,6 +41,26 @@ export default async function FairStorefrontPage({
 
   if (!fairInfo) {
     return <p className="p-6 text-sm text-red-600">Fair not found.</p>;
+  }
+
+  // The demo fair's public pages are admin-only (and can be switched off
+  // entirely) — real fairs are unaffected, since is_demo is only ever
+  // true for the seeded demo organization (migration 0035/0044).
+  if (fairInfo.is_demo) {
+    if (!fairInfo.is_demo_enabled) {
+      return (
+        <p className="p-6 text-sm text-neutral-600">
+          The demo fair is currently disabled by an admin.
+        </p>
+      );
+    }
+    if (!(await isPlatformAdmin())) {
+      return (
+        <p className="p-6 text-sm text-neutral-600">
+          This is a demo fair for admin training only — it isn&apos;t open to the public.
+        </p>
+      );
+    }
   }
 
   return (

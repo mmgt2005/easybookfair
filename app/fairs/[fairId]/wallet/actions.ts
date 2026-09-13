@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
+import { isPlatformAdmin } from "@/lib/auth";
 
 // Public, guest funding flow — no buyer login exists. Re-checks the
 // org.is_school gate server-side (not just hiding the UI), since a client
@@ -40,11 +41,14 @@ export async function createWalletFunding(
 
   const { data: org } = await service
     .from("organizations")
-    .select("is_school")
+    .select("is_school, is_demo, is_demo_enabled")
     .eq("id", fair.org_id)
     .single();
   if (!org?.is_school) {
     throw new Error("Student wallets aren't available for this fair");
+  }
+  if (org.is_demo && (!org.is_demo_enabled || !(await isPlatformAdmin()))) {
+    throw new Error("This demo fair isn't available");
   }
 
   const gradeTrimmed = grade.trim() || null;

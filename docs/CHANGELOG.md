@@ -9,6 +9,25 @@ which point versioning starts.
 
 ### Added
 
+- **Cash tender on the admin checkout screen** (migration `0043`,
+  `record_cash_sale()`): cash has been a real `sale_channel` since Phase 1
+  (`record_sale()` already had a dedicated ledger-posting branch for it),
+  but there was never any UI to actually record one. A "Charge $X in cash"
+  button now sits alongside the reader/wallet options on
+  `/admin/fairs/<id>/checkout` — admin-gated, re-checks `allow_cash` and
+  availability the same way every other checkout path does, and settles
+  synchronously with no PaymentIntent or webhook involved.
+- **Demo fair admin lockdown** (migration `0044`): the demo fair's public
+  storefront/wallet pages (`/fairs/<id>`, `/fairs/<id>/wallet`) now only
+  render for a signed-in platform admin, and a new **Enable/Disable demo
+  fair** toggle on `/admin/demo` can turn them off entirely (admin
+  included) via a new `organizations.is_demo_enabled` column. Toggling it
+  shows a confirmation naming whether Stripe is currently in test or live
+  mode (`stripeMode()`, `lib/stripe.ts`, read from the configured secret
+  key's own prefix), so an admin isn't surprised by real-money risk before
+  flipping it on. Enforced both on the page (`isPlatformAdmin()`,
+  `lib/auth.ts`) and inside the underlying Server Actions
+  (`createGuestCheckout`, `createWalletFunding`), not just the UI.
 - **Settlement reconciliation** (migration `0042`): the payout/payment-
   link buttons below previously recorded only that an attempt was made
   — now they confirm the outcome. `settlements` gained

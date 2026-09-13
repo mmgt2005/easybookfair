@@ -13,7 +13,7 @@ export default async function CheckoutPage({
   const { data: fair } = await supabase
     .from("fairs")
     .select(
-      "id, name, stripe_terminal_location_id, allow_in_person, allow_wallet, organizations(name)",
+      "id, name, stripe_terminal_location_id, allow_in_person, allow_wallet, allow_cash, organizations(name)",
     )
     .eq("id", fairId)
     .single();
@@ -86,11 +86,11 @@ export default async function CheckoutPage({
           </p>
         </Card>
       )}
-      {!fair.allow_in_person && !fair.allow_wallet && (
+      {!fair.allow_in_person && !fair.allow_wallet && !fair.allow_cash && (
         <Card className="max-w-lg border border-amber-200 bg-amber-50">
           <p className="text-sm text-amber-800">
-            Neither the reader nor student wallets are enabled for this fair — nothing to charge
-            here. Check the fair&apos;s payment options (set when it was requested/approved).
+            No payment options are enabled for this fair — nothing to charge here. Check the
+            fair&apos;s payment options (set when it was requested/approved).
           </p>
         </Card>
       )}
@@ -100,6 +100,7 @@ export default async function CheckoutPage({
         items={items}
         terminalLocationId={fair.allow_in_person ? fair.stripe_terminal_location_id : null}
         allowWallet={fair.allow_wallet}
+        allowCash={fair.allow_cash}
       />
     </div>
   );
