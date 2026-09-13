@@ -11,6 +11,7 @@ export function WalletClient({ fairId }: { fairId: string }) {
   const [grade, setGrade] = useState("");
   const [teacher, setTeacher] = useState("");
   const [amount, setAmount] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +27,7 @@ export function WalletClient({ fairId }: { fairId: string }) {
         grade,
         teacher,
         Number(amount),
+        parentEmail,
       );
       setClientSecret(result.clientSecret);
     } catch (err) {
@@ -60,6 +62,14 @@ export function WalletClient({ fairId }: { fairId: string }) {
         Grade/teacher help tell apart students with the same name at checkout — not required, but
         recommended.
       </p>
+      <Field label="Your email">
+        <Input
+          type="email"
+          value={parentEmail}
+          onChange={(e) => setParentEmail(e.target.value)}
+          required
+        />
+      </Field>
       <Field label="Amount to add">
         <Input
           type="number"
@@ -70,6 +80,19 @@ export function WalletClient({ fairId }: { fairId: string }) {
           required
         />
       </Field>
+      <div className="flex gap-2">
+        {[10, 20, 50].map((preset) => (
+          <Button
+            key={preset}
+            type="button"
+            size="sm"
+            variant={amount === String(preset) ? "secondary" : "outline"}
+            onClick={() => setAmount(String(preset))}
+          >
+            ${preset}
+          </Button>
+        ))}
+      </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={submitting}>
         {submitting ? "Preparing…" : "Continue to payment"}

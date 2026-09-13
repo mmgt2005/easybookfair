@@ -6,16 +6,22 @@ type OrderPublic = {
   status: string;
   fulfillment_status: string | null;
   buyer_name: string | null;
-  line_items: { catalog_item_id: string; quantity: number; price_charged: number }[];
+  line_items: {
+    catalog_item_id: string;
+    title: string;
+    quantity: number;
+    price_charged: number;
+  }[];
   fair_name: string;
 };
 
 // No buyer login exists, so this page is reachable by the checkout
 // session's own id — an unguessable uuid, same access-control shape as a
 // Stripe hosted receipt link (see migration 0025's comment on
-// get_checkout_session_public). There's no email confirmation sent (no
-// transactional email service is configured) — this page, saved or
-// screenshotted, is the buyer's only record of the order for now.
+// get_checkout_session_public). A confirmation email is also sent (see
+// lib/email.ts), but that's best-effort (a delivery failure doesn't fail
+// the payment) — this page is the reliable record, and /fairs/<id>/orders
+// covers the case a buyer loses the link/email both.
 export default async function OrderConfirmationPage({
   params,
 }: {
@@ -51,13 +57,15 @@ export default async function OrderConfirmationPage({
               Order code: <span className="font-mono font-bold">{orderCode}</span>
             </p>
             <p className="text-xs text-neutral-500">
-              Save this page or write down your order code — pick up is at the fair, and no
-              confirmation email is sent.
+              A confirmation email is on its way — save this page or write down your order code
+              too, just in case. Pick up is at the fair.
             </p>
             <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-700">
               {order.line_items.map((line, i) => (
                 <li key={i} className="flex justify-between">
-                  <span>{line.quantity}× item</span>
+                  <span>
+                    {line.quantity}× {line.title}
+                  </span>
                   <span>${(line.quantity * line.price_charged).toFixed(2)}</span>
                 </li>
               ))}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendOrderConfirmationEmail, sendWalletFundingEmail } from "@/lib/email";
 
 // Needs Node's crypto for Stripe's signature verification, not the Edge
 // runtime.
@@ -72,15 +73,66 @@ export async function POST(request: Request) {
         // set when each PaymentIntent is created (checkout/actions.ts,
         // fairs/[fairId]/actions.ts, fairs/[fairId]/wallet/actions.ts).
         const kind = paymentIntent.metadata?.kind;
-        const { error } =
-          kind === "wallet_funding"
-            ? await supabase.rpc("record_wallet_funding", {
-                p_payment_intent_id: paymentIntent.id,
-              })
-            : await supabase.rpc("record_checkout_sale", {
-                p_payment_intent_id: paymentIntent.id,
+        const host = request.headers.get("host");
+        const origin = `${host?.startsWith("localhost") ? "http" : "https"}://${host}`;
+
+        if (kind === "wallet_funding") {
+          const { error } = await supabase.rpc("record_wallet_funding", {
+            p_payment_intent_id: paymentIntent.id,
+          });
+          if (error) throw new Error(error.message);
+
+          // Best-effort: a failed send here must never fail the webhook —
+          // the RPC has already committed, so Stripe retrying this event
+          // would just re-attempt an already-completed funding.
+          try {
+            const { data: funding } = await supabase
+              .from("wallet_fundings")
+              .select("amount, parent_email, student_wallets(student_name, fairs(name))")
+              .eq("payment_intent_id", paymentIntent.id)
+              .single();
+            const wallet = funding?.student_wallets as unknown as {
+              student_name: string;
+              fairs: { name: string } | null;
+            } | null;
+            if (funding?.parent_email && wallet?.fairs) {
+              await sendWalletFundingEmail({
+                to: funding.parent_email,
+                studentName: wallet.student_name,
+                fairName: wallet.fairs.name,
+                amount: Number(funding.amount),
               });
-        if (error) throw new Error(error.message);
+            }
+          } catch (emailErr) {
+            console.error("Failed to send wallet funding email", emailErr);
+          }
+        } else {
+          const { error } = await supabase.rpc("record_checkout_sale", {
+            p_payment_intent_id: paymentIntent.id,
+          });
+          if (error) throw new Error(error.message);
+
+          try {
+            const { data: session } = await supabase
+              .from("checkout_sessions")
+              .select("id, fair_id, buyer_name, buyer_email, channel, line_items, fairs(name)")
+              .eq("payment_intent_id", paymentIntent.id)
+              .single();
+            const fair = session?.fairs as unknown as { name: string } | null;
+            if (session?.channel === "online" && session.buyer_email && fair) {
+              await sendOrderConfirmationEmail({
+                to: session.buyer_email,
+                buyerName: session.buyer_name,
+                fairName: fair.name,
+                orderCode: session.id.slice(0, 8).toUpperCase(),
+                orderUrl: `${origin}/fairs/${session.fair_id}/order/${session.id}`,
+                lineItems: session.line_items,
+              });
+            }
+          } catch (emailErr) {
+            console.error("Failed to send order confirmation email", emailErr);
+          }
+        }
         break;
       }
       default:

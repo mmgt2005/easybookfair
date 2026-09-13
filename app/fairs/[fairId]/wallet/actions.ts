@@ -12,12 +12,16 @@ export async function createWalletFunding(
   grade: string,
   teacher: string,
   amount: number,
+  parentEmail: string,
 ) {
   if (!studentName.trim()) {
     throw new Error("Student name is required");
   }
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Amount must be positive");
+  }
+  if (!parentEmail.trim()) {
+    throw new Error("Email is required");
   }
 
   const service = createServiceClient();
@@ -74,7 +78,7 @@ export async function createWalletFunding(
 
   const { data: funding, error: fundingError } = await service
     .from("wallet_fundings")
-    .insert({ wallet_id: walletId, amount })
+    .insert({ wallet_id: walletId, amount, parent_email: parentEmail.trim() })
     .select("id")
     .single();
   if (fundingError) throw new Error(fundingError.message);

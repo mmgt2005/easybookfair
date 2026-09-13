@@ -203,23 +203,26 @@ each is created.
 ### Order pickup (`/admin/fairs/<id>/pickup`)
 
 Every online order is for pickup during the fair, not shipping — search
-by the buyer's name or email, see what they bought, and **Mark picked
-up** once you've handed it over. There's no confirmation email sent to
-buyers (no transactional email service is configured) — their order
-confirmation page (shown right after paying, with an order code) is their
-only record, so they need to bring that or otherwise identify themselves.
+by the buyer's name or email, see the actual titles they bought (not just
+a count), and **Mark picked up** once you've handed it over. Buyers get a
+confirmation email (Resend) with their order code as backup, but the app
+never depends on it arriving — their confirmation page, or
+`/fairs/<id>/orders` (looks orders up by email) if they lose that too, are
+the reliable paths.
 
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an
 organization" above). A parent loads money onto a named student's balance
-from `/fairs/<id>/wallet` (public, no login) — Stripe Elements, same as
-the storefront. The student then spends it down **themselves**, with no
-login either: at `/admin/fairs/<id>/checkout`, search the wallet section
-by the student's name, pick the matching student (grade/teacher shown to
-tell apart same-name students), and charge the cart to that balance —
-same identity approach as Scholastic's own eWallet (a name/grade/teacher
-lookup, not a PIN or account). Overdrawing a wallet is rejected outright.
+from `/fairs/<id>/wallet` (public, no login) — quick $10/$20/$50 buttons
+or any amount, paid via Stripe Elements same as the storefront, with a
+confirmation email sent to the parent. The student then spends it down
+**themselves**, with no login either: at `/admin/fairs/<id>/checkout`,
+search the wallet section by the student's name, pick the matching
+student (grade/teacher shown to tell apart same-name students), and
+charge the cart to that balance — same identity approach as Scholastic's
+own eWallet (a name/grade/teacher lookup, not a PIN or account).
+Overdrawing a wallet is rejected outright.
 
 Unspent balance does **not** refund to the parent or roll over to next
 year — from the wallets page, **"Close eWallets for this fair"** sweeps
@@ -280,20 +283,23 @@ separate "missing inventory" bill later.
 ## Buyer guide
 
 Browse a fair's storefront at `/fairs/<id>` (scoped to that specific
-fair — you won't see other orgs' inventory), add items to your cart, and
-check out with a card as a guest — no account needed, just your name and
-email. **Orders are for pickup at the fair, not shipped.** After paying,
-your confirmation page shows an order code — **there's no confirmation
-email**, so save that page or write the code down; it's your only record
-of the order. Bring it (or just your name) to the pickup table during the
-fair.
+fair — you won't see other orgs' inventory) — cover images, a search box,
+a category filter, and a sort order (title or price); a "↻ Refresh
+availability" button reloads the counts if you've had the page open a
+while. Add items to your cart, and check out with a card as a guest — no
+account needed, just your name and email. **Orders are for pickup at the
+fair, not shipped.** After paying, your confirmation page shows an order
+code, and a confirmation email is sent too — but treat both as backup,
+not guaranteed: if you lose them, `/fairs/<id>/orders` looks your order(s)
+up again by the email you used at checkout.
 
 If your student's school offers **student wallets**, you can instead load
 money onto your kid's own balance at `/fairs/<id>/wallet` (only shown for
-schools) so they can shop the fair independently, without carrying cash —
-they spend it down themselves at the checkout table by giving their name.
-Any amount left unspent after the fair becomes an additional donation
-toward the school — **it isn't refunded or carried over to next time**.
+schools, with quick $10/$20/$50 buttons or any amount you choose) so they
+can shop the fair independently, without carrying cash — they spend it
+down themselves at the checkout table by giving their name. Any amount
+left unspent after the fair becomes an additional donation toward the
+school — **it isn't refunded or carried over to next time**.
 
 Promotions/bundle discounts, if any are active, are meant to apply
 automatically at checkout — not built yet (see below).
@@ -304,8 +310,6 @@ automatically at checkout — not built yet (see below).
 - Chargeback/dispute reconciliation beyond a basic refund.
 - Promotions/bundle discounts (schema exists, no checkout logic reads it
   yet).
-- Confirmation emails for online orders or wallet funding — everything is
-  shown on-screen only.
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't
   invoke from a browser.

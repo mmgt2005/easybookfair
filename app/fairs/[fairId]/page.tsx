@@ -8,6 +8,7 @@ type StorefrontItem = {
   price: number;
   image_url: string | null;
   description: string | null;
+  category: string | null;
   available: number;
 };
 
@@ -37,22 +38,28 @@ export default async function FairStorefrontPage({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <div>
         <h1 className="font-heading text-2xl font-bold text-neutral-900">
           {fairInfo.fair_name} 🎪
         </h1>
         <p className="text-sm text-neutral-600">{fairInfo.org_name}</p>
-        {fairInfo.is_school && (
-          <p className="mt-1 text-sm">
+        <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
+          {fairInfo.is_school && (
             <Link
               href={`/fairs/${fairId}/wallet`}
               className="font-semibold text-accent-600 hover:underline"
             >
               Set up or add to a student wallet →
             </Link>
-          </p>
-        )}
+          )}
+          <Link
+            href={`/fairs/${fairId}/orders`}
+            className="font-semibold text-accent-600 hover:underline"
+          >
+            Find my order →
+          </Link>
+        </p>
       </div>
       <StorefrontClient fairId={fairId} items={(items as StorefrontItem[]) ?? []} />
     </div>

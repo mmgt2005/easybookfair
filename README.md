@@ -12,10 +12,13 @@ pickup at the fair (`/fairs/<id>`), a parent-funded student wallet a kid
 spends down independently (`/fairs/<id>/wallet`, schools only), and plain
 cash (already existed). All four write through the same channel-agnostic
 `record_sale()`/ledger core. Phase 2 (admin catalog + allocation) is done.
-Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
-companion app — not reachable from a browser) and transactional email for
-order/wallet confirmations (currently shown on-screen only, nothing is
-emailed).
+Buyer-facing polish since then: cover-image storefront browsing with
+search/category/sort, order recovery by email, item titles carried through
+to the pickup/confirmation screens, and confirmation emails via Resend for
+both online orders and wallet fundings. Still ahead: Tap to Pay/Bluetooth-
+reader support (needs a native mobile companion app — not reachable from a
+browser) and promotions/bundle discounts (schema exists, no checkout path
+reads it yet).
 
 ## Stack
 
@@ -60,6 +63,9 @@ code (everything that needs to be unit-tested).
    - `0023_checkout_sessions_pickup.sql`
    - `0024_fair_storefront_items.sql`
    - `0025_public_fair_and_order_lookup.sql`
+   - `0026_fair_storefront_items_category.sql`
+   - `0027_checkout_sessions_by_email.sql`
+   - `0028_wallet_fundings_parent_email.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -104,21 +110,32 @@ code (everything that needs to be unit-tested).
    `/admin/fairs/<id>/checkout` builds a cart from that fair's allocated
    stock and charges it (or spends from a student wallet — see below).
 5. Online storefront (`/fairs/<id>`, public, no login): buyers browse a
-   fair's allocated stock and check out with Stripe Elements — a guest
-   checkout, no buyer account. Paid orders are for **pickup at the fair**,
-   not shipped; the confirmation page (`/fairs/<id>/order/<id>`) shows an
-   order code — there's no confirmation email (no transactional email
-   service is configured), so that page/code is the buyer's only record.
-   Admins redeem orders at `/admin/fairs/<id>/pickup`.
+   fair's allocated stock (cover images, search, category filter, sort —
+   a "↻ Refresh availability" button reloads the count in case someone
+   else just bought the last copy) and check out with Stripe Elements as
+   a guest. Paid orders are for **pickup at the fair**, not shipped; the
+   confirmation page (`/fairs/<id>/order/<id>`) shows an order code and a
+   confirmation email is sent (see step 7). If a buyer loses both,
+   `/fairs/<id>/orders` looks orders up by the email given at checkout.
+   Admins redeem orders at `/admin/fairs/<id>/pickup`, which now shows the
+   actual titles in the cart, not just a count.
 6. Student wallets (`/fairs/<id>/wallet`, public, schools only — set
    "Is a school" on the org's edit page first): a parent loads money onto
-   a named student's balance; the student then spends it down themselves
-   at the checkout table (search by name in the wallet section of
+   a named student's balance (quick $10/$20/$50 preset buttons, or any
+   amount); the student then spends it down themselves at the checkout
+   table (search by name in the wallet section of
    `/admin/fairs/<id>/checkout` — no login for the student either, same
    name/grade/teacher lookup Scholastic's own eWallet uses). Unspent
    balance does **not** refund or roll over — an admin sweeps it into the
    fair's org payout from `/admin/fairs/<id>/wallets` ("Close eWallets for
    this fair"), a manual, irreversible action.
+7. Confirmation emails (Resend): grab an API key from
+   [resend.com/api-keys](https://resend.com/api-keys) for
+   `RESEND_API_KEY`, and set `EMAIL_FROM` to an address on a domain you've
+   verified in Resend (their shared test domain works for local dev, but
+   real delivery needs your own verified sending domain). Sent after a
+   successful online order or wallet funding — best-effort, a delivery
+   failure never fails the underlying payment (see `lib/email.ts`).
 
 ## Deploying
 
@@ -126,10 +143,10 @@ Also deployable to Vercel: import the repo, set the **Production Branch**
 (Project Settings → Git) to `claude/new-session-dm851x` since that's where
 this project's work lives, and add the variables from `.env.example` under
 Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones (including
-the new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) can use the "Config" type,
-`SUPABASE_SERVICE_ROLE_KEY`/`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`
-should stay "Secret". Every push to that branch triggers a new deployment
-automatically.
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) can use the "Config" type,
+`SUPABASE_SERVICE_ROLE_KEY`/`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/
+`RESEND_API_KEY` should stay "Secret". Every push to that branch triggers a
+new deployment automatically.
 
 ## Design system
 
@@ -149,10 +166,14 @@ inventing new colors per page.
   joined-column reads in the allocation/fairs pages use an `as unknown as`
   cast to work around it. Regenerate real types once a project exists
   (command's in that file) and those casts should come out.
-- No transactional email service is configured. Order and wallet-funding
-  confirmations only ever show on-screen (an order code, a "funded"
-  message) — nothing is emailed, so a buyer who closes that tab without
-  noting their order code has no other way to find it later.
+- Order/wallet-funding confirmation emails (Resend, `lib/email.ts`) are
+  best-effort — a delivery failure is only logged, never surfaced to the
+  buyer or retried. If `RESEND_API_KEY`/`EMAIL_FROM` aren't set, sending
+  throws and is caught the same way, so email is silently skipped rather
+  than breaking checkout — the confirmation page and `/fairs/<id>/orders`
+  lookup remain the reliable fallback either way.
+- No promotions/bundle discounts — the `promotions` table exists in the
+  schema but no checkout path (online, in-person, or wallet) reads it.
 - Available-to-sell checks (online checkout, wallet spending, in-person
   checkout) aren't row-locked the way `allocate_inventory` is — two carts
   finishing at the same instant for the last unit of an item could both

@@ -97,6 +97,7 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
 
     return {
       catalog_item_id: item.id,
+      title: item.title,
       quantity: line.quantity,
       price_charged: item.price,
       wholesale_cost: item.cost,

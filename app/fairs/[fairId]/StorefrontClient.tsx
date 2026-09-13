@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { getStripeClient } from "@/lib/stripeClient";
 import { createGuestCheckout } from "./actions";
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input, Select } from "@/components/ui";
 
 type Item = {
   catalog_item_id: string;
@@ -12,11 +13,18 @@ type Item = {
   price: number;
   image_url: string | null;
   description: string | null;
+  category: string | null;
   available: number;
 };
 
+type SortKey = "title" | "price-asc" | "price-desc";
+
 export function StorefrontClient({ fairId, items }: { fairId: string; items: Item[] }) {
+  const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [sort, setSort] = useState<SortKey>("title");
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [checkout, setCheckout] = useState<{
@@ -25,6 +33,27 @@ export function StorefrontClient({ fairId, items }: { fairId: string; items: Ite
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const categories = useMemo(
+    () => Array.from(new Set(items.map((i) => i.category).filter((c): c is string => !!c))).sort(),
+    [items],
+  );
+
+  const visibleItems = useMemo(() => {
+    let filtered = items;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter((i) => i.title.toLowerCase().includes(q));
+    }
+    if (category) {
+      filtered = filtered.filter((i) => i.category === category);
+    }
+    const sorted = [...filtered];
+    if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sort === "price-asc") sorted.sort((a, b) => a.price - b.price);
+    else if (sort === "price-desc") sorted.sort((a, b) => b.price - a.price);
+    return sorted;
+  }, [items, search, category, sort]);
 
   const total = items.reduce(
     (sum, item) => sum + (cart[item.catalog_item_id] ?? 0) * item.price,
@@ -74,52 +103,109 @@ export function StorefrontClient({ fairId, items }: { fairId: string; items: Ite
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
-              <th className="py-2 pl-4 pr-4">Item</th>
-              <th className="py-2 pr-4">Price</th>
-              <th className="py-2 pr-4">Available</th>
-              <th className="py-2 pr-4">Qty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.catalog_item_id} className="border-b border-neutral-50 last:border-0">
-                <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{item.title}</td>
-                <td className="py-2 pr-4">${item.price.toFixed(2)}</td>
-                <td className="py-2 pr-4">{item.available}</td>
-                <td className="py-2 pr-4">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={item.available}
-                    value={cart[item.catalog_item_id] ?? 0}
-                    onChange={(e) => updateQty(item.catalog_item_id, Number(e.target.value))}
-                    className="w-20 px-2 py-1"
-                  />
-                </td>
-              </tr>
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-4 pl-4 text-neutral-500">
-                  Nothing available to buy online right now.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <div className="flex-1">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Search titles…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-[12rem]"
+          />
+          {categories.length > 0 && (
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-auto"
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="w-auto"
+          >
+            <option value="title">Title A–Z</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+          </Select>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => router.refresh()}
+            title="Reload availability in case someone else just bought the last copy"
+          >
+            ↻ Refresh availability
+          </Button>
+        </div>
 
-      <Card className="max-w-sm">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {visibleItems.map((item) => (
+            <Card key={item.catalog_item_id} className="flex flex-col gap-2 p-3">
+              <div className="aspect-square w-full overflow-hidden rounded-lg bg-neutral-100">
+                {item.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.image_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-3xl">
+                    📖
+                  </div>
+                )}
+              </div>
+              <p className="text-sm font-semibold leading-snug text-neutral-800">{item.title}</p>
+              <p className="text-xs text-neutral-500">{item.available} available</p>
+              <p className="font-semibold text-neutral-900">${item.price.toFixed(2)}</p>
+              <Input
+                type="number"
+                min={0}
+                max={item.available}
+                value={cart[item.catalog_item_id] ?? 0}
+                onChange={(e) => updateQty(item.catalog_item_id, Number(e.target.value))}
+                className="w-full px-2 py-1"
+              />
+            </Card>
+          ))}
+          {visibleItems.length === 0 && (
+            <p className="col-span-full py-4 text-neutral-500">
+              {items.length === 0
+                ? "Nothing available to buy online right now."
+                : "No items match your search."}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <Card className="w-full lg:sticky lg:top-6 lg:max-w-sm">
         <h2 className="font-heading font-bold text-neutral-900">Your order</h2>
         <p className="mb-3 mt-1 text-xs text-neutral-500">
           Pick up your order during the fair&apos;s allotted pickup time — nothing ships. Bring
           your name and this confirmation.
         </p>
+        <ul className="mb-3 flex flex-col gap-1 text-sm">
+          {Object.entries(cart).map(([catalogItemId, qty]) => {
+            const item = items.find((i) => i.catalog_item_id === catalogItemId);
+            if (!item) return null;
+            return (
+              <li key={catalogItemId} className="flex justify-between">
+                <span>
+                  {qty}× {item.title}
+                </span>
+                <span>${(qty * item.price).toFixed(2)}</span>
+              </li>
+            );
+          })}
+        </ul>
         <p className="mb-3 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
         <form onSubmit={handleCheckout} className="flex flex-col gap-2">
           <Input

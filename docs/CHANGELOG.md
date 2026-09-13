@@ -9,6 +9,57 @@ which point versioning starts.
 
 ### Added
 
+- **Buyer-facing polish pass** on top of the four payment options below —
+  migrations `0026`–`0028`:
+  - **Fixed a real gap, not just cosmetics**: `checkout_sessions.line_items`
+    never carried each item's `title`, only `catalog_item_id`/`quantity`/
+    prices — so the order confirmation page literally rendered the
+    placeholder text "1× item", and the admin pickup screen could only
+    show a total count, with no way to know *which* books to hand over.
+    Both `createGuestCheckout` and `createInPersonCheckout` now snapshot
+    `title` into the line item alongside price/cost; both screens render
+    it.
+  - **Storefront redesign**: a responsive card grid with cover thumbnails
+    (`image_url`, falling back to a placeholder icon) replaces the old
+    plain table, plus client-side search, a category filter, and a sort
+    order (title / price) — all computed from the page's own loaded item
+    list, no extra round-trip. `fair_storefront_items` (migration `0024`)
+    now also returns `category` (migration `0026`; changing a `returns
+    table(...)` function's columns needs `drop function` before `create or
+    replace` — `CREATE OR REPLACE` alone can't change the OUT parameter
+    list, and the DROP takes its grants with it, so they're reapplied
+    after). A "↻ Refresh availability" button (`router.refresh()`) covers
+    the case where the displayed count goes stale.
+  - **Order recovery** (`/fairs/<id>/orders`): a buyer who loses their
+    order code/confirmation can look past online orders back up by the
+    email they gave at checkout — `get_checkout_sessions_by_email`
+    (migration `0027`), scoped to that fair's `online` channel only.
+    Documented tradeoff: this is keyed on an unverified email, not a
+    login — anyone who knows/guesses it can see the order (low-stakes
+    data: what was ordered, pickup status), same trust level already
+    accepted for the single-order lookup-by-unguessable-id page.
+  - **Wallet funding amount presets** ($10/$20/$50 quick buttons alongside
+    the custom-amount field).
+  - **Confirmation emails via Resend** (`lib/resend.ts`, `lib/email.ts`):
+    sent from the payment webhook after `record_checkout_sale` (online
+    orders only — in-person buyers are standing right there) and after
+    `record_wallet_funding` complete, using the same `kind`-tag branch
+    already added for those two RPCs. Wired as strictly best-effort — each
+    send is wrapped in try/catch and only logged on failure, since the
+    underlying payment has already committed by the time the email is
+    attempted and must never be retried by failing the webhook response.
+    `wallet_fundings` gained a `parent_email` column (migration `0028`) to
+    have something to send to; `checkout_sessions.buyer_email` already
+    existed. New required env vars: `RESEND_API_KEY`, `EMAIL_FROM`.
+  - Validated against a real local Postgres instance:
+    `fair_storefront_items` returns `category`; `get_checkout_sessions_by_
+    email` matches case-insensitively and correctly excludes a different
+    fair's order and an in-person order. Not validated in a live browser
+    against real data — the `.env.local` present in this environment
+    points at the user's actual Supabase project, which hadn't had this
+    batch's migrations applied yet, and connecting to real infrastructure
+    to test wasn't something to do unprompted; `npm run build`/
+    `typecheck` and the SQL tests above are what actually ran.
 - **Four buyer payment options, all writing through the same ledger core**
   (migrations `0015`–`0025`): online storefront with fair pickup, a
   parent-funded student wallet, plus the existing in-person reader and

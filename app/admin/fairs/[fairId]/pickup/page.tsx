@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { markPickedUp } from "./actions";
 import { Badge, Button, Card, Input, PageHeader } from "@/components/ui";
 
-type LineItem = { quantity: number };
+type LineItem = { title: string; quantity: number };
 
 export default async function PickupPage({
   params,
@@ -58,7 +58,6 @@ export default async function PickupPage({
           <tbody>
             {(orders ?? []).map((order) => {
               const lineItems = (order.line_items as LineItem[]) ?? [];
-              const totalItems = lineItems.reduce((sum, l) => sum + l.quantity, 0);
               return (
                 <tr key={order.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4 font-mono text-xs text-neutral-500">
@@ -68,7 +67,15 @@ export default async function PickupPage({
                     <div className="font-semibold text-neutral-800">{order.buyer_name}</div>
                     <div className="text-xs text-neutral-500">{order.buyer_email}</div>
                   </td>
-                  <td className="py-2 pr-4">{totalItems} item(s)</td>
+                  <td className="py-2 pr-4">
+                    <ul className="list-disc pl-4">
+                      {lineItems.map((line, i) => (
+                        <li key={i}>
+                          {line.quantity}× {line.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
                   <td className="py-2 pr-4">
                     <Badge tone={order.fulfillment_status === "picked_up" ? "success" : "warning"}>
                       {order.fulfillment_status === "picked_up" ? "Picked up" : "Awaiting pickup"}
