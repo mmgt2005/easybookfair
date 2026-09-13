@@ -7,6 +7,18 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admin checkout screen never previewed promotions**: active promotions
+  were always applied correctly to the actual charge (reader, wallet, and
+  cash all compute `applyPromotions()` server-side before recording the
+  sale), but `CheckoutClient.tsx`'s cart list and "Total" always summed
+  plain `catalog_items.price` — a cashier had no way to see a discount was
+  live until after charging. The screen now fetches the same active,
+  in-window promotions and runs the same `applyPromotions()` call to
+  preview the real discounted total and tag discounted lines (🏷️) before
+  the button is even clicked.
+
 ### Added
 
 - **Cash tender on the admin checkout screen** (migration `0043`,

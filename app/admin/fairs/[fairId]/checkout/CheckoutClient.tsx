@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { loadStripeTerminal, type Reader, type Terminal } from "@stripe/terminal-js";
 import {
   createInPersonCheckout,
@@ -10,6 +10,7 @@ import {
   chargeCash,
   type WalletMatch,
 } from "./actions";
+import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
 import { Button, Card, Input } from "@/components/ui";
 
 type Item = { catalog_item_id: string; title: string; price: number; available: number };
@@ -22,12 +23,14 @@ export function CheckoutClient({
   terminalLocationId,
   allowWallet,
   allowCash,
+  promotions,
 }: {
   fairId: string;
   items: Item[];
   terminalLocationId: string | null;
   allowWallet: boolean;
   allowCash: boolean;
+  promotions: ActivePromotion[];
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>("idle");
@@ -39,10 +42,32 @@ export function CheckoutClient({
   const [selectedWallet, setSelectedWallet] = useState<WalletMatch | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
 
-  const total = items.reduce(
-    (sum, item) => sum + (cart[item.catalog_item_id] ?? 0) * item.price,
-    0,
+  // Cost is irrelevant to a price preview (only price_charged is displayed
+  // here) — 0 is a safe placeholder, never sent anywhere; the real
+  // wholesale_cost is looked up again server-side when the sale is charged.
+  const catalogById = useMemo(() => {
+    const map = new Map<string, CatalogPriceInfo>();
+    for (const item of items) {
+      map.set(item.catalog_item_id, { price: item.price, cost: 0 });
+    }
+    return map;
+  }, [items]);
+
+  const cartLines = useMemo(
+    () => Object.entries(cart).map(([catalog_item_id, quantity]) => ({ catalog_item_id, quantity })),
+    [cart],
   );
+
+  // Preview only — the same applyPromotions() call the server actions make
+  // when a sale is actually charged (lib/promotions.ts), so what the
+  // cashier sees here matches what the buyer is really charged instead of
+  // silently pricing from full catalog price.
+  const pricedLines = useMemo(
+    () => applyPromotions(cartLines, catalogById, promotions),
+    [cartLines, catalogById, promotions],
+  );
+
+  const total = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
 
   async function getTerminal(): Promise<Terminal> {
     if (terminalRef.current) return terminalRef.current;
@@ -286,19 +311,23 @@ export function CheckoutClient({
       <Card className="w-full max-w-sm">
         <h2 className="font-heading font-bold text-neutral-900">Cart</h2>
         <ul className="my-3 flex flex-col gap-1 text-sm">
-          {Object.entries(cart).map(([catalogItemId, qty]) => {
-            const item = items.find((i) => i.catalog_item_id === catalogItemId);
+          {pricedLines.map((line, i) => {
+            const item = items.find((it) => it.catalog_item_id === line.catalog_item_id);
             if (!item) return null;
+            const discounted = line.promotion_id !== null;
             return (
-              <li key={catalogItemId} className="flex justify-between">
+              <li key={`${line.catalog_item_id}-${i}`} className="flex justify-between">
                 <span>
-                  {qty}× {item.title}
+                  {line.quantity}× {item.title}
+                  {discounted && (
+                    <span className="ml-1 text-xs font-semibold text-accent-600">🏷️ discount</span>
+                  )}
                 </span>
-                <span>${(qty * item.price).toFixed(2)}</span>
+                <span>${(line.quantity * line.price_charged).toFixed(2)}</span>
               </li>
             );
           })}
-          {Object.keys(cart).length === 0 && <li className="text-neutral-500">Empty</li>}
+          {pricedLines.length === 0 && <li className="text-neutral-500">Empty</li>}
         </ul>
         <p className="mb-3 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
 

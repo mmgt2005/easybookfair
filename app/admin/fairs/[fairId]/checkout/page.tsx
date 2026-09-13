@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { CheckoutClient } from "./CheckoutClient";
 import { Card } from "@/components/ui";
+import type { ActivePromotion } from "@/lib/promotions";
 
 export default async function CheckoutPage({
   params,
@@ -44,6 +45,20 @@ export default async function CheckoutPage({
   for (const row of soldRows ?? []) {
     soldByItem.set(row.catalog_item_id, (soldByItem.get(row.catalog_item_id) ?? 0) + 1);
   }
+
+  // Active, in-window promotions for this fair — passed down so the screen
+  // can preview the actual discounted total, the same way
+  // createInPersonCheckout/chargeWallet/chargeCash compute it server-side
+  // when the sale is actually recorded (lib/promotions.ts).
+  const nowIso = new Date().toISOString();
+  const { data: promotionRows } = await supabase
+    .from("promotions")
+    .select("id, kind, config, starts_at, ends_at")
+    .eq("fair_id", fairId)
+    .eq("active", true);
+  const activePromotions = (promotionRows ?? []).filter(
+    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  ) as ActivePromotion[];
 
   const items = (allocations ?? [])
     .map((a) => {
@@ -101,6 +116,7 @@ export default async function CheckoutPage({
         terminalLocationId={fair.allow_in_person ? fair.stripe_terminal_location_id : null}
         allowWallet={fair.allow_wallet}
         allowCash={fair.allow_cash}
+        promotions={activePromotions}
       />
     </div>
   );
