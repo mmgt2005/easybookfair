@@ -2,7 +2,11 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
-import { applyPromotions, type ActivePromotion } from "@/lib/promotions";
+import {
+  applyPromotions,
+  isPromotionInWindow,
+  type ActivePromotion,
+} from "@/lib/promotions";
 import { isPlatformAdmin } from "@/lib/auth";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
@@ -56,7 +60,10 @@ export async function createGuestCheckout(
     { data: allocations, error: allocError },
     { data: soldRows, error: soldError },
   ] = await Promise.all([
-    service.from("catalog_items").select("id, title, price, cost").in("id", catalogItemIds),
+    service
+      .from("catalog_items")
+      .select("id, title, price, cost")
+      .in("id", catalogItemIds),
     service
       .from("allocations")
       .select("catalog_item_id, quantity_allocated")
@@ -76,7 +83,10 @@ export async function createGuestCheckout(
 
   const soldByItem = new Map<string, number>();
   for (const row of soldRows ?? []) {
-    soldByItem.set(row.catalog_item_id, (soldByItem.get(row.catalog_item_id) ?? 0) + 1);
+    soldByItem.set(
+      row.catalog_item_id,
+      (soldByItem.get(row.catalog_item_id) ?? 0) + 1,
+    );
   }
   const allocatedByItem = new Map(
     (allocations ?? []).map((a) => [a.catalog_item_id, a.quantity_allocated]),
@@ -105,14 +115,13 @@ export async function createGuestCheckout(
   // discounts"). May split one cart line into more than one output line
   // (e.g. some units bundled, the remainder at full price) — see
   // lib/promotions.ts.
-  const nowIso = new Date().toISOString();
   const { data: promotionRows } = await service
     .from("promotions")
     .select("id, kind, config, starts_at, ends_at")
     .eq("fair_id", fairId)
     .eq("active", true);
-  const activePromotions = (promotionRows ?? []).filter(
-    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  const activePromotions = (promotionRows ?? []).filter((p) =>
+    isPromotionInWindow(p),
   ) as ActivePromotion[];
 
   const pricedLines = applyPromotions(cart, catalogById, activePromotions);

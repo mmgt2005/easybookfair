@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
-import { applyPromotions, type ActivePromotion } from "@/lib/promotions";
+import {
+  applyPromotions,
+  isPromotionInWindow,
+  type ActivePromotion,
+} from "@/lib/promotions";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -40,7 +44,9 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
     .single();
 
   if (!fair?.stripe_terminal_location_id) {
-    throw new Error("Set up a Terminal reader for this fair first (fair's Edit page)");
+    throw new Error(
+      "Set up a Terminal reader for this fair first (fair's Edit page)",
+    );
   }
 
   const catalogItemIds = cart.map((line) => line.catalog_item_id);
@@ -50,7 +56,10 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
     { data: allocations, error: allocError },
     { data: soldRows, error: soldError },
   ] = await Promise.all([
-    supabase.from("catalog_items").select("id, title, price, cost").in("id", catalogItemIds),
+    supabase
+      .from("catalog_items")
+      .select("id, title, price, cost")
+      .in("id", catalogItemIds),
     supabase
       .from("allocations")
       .select("catalog_item_id, quantity_allocated")
@@ -70,7 +79,10 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
 
   const soldByItem = new Map<string, number>();
   for (const row of soldRows ?? []) {
-    soldByItem.set(row.catalog_item_id, (soldByItem.get(row.catalog_item_id) ?? 0) + 1);
+    soldByItem.set(
+      row.catalog_item_id,
+      (soldByItem.get(row.catalog_item_id) ?? 0) + 1,
+    );
   }
   const allocatedByItem = new Map(
     (allocations ?? []).map((a) => [a.catalog_item_id, a.quantity_allocated]),
@@ -96,14 +108,13 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
 
   // Active, in-window promotions for this fair — applied automatically,
   // same as the public storefront's guest checkout (lib/promotions.ts).
-  const nowIso = new Date().toISOString();
   const { data: promotionRows } = await supabase
     .from("promotions")
     .select("id, kind, config, starts_at, ends_at")
     .eq("fair_id", fairId)
     .eq("active", true);
-  const activePromotions = (promotionRows ?? []).filter(
-    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  const activePromotions = (promotionRows ?? []).filter((p) =>
+    isPromotionInWindow(p),
   ) as ActivePromotion[];
 
   const pricedLines = applyPromotions(cart, catalogById, activePromotions);
@@ -184,7 +195,10 @@ export type WalletMatch = {
 // Scholastic's own cashier tool works (name/grade/teacher lookup, no
 // login), not a strict single-match search since duplicate names are
 // resolved by a human glancing at grade/teacher.
-export async function searchWallets(fairId: string, query: string): Promise<WalletMatch[]> {
+export async function searchWallets(
+  fairId: string,
+  query: string,
+): Promise<WalletMatch[]> {
   await requireAdmin();
   if (!query.trim()) return [];
 
@@ -213,7 +227,11 @@ export async function searchWallets(fairId: string, query: string): Promise<Wall
 // not duplicated across a third PL/pgSQL implementation. spend_from_wallet
 // (migration 0039) accepts the resulting price_charged/promotion_id per
 // line instead of always pricing from catalog_items itself.
-export async function chargeWallet(fairId: string, walletId: string, cart: CartLine[]) {
+export async function chargeWallet(
+  fairId: string,
+  walletId: string,
+  cart: CartLine[],
+) {
   await requireAdmin();
   if (!cart.length) {
     throw new Error("Cart is empty");
@@ -230,14 +248,13 @@ export async function chargeWallet(fairId: string, walletId: string, cart: CartL
 
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
-  const nowIso = new Date().toISOString();
   const { data: promotionRows } = await supabase
     .from("promotions")
     .select("id, kind, config, starts_at, ends_at")
     .eq("fair_id", fairId)
     .eq("active", true);
-  const activePromotions = (promotionRows ?? []).filter(
-    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  const activePromotions = (promotionRows ?? []).filter((p) =>
+    isPromotionInWindow(p),
   ) as ActivePromotion[];
 
   const pricedLines = applyPromotions(cart, catalogById, activePromotions);
@@ -273,14 +290,13 @@ export async function chargeCash(fairId: string, cart: CartLine[]) {
 
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
-  const nowIso = new Date().toISOString();
   const { data: promotionRows } = await supabase
     .from("promotions")
     .select("id, kind, config, starts_at, ends_at")
     .eq("fair_id", fairId)
     .eq("active", true);
-  const activePromotions = (promotionRows ?? []).filter(
-    (p) => (!p.starts_at || p.starts_at <= nowIso) && (!p.ends_at || p.ends_at >= nowIso),
+  const activePromotions = (promotionRows ?? []).filter((p) =>
+    isPromotionInWindow(p),
   ) as ActivePromotion[];
 
   const pricedLines = applyPromotions(cart, catalogById, activePromotions);

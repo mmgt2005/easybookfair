@@ -47,6 +47,30 @@ export type ActivePromotion =
   | { id: string; kind: "percent"; config: PercentConfig }
   | { id: string; kind: "bundle"; config: BundleConfig };
 
+// starts_at/ends_at are timestamptz, but the admin form only lets you pick
+// a date (no time) — the value it submits is stored as midnight at the
+// *start* of that calendar day. Comparing full timestamps therefore breaks
+// "ends_at": a promotion set to end on the fair's last day would compare
+// `ends_at (00:00:00) >= now (any time after midnight)` as false, dropping
+// out of the active window for the entire day it was meant to cover
+// instead of at the end of it. Comparing calendar-date prefixes instead
+// makes an end date inclusive through 23:59:59 of that day, and a start
+// date active from 00:00:00 of that day (already correct, kept the same
+// way for symmetry).
+function toCalendarDate(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+export function isPromotionInWindow(
+  promo: { starts_at: string | null; ends_at: string | null },
+  nowIso: string = new Date().toISOString(),
+): boolean {
+  const today = toCalendarDate(nowIso);
+  if (promo.starts_at && toCalendarDate(promo.starts_at) > today) return false;
+  if (promo.ends_at && toCalendarDate(promo.ends_at) < today) return false;
+  return true;
+}
+
 export function applyPromotions(
   cart: CartLine[],
   catalogById: Map<string, CatalogPriceInfo>,
@@ -54,23 +78,35 @@ export function applyPromotions(
 ): PricedLine[] {
   const remaining = new Map<string, number>();
   for (const line of cart) {
-    remaining.set(line.catalog_item_id, (remaining.get(line.catalog_item_id) ?? 0) + line.quantity);
+    remaining.set(
+      line.catalog_item_id,
+      (remaining.get(line.catalog_item_id) ?? 0) + line.quantity,
+    );
   }
 
   const output: PricedLine[] = [];
 
   for (const promo of promotions.filter((p) => p.kind === "bundle")) {
-    const { catalog_item_ids: eligibleIds, buy_quantity: buyQuantity, bundle_price: bundlePrice } =
-      promo.config;
+    const {
+      catalog_item_ids: eligibleIds,
+      buy_quantity: buyQuantity,
+      bundle_price: bundlePrice,
+    } = promo.config;
     if (!eligibleIds?.length || buyQuantity <= 0 || bundlePrice < 0) continue;
 
     // Richest-item-first, so the buyer gets the best possible deal — the
     // usual convention for "any N of these for $X" bundles.
     const pool = eligibleIds
       .filter((id) => (remaining.get(id) ?? 0) > 0)
-      .sort((a, b) => (catalogById.get(b)?.price ?? 0) - (catalogById.get(a)?.price ?? 0));
+      .sort(
+        (a, b) =>
+          (catalogById.get(b)?.price ?? 0) - (catalogById.get(a)?.price ?? 0),
+      );
 
-    const poolTotal = pool.reduce((sum, id) => sum + (remaining.get(id) ?? 0), 0);
+    const poolTotal = pool.reduce(
+      (sum, id) => sum + (remaining.get(id) ?? 0),
+      0,
+    );
     const numBundles = Math.floor(poolTotal / buyQuantity);
     if (numBundles <= 0) continue;
 
@@ -97,13 +133,21 @@ export function applyPromotions(
   }
 
   for (const promo of promotions.filter((p) => p.kind === "percent")) {
-    const { percent_off: percentOff, min_quantity: minQuantity = 1, catalog_item_ids: configIds } =
-      promo.config;
+    const {
+      percent_off: percentOff,
+      min_quantity: minQuantity = 1,
+      catalog_item_ids: configIds,
+    } = promo.config;
     if (percentOff <= 0 || percentOff > 100) continue;
 
     const eligibleIds =
-      configIds && configIds.length > 0 ? configIds : Array.from(remaining.keys());
-    const poolTotal = eligibleIds.reduce((sum, id) => sum + (remaining.get(id) ?? 0), 0);
+      configIds && configIds.length > 0
+        ? configIds
+        : Array.from(remaining.keys());
+    const poolTotal = eligibleIds.reduce(
+      (sum, id) => sum + (remaining.get(id) ?? 0),
+      0,
+    );
     if (poolTotal < minQuantity) continue;
 
     for (const id of eligibleIds) {
@@ -114,7 +158,8 @@ export function applyPromotions(
       output.push({
         catalog_item_id: id,
         quantity: qty,
-        price_charged: Math.round(item.price * (1 - percentOff / 100) * 100) / 100,
+        price_charged:
+          Math.round(item.price * (1 - percentOff / 100) * 100) / 100,
         wholesale_cost: item.cost,
         promotion_id: promo.id,
       });

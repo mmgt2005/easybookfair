@@ -9,6 +9,22 @@ which point versioning starts.
 
 ### Fixed
 
+- **Promotion "Ends" date silently disabled the discount all day, every
+  day, instead of at end of day**: `promotions.starts_at`/`ends_at` are
+  `timestamptz`, but the promotion form only lets you pick a date (no
+  time) — the value it submits is stored as midnight at the *start* of
+  that calendar day. Every checkout path (guest, in-person, wallet, cash,
+  and the checkout screen's own preview) filtered with `ends_at >= now`,
+  so the instant any time passed midnight on the chosen end date, that
+  comparison went false — the promotion looked "active" in the list but
+  never actually matched anything for the rest of that day. A promotion
+  with no end date, or one ending in the future, was unaffected; one
+  ending on today's date (the most common case, since that's usually the
+  fair's own last day) silently never applied. Fixed by adding
+  `isPromotionInWindow()` (`lib/promotions.ts`), which compares calendar
+  dates instead of full timestamps — an end date is now inclusive through
+  23:59:59 of that day — and replaced the five copies of the old inline
+  filter with it.
 - **Admin checkout screen never previewed promotions**: active promotions
   were always applied correctly to the actual charge (reader, wallet, and
   cash all compute `applyPromotions()` server-side before recording the
