@@ -155,9 +155,15 @@ export async function sendSettlementPayout(fairId: string) {
     metadata: { settlement_id: settlement.id, fair_id: fairId },
   });
 
+  // transfer_confirmed_at is set here, not by a webhook — a Stripe
+  // Transfer moves funds between the platform's and the connected
+  // account's own Stripe balance, which is synchronous with this call
+  // succeeding (unlike a bank Payout, transfers have no separate pending
+  // state). transfer.reversed is the one way this can still un-happen
+  // later — see the webhook handler.
   const { error: updateError } = await supabase
     .from("settlements")
-    .update({ stripe_transfer_id: transfer.id })
+    .update({ stripe_transfer_id: transfer.id, transfer_confirmed_at: new Date().toISOString() })
     .eq("id", settlement.id);
   if (updateError) {
     throw new Error(updateError.message);

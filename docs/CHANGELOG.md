@@ -9,6 +9,44 @@ which point versioning starts.
 
 ### Added
 
+- **Settlement reconciliation** (migration `0042`): the payout/payment-
+  link buttons below previously recorded only that an attempt was made
+  — now they confirm the outcome. `settlements` gained
+  `transfer_confirmed_at`, `transfer_reversed_at`, and
+  `payment_link_paid_at`. The two payment methods are reconciled
+  differently because Stripe itself treats them differently: a Transfer
+  moves funds between the platform's and a connected account's *Stripe
+  balance*, which is synchronous with the API call succeeding (no
+  separate pending state the way a bank Payout has), so
+  `sendSettlementPayout()` sets `transfer_confirmed_at` itself right
+  after creating it — no webhook involved for the happy path.
+  `transfer_reversed_at` catches the one way a confirmed transfer can
+  still un-happen later (a dispute clawback), via a new
+  `transfer.reversed` webhook case. A Payment Link is genuinely
+  asynchronous — the org has to actually pay — so
+  `payment_link_paid_at` can only ever be set by a new
+  `checkout.session.completed` webhook case, matched by `session.
+  payment_link` against `stripe_payment_link_id` (Payment Link metadata
+  doesn't propagate to its Checkout Session the way
+  `payment_intent_data.metadata` propagates to a PaymentIntent, so
+  matching by id was simpler and just as reliable). That same
+  PaymentIntent also still triggers the existing `payment_intent.
+  succeeded` handler harmlessly — its `metadata.kind` matches neither
+  branch there, and `record_checkout_sale()` already no-ops on a
+  `payment_intent_id` with no matching `checkout_sessions` row. A new
+  `sendSettlementCollectedEmail` (`lib/email.ts`) fires once a payment
+  link is paid. The fair edit page's Settlement card and the org
+  dashboard's Payout column both now show the reconciled state — "✅
+  Payout confirmed" / "⚠️ Transfer was reversed" / "⏳ Awaiting payment"
+  / "✅ Paid on \<date\>" — instead of just the raw transfer/link id.
+  - Validated: `npm run typecheck`/`npm run build` both clean; the new
+    webhook cases follow the exact structure of the existing
+    `payment_intent.succeeded`/`account.updated` handlers (service-role
+    client, `webhook_events` dedup already covers all event types, not
+    just the two that existed before). Not exercised against a live
+    Stripe webhook delivery (would need a real Payment Link paid
+    end-to-end) — same reasoning as every other Stripe-touching batch
+    this session.
 - **Settlement payouts and payment links**
   (`app/admin/fairs/actions.ts`): closing a fair (`close_fair()`,
   migration `0036`) previously stopped at recording the settlement — the

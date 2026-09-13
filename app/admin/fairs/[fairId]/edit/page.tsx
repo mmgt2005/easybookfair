@@ -40,7 +40,7 @@ export default async function EditFairPage({
   const { data: settlement } = await supabase
     .from("settlements")
     .select(
-      "payout_due, cash_wholesale_owed, missing_inventory_cost, equipment_rental_fee, total_owed_by_org, net_payout, closed_at, stripe_transfer_id, stripe_payment_link_id",
+      "payout_due, cash_wholesale_owed, missing_inventory_cost, equipment_rental_fee, total_owed_by_org, net_payout, closed_at, stripe_transfer_id, stripe_payment_link_id, transfer_confirmed_at, transfer_reversed_at, payment_link_paid_at",
     )
     .eq("fair_id", fairId)
     .maybeSingle();
@@ -255,9 +255,22 @@ export default async function EditFairPage({
             <div className="mt-2 border-t border-neutral-100 pt-2">
               {settlement.net_payout > 0 &&
                 (settlement.stripe_transfer_id ? (
-                  <p className="text-sm text-green-700">
-                    ✅ Payout sent — Stripe transfer <code>{settlement.stripe_transfer_id}</code>
-                  </p>
+                  <div className="text-sm">
+                    {settlement.transfer_reversed_at ? (
+                      <p className="text-red-700">
+                        ⚠️ Transfer <code>{settlement.stripe_transfer_id}</code> was reversed on{" "}
+                        {new Date(settlement.transfer_reversed_at).toLocaleDateString()} — check
+                        Stripe for why.
+                      </p>
+                    ) : (
+                      <p className="text-green-700">
+                        ✅ Payout confirmed — Stripe transfer{" "}
+                        <code>{settlement.stripe_transfer_id}</code>
+                        {settlement.transfer_confirmed_at &&
+                          ` on ${new Date(settlement.transfer_confirmed_at).toLocaleDateString()}`}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-1">
                     {!org?.stripe_connect_account_id ? (
@@ -285,17 +298,25 @@ export default async function EditFairPage({
 
               {settlement.net_payout < 0 &&
                 (paymentLinkUrl ? (
-                  <p className="text-sm text-neutral-700">
-                    💳 Payment link sent —{" "}
-                    <a
-                      href={paymentLinkUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      {paymentLinkUrl}
-                    </a>
-                  </p>
+                  <div className="text-sm">
+                    {settlement.payment_link_paid_at ? (
+                      <p className="text-green-700">
+                        ✅ Paid on {new Date(settlement.payment_link_paid_at).toLocaleDateString()}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-amber-700">⏳ Awaiting payment —</p>
+                        <a
+                          href={paymentLinkUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          {paymentLinkUrl}
+                        </a>
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <form action={createSettlementPaymentLinkForFair}>
                     <Button type="submit" size="sm" variant="outline">

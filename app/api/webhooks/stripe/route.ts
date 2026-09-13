@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
-import { sendOrderConfirmationEmail, sendWalletFundingEmail } from "@/lib/email";
+import {
+  sendOrderConfirmationEmail,
+  sendWalletFundingEmail,
+  sendSettlementCollectedEmail,
+} from "@/lib/email";
 
 // Needs Node's crypto for Stripe's signature verification, not the Edge
 // runtime.
@@ -133,6 +137,58 @@ export async function POST(request: Request) {
             console.error("Failed to send order confirmation email", emailErr);
           }
         }
+        break;
+      }
+      // A settlement Payment Link's checkout completing — the genuinely
+      // asynchronous half of settlement reconciliation (a Stripe Transfer
+      // is synchronous with its own API call succeeding, so that side is
+      // recorded directly in sendSettlementPayout(), not here). Matched
+      // by `session.payment_link`, not metadata — Payment Link metadata
+      // doesn't automatically propagate to its Checkout Session, but
+      // every session created from a link carries the link's own id.
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.payment_link && session.payment_status === "paid") {
+          const { data: settlement, error } = await supabase
+            .from("settlements")
+            .update({ payment_link_paid_at: new Date().toISOString() })
+            .eq("stripe_payment_link_id", session.payment_link)
+            .is("payment_link_paid_at", null)
+            .select("id, fair_id, net_payout, organizations(name, contact_email), fairs(name)")
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+
+          if (settlement) {
+            const org = settlement.organizations as unknown as {
+              name: string;
+              contact_email: string | null;
+            } | null;
+            const fair = settlement.fairs as unknown as { name: string } | null;
+            if (org?.contact_email && fair) {
+              try {
+                await sendSettlementCollectedEmail({
+                  to: org.contact_email,
+                  fairName: fair.name,
+                  amount: -settlement.net_payout,
+                });
+              } catch (emailErr) {
+                console.error("Failed to send settlement-collected email", emailErr);
+              }
+            }
+          }
+        }
+        break;
+      }
+      // The one way a transfer already recorded as confirmed can still
+      // un-happen — a later dispute clawback or fraud finding, not part
+      // of the normal happy path.
+      case "transfer.reversed": {
+        const transfer = event.data.object as Stripe.Transfer;
+        const { error } = await supabase
+          .from("settlements")
+          .update({ transfer_reversed_at: new Date().toISOString() })
+          .eq("stripe_transfer_id", transfer.id);
+        if (error) throw new Error(error.message);
         break;
       }
       default:

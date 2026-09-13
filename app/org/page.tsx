@@ -29,10 +29,15 @@ export default async function OrgDashboard() {
       )
       .in("org_id", orgIds)
       .order("created_at", { ascending: false }),
-    supabase.from("settlements").select("fair_id, net_payout").in("org_id", orgIds),
+    supabase
+      .from("settlements")
+      .select(
+        "fair_id, net_payout, transfer_confirmed_at, transfer_reversed_at, payment_link_paid_at",
+      )
+      .in("org_id", orgIds),
   ]);
 
-  const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s.net_payout]));
+  const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +60,8 @@ export default async function OrgDashboard() {
           <tbody>
             {(fairs ?? []).map((fair) => {
               const org = fair.organizations as unknown as { is_school: boolean } | null;
-              const netPayout = settlementByFair.get(fair.id);
+              const settlement = settlementByFair.get(fair.id);
+              const netPayout = settlement?.net_payout;
               return (
                 <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{fair.name}</td>
@@ -68,14 +74,30 @@ export default async function OrgDashboard() {
                   <td className="py-2 pr-4 text-neutral-600">
                     {netPayout === undefined ? (
                       "—"
-                    ) : netPayout >= 0 ? (
-                      <span className="font-semibold text-green-700">
-                        ${netPayout.toFixed(2)}
-                      </span>
                     ) : (
-                      <span className="font-semibold text-red-700">
-                        Owe ${Math.abs(netPayout).toFixed(2)}
-                      </span>
+                      <div className="flex flex-col">
+                        {netPayout >= 0 ? (
+                          <span className="font-semibold text-green-700">
+                            ${netPayout.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-red-700">
+                            Owe ${Math.abs(netPayout).toFixed(2)}
+                          </span>
+                        )}
+                        {netPayout > 0 &&
+                          (settlement?.transfer_reversed_at ? (
+                            <span className="text-xs text-red-700">⚠️ Reversed</span>
+                          ) : settlement?.transfer_confirmed_at ? (
+                            <span className="text-xs text-neutral-500">✅ Sent</span>
+                          ) : null)}
+                        {netPayout < 0 &&
+                          (settlement?.payment_link_paid_at ? (
+                            <span className="text-xs text-neutral-500">✅ Paid</span>
+                          ) : (
+                            <span className="text-xs text-amber-700">⏳ Awaiting payment</span>
+                          ))}
+                      </div>
                     )}
                   </td>
                   <td className="flex flex-col gap-1 py-2 pr-4">

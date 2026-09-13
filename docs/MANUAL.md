@@ -402,18 +402,23 @@ to actually move the money:
   Stripe"** fires a real Stripe Transfer to the org's connected Express
   account. Disabled with an explanation if that org hasn't finished
   Stripe Connect onboarding yet, or if their payouts aren't enabled —
-  finish that first (see "Editing an organization" above). Once sent,
-  the transfer id is shown in place of the button.
+  finish that first (see "Editing an organization" above). Once sent, it
+  shows **"✅ Payout confirmed"** — Transfers move funds between Stripe
+  balances, so success is known immediately, not something to wait on.
+  If it's ever later reversed (a dispute clawback — rare), that shows
+  here too as **"⚠️ Transfer was reversed."**
 - **Negative net payout** (the org owes the platform): **"Create $X
   payment link"** generates a one-time Stripe Payment Link and emails it
-  to the org's contact address, for them to pay directly. The link is
-  shown (and stays clickable) once created.
+  to the org's contact address, for them to pay directly. It shows
+  **"⏳ Awaiting payment"** with the link until the org actually pays,
+  then flips to **"✅ Paid on <date>"** automatically — both the org and
+  the admin get a confirmation email at that point too.
 
 Either button can only be clicked once per settlement — there's no
-"resend" or "undo." Neither one currently confirms the money actually
-arrived: the button records that the attempt was made (a transfer/
-payment-link id), not that it succeeded — check Stripe's own dashboard
-to confirm a transfer landed or a payment link got paid.
+"resend" or "undo." The "awaiting payment" → "paid" transition depends
+on the Stripe webhook being subscribed to `checkout.session.completed`
+(see "Stripe setup" in the README) — without it, a link that's actually
+been paid will keep showing as awaiting payment.
 
 **Missing-inventory cost is always $0** — there's no returns-recording
 feature yet to compute it from, so nothing is billed for stock that
@@ -471,8 +476,10 @@ if you're owed money, or "Owe $X" if cash sales and/or an equipment
 rental fee outweighed your card/online margin. Moving the money is a
 button on the admin's end, not automatic on close — if you're owed
 money, it arrives as a transfer to your organization's connected Stripe
-account (once Stripe Connect onboarding is finished); if you owe money,
-you'll get an email with a link to pay it directly.
+account (once Stripe Connect onboarding is finished), shown as "✅ Sent"
+once it does; if you owe money, you'll get an email with a link to pay
+it directly, and the column shows "⏳ Awaiting payment" until you do,
+then "✅ Paid" (with another email confirming it) once you have.
 
 ## Buyer guide
 
@@ -543,9 +550,5 @@ submit something new.
   fair").
 - A returns/manifest workflow at all — `allocations.quantity_returned`
   exists in the schema but nothing in the app writes to it yet.
-- Confirming a settlement payout/payment link actually completed — the
-  "Send payout"/"Create payment link" buttons record the attempt (a
-  Stripe transfer or payment-link id), not its outcome; check Stripe's
-  own dashboard.
 
 These are called out as deferred, not silently missing.

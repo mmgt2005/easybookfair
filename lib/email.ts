@@ -161,6 +161,27 @@ export async function sendSettlementPaymentLinkEmail(params: {
   });
 }
 
+// Sent from the payment webhook once a settlement payment link is
+// actually paid (checkout.session.completed) — a receipt confirming the
+// balance is settled, not something the org needs to act on (unlike the
+// payment-link email above, which is the ask to pay).
+export async function sendSettlementCollectedEmail(params: {
+  to: string;
+  fairName: string;
+  amount: number;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Payment received — ${params.fairName}`,
+    html: `
+      <p>We've received your payment of <strong>$${params.amount.toFixed(2)}</strong>
+      for <strong>${params.fairName}</strong>. Your settlement is fully paid —
+      thank you!</p>
+    `,
+  });
+}
+
 export async function sendWalletFundingEmail(params: {
   to: string;
   studentName: string;

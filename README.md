@@ -168,7 +168,9 @@ code (everything that needs to be unit-tested).
    storefront/wallet pages need it client-side for Stripe.js (Elements).
 2. Create a webhook endpoint (Developers → Webhooks) pointing at
    `<your-deployment-url>/api/webhooks/stripe`, subscribed to at least
-   `account.updated` and `payment_intent.succeeded`. Its signing secret is
+   `account.updated`, `payment_intent.succeeded`, `checkout.session.
+   completed`, and `transfer.reversed` (the last two back settlement
+   reconciliation — see step 9 below). Its signing secret is
    `STRIPE_WEBHOOK_SECRET`. Stripe can't reach `localhost` directly — use
    the Stripe CLI (`stripe listen --forward-to localhost:3000/api/webhooks/stripe`)
    for local dev, or test against a deployed URL.
@@ -224,6 +226,14 @@ code (everything that needs to be unit-tested).
    Stripe if you haven't). **Create payment link** (shown instead when the
    org owes the platform) needs no special setup — it's a normal one-time
    Stripe Payment Link on the platform's own account.
+9. Settlement reconciliation: a Transfer is confirmed the moment it's
+   sent (no webhook needed — see the Database notes below for why), but
+   whether a payment link has actually been *paid* only ever arrives via
+   the `checkout.session.completed` webhook event from step 2 — without
+   it subscribed, the "⏳ Awaiting payment" state on the edit page and
+   the org's dashboard will never flip to "✅ Paid" even after the org
+   pays. `transfer.reversed` (also step 2) catches the rare case of a
+   transfer later being clawed back.
 
 ## Deploying
 
@@ -286,15 +296,18 @@ inventing new colors per page.
   returns-recording feature exists to drive it — `allocations.
   quantity_returned` exists in the schema but nothing ever writes it).
   Moving the money is a real button now (`sendSettlementPayout`/
-  `createSettlementPaymentLink`, `app/admin/fairs/actions.ts`), but
-  neither has reconciliation: nothing listens for the Transfer actually
-  landing or the Payment Link actually getting paid — `stripe_transfer_
-  id`/`stripe_payment_link_id` just record that the attempt was made, not
-  its outcome. Check Stripe's own dashboard to confirm either succeeded.
-  There's also no idempotency key on the Transfer/Price/Payment Link
-  calls — the disabled-once-sent button is the real guard against a
-  double-send, not a network-level safeguard, which is fine at this
-  app's one-admin-clicking-once scale.
+  `createSettlementPaymentLink`, `app/admin/fairs/actions.ts`), and both
+  are reconciled: a Transfer is marked confirmed synchronously (it has no
+  separate pending state), with `transfer.reversed` catching the rare
+  later clawback; a Payment Link's `payment_link_paid_at` only ever gets
+  set by the `checkout.session.completed` webhook event actually firing
+  — if that event isn't subscribed on the Stripe webhook endpoint (see
+  "Stripe setup" step 2), a paid link will sit showing "⏳ Awaiting
+  payment" forever even though the org already paid. There's also no
+  idempotency key on the Transfer/Price/Payment Link calls themselves —
+  the disabled-once-sent button is the real guard against a double-send,
+  not a network-level safeguard, which is fine at this app's
+  one-admin-clicking-once scale.
 - The onboarding tour's "seen it" state is per-browser (`localStorage`),
   not per-account — a new browser/device shows it again regardless of
   whether that person has seen it elsewhere. Acceptable since the "🎓 Take
@@ -462,3 +475,24 @@ inventing new colors per page.
   platform's own Stripe account (`getStripe()`), the same
   merchant-of-record model as every other charge in this app — a payment
   link charges the org, it doesn't originate from their Connect account.
+- Settlement reconciliation (migration `0042`) splits cleanly along
+  Stripe's own sync/async line, not by symmetry between the two paths:
+  `transfer_confirmed_at` is set directly inside `sendSettlementPayout()`,
+  not by a webhook — a Transfer moves funds between the platform's and a
+  connected account's *Stripe balance*, which is synchronous with the API
+  call succeeding (unlike a bank Payout, Transfers have no pending
+  state); `transfer_reversed_at` catches the one way a confirmed transfer
+  can still un-happen later, via the `transfer.reversed` event.
+  `payment_link_paid_at`, by contrast, is genuinely asynchronous (the org
+  has to actually pay) and can only be set from the
+  `checkout.session.completed` webhook event — matched by `session.
+  payment_link` against `stripe_payment_link_id`, not by metadata (a
+  Payment Link's own `metadata` doesn't propagate to its Checkout Session
+  automatically, unlike `payment_intent_data.metadata`, which does
+  propagate to the resulting PaymentIntent but wasn't needed here since
+  the session already carries the link's id directly). The same
+  `payment_intent.succeeded` handler that processes storefront/wallet
+  PaymentIntents also fires for a Payment Link's underlying PaymentIntent
+  — harmless, since its `metadata.kind` won't match either branch and
+  `record_checkout_sale()` no-ops on a `payment_intent_id` with no
+  matching `checkout_sessions` row.
