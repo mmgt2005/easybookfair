@@ -18,6 +18,9 @@ type FairPublicInfo = {
   org_name: string;
   is_school: boolean;
   status: string;
+  allow_online: boolean;
+  allow_wallet: boolean;
+  allow_in_person: boolean;
 };
 
 export default async function FairStorefrontPage({
@@ -45,7 +48,7 @@ export default async function FairStorefrontPage({
         </h1>
         <p className="text-sm text-neutral-600">{fairInfo.org_name}</p>
         <p className="mt-1 flex flex-wrap gap-x-4 text-sm">
-          {fairInfo.is_school && (
+          {fairInfo.is_school && fairInfo.allow_wallet && (
             <Link
               href={`/fairs/${fairId}/wallet`}
               className="font-semibold text-accent-600 hover:underline"
@@ -53,15 +56,24 @@ export default async function FairStorefrontPage({
               Set up or add to a student wallet →
             </Link>
           )}
-          <Link
-            href={`/fairs/${fairId}/orders`}
-            className="font-semibold text-accent-600 hover:underline"
-          >
-            Find my order →
-          </Link>
+          {fairInfo.allow_online && (
+            <Link
+              href={`/fairs/${fairId}/orders`}
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              Find my order →
+            </Link>
+          )}
         </p>
       </div>
-      <StorefrontClient fairId={fairId} items={(items as StorefrontItem[]) ?? []} />
+      {fairInfo.allow_online ? (
+        <StorefrontClient fairId={fairId} items={(items as StorefrontItem[]) ?? []} />
+      ) : (
+        <p className="text-sm text-neutral-600">
+          Online ordering isn&apos;t available for this fair — check with the organization for
+          how to shop in person.
+        </p>
+      )}
     </div>
   );
 }

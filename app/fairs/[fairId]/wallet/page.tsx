@@ -8,6 +8,9 @@ type FairPublicInfo = {
   org_name: string;
   is_school: boolean;
   status: string;
+  allow_online: boolean;
+  allow_wallet: boolean;
+  allow_in_person: boolean;
 };
 
 export default async function WalletFundingPage({
@@ -29,13 +32,15 @@ export default async function WalletFundingPage({
     return <p className="p-6 text-sm text-red-600">Fair not found.</p>;
   }
 
-  if (!fairInfo.is_school) {
+  if (!fairInfo.is_school || !fairInfo.allow_wallet) {
     return (
       <div className="mx-auto max-w-lg p-6">
         <Card>
           <p className="text-sm text-neutral-700">
-            Student wallets aren&apos;t available for {fairInfo.fair_name} — this feature is only
-            offered for organizations identified as schools.
+            Student wallets aren&apos;t available for {fairInfo.fair_name} —{" "}
+            {fairInfo.is_school
+              ? "the organization running this fair didn't enable wallets for it."
+              : "this feature is only offered for organizations identified as schools."}
           </p>
         </Card>
       </div>

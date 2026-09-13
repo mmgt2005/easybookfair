@@ -9,6 +9,81 @@ which point versioning starts.
 
 ### Added
 
+- **Org staff portal + fair-request workflow** (migrations `0029`–`0032`):
+  an org now requests a fair instead of an admin creating one directly,
+  choosing which buyer payment options it wants — each explained before
+  they choose, not just a bare checkbox.
+  - **Payment-option flags** (migration `0029`): `fairs` gained
+    `allow_online`/`allow_wallet`/`allow_in_person`/`allow_cash` booleans
+    (defaults matching today's behavior — online/in-person/cash on,
+    wallet off). `allow_cash` is captured but not enforced anywhere yet —
+    there's no cash-sale-recording UI in the app at all, only DB-level
+    support left over from Phase 1.
+  - **`fair_requests` table** (migration `0030`): a separate staging
+    table rather than a status on `fairs` itself, reusing the existing
+    `public.application_status` enum instead of a new one. RLS lets an
+    org member insert a request for their own org
+    (`org_id in app.current_org_ids()`, `requested_by = auth.uid()`) but
+    has **no update policy for `authenticated`** — only a platform admin
+    can move a request to `approved`/`declined`, so an org can't
+    self-approve.
+  - **`requireOrgStaff()`** (`lib/auth.ts`): mirrors `requireAdmin()` —
+    checks `org_members` for the signed-in user and redirects to
+    `/unauthorized` if there's no membership row, returning the caller's
+    `orgIds` (a person can belong to more than one org). `middleware.ts`
+    now also gates `/org/:path*`.
+  - **Org portal** (`/org`, new): a dashboard listing the org's fairs
+    (with shareable storefront/wallet links, shown only when the
+    corresponding option is enabled) and its fair requests with status;
+    `/org/fairs/request` is the request form itself, with the payment
+    checkboxes and their explanations described above.
+    `app/org/actions.ts`'s `createFairRequest` validates the submitted
+    `org_id` is one of the caller's own before inserting.
+  - **Admin review** (`/admin/fair-requests`, new): lists all requests
+    with the org name and requested payment options; **Approve** creates
+    the real `fairs` row copying the requested dates and payment flags
+    and links `fair_requests.fair_id` to it; **Decline** takes an
+    optional note shown back to the org. Both are only offered while a
+    request is still `pending`.
+  - **Enforcement, not just a hidden checkbox** — updated to defense in
+    depth wherever the corresponding surface is anon/public-facing:
+    - `fair_public_info` (migration `0031`, required a `drop function`
+      first since `CREATE OR REPLACE` can't add OUT columns — grants
+      reapplied after) now also returns the three buyer-visible flags;
+      `/fairs/<id>` uses them to gate the storefront body, the wallet
+      link, and the "Find my order" link.
+    - `fair_storefront_items` (migration `0032`) now joins `fairs` and
+      filters on `allow_online = true` itself, so even a direct RPC call
+      against a disabled fair returns nothing.
+    - `createGuestCheckout` and `createWalletFunding` (server actions)
+      both re-check `allow_online`/`allow_wallet` before writing, so a
+      disabled channel is rejected even if called directly, not just
+      hidden in the UI.
+    - The admin in-person checkout screen only wires up Terminal (
+      `terminalLocationId`) when `allow_in_person` is set, and only
+      renders the wallet-charge section of `CheckoutClient` when
+      `allowWallet` is true; the fair's edit page grew a "Payment
+      options" fieldset (all four checkboxes) so an admin can adjust them
+      after approval.
+  - Validated against a real local Postgres instance (fresh `0001`–`0032`
+    chain, plus a targeted script): a cross-org `fair_requests` insert is
+    rejected by RLS; an org member's own attempt to approve their request
+    is silently filtered (not an error) and leaves it `pending`; an
+    admin's approval correctly copies the requested flags onto the new
+    `fairs` row; `fair_storefront_items` returns the fair's items while
+    `allow_online` is true and returns nothing once it's flipped off.
+    `npm run typecheck`/`npm run build` both clean. Not validated in a
+    live browser against real data — same reasoning as the prior batch's
+    entry below (this environment's `.env.local` points at the user's
+    real Supabase project).
+  - **Explicitly deferred, not started** (sized during this batch's
+    planning but out of scope for it): a software onboarding tour (on
+    fair approval, on being added as org staff, or on org login), a
+    demo/training fair, a donation-notice receipt for a parent when a
+    closed fair's unused wallet balance becomes the org's, and an author
+    submission flow (public form with a suggested-retail-price input
+    auto-calculating a 65% wholesale cost, admin review, and an author
+    account created on approval).
 - **Buyer-facing polish pass** on top of the four payment options below —
   migrations `0026`–`0028`:
   - **Fixed a real gap, not just cosmetics**: `checkout_sessions.line_items`

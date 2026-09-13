@@ -12,7 +12,9 @@ export default async function CheckoutPage({
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, stripe_terminal_location_id, organizations(name)")
+    .select(
+      "id, name, stripe_terminal_location_id, allow_in_person, allow_wallet, organizations(name)",
+    )
     .eq("id", fairId)
     .single();
 
@@ -73,7 +75,7 @@ export default async function CheckoutPage({
         </p>
       </div>
 
-      {!fair.stripe_terminal_location_id && (
+      {fair.allow_in_person && !fair.stripe_terminal_location_id && (
         <Card className="max-w-lg border border-amber-200 bg-amber-50">
           <p className="text-sm text-amber-800">
             No Terminal reader set up for this fair yet — set one up on the fair&apos;s{" "}
@@ -84,11 +86,20 @@ export default async function CheckoutPage({
           </p>
         </Card>
       )}
+      {!fair.allow_in_person && !fair.allow_wallet && (
+        <Card className="max-w-lg border border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-800">
+            Neither the reader nor student wallets are enabled for this fair — nothing to charge
+            here. Check the fair&apos;s payment options (set when it was requested/approved).
+          </p>
+        </Card>
+      )}
 
       <CheckoutClient
         fairId={fairId}
         items={items}
-        terminalLocationId={fair.stripe_terminal_location_id}
+        terminalLocationId={fair.allow_in_person ? fair.stripe_terminal_location_id : null}
+        allowWallet={fair.allow_wallet}
       />
     </div>
   );

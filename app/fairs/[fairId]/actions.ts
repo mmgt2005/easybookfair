@@ -29,6 +29,12 @@ export async function createGuestCheckout(
   }
 
   const service = createServiceClient();
+
+  const { data: fair } = await service.from("fairs").select("allow_online").eq("id", fairId).single();
+  if (!fair?.allow_online) {
+    throw new Error("Online ordering isn't available for this fair");
+  }
+
   const catalogItemIds = cart.map((line) => line.catalog_item_id);
 
   const [

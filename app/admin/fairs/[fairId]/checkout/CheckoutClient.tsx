@@ -19,10 +19,12 @@ export function CheckoutClient({
   fairId,
   items,
   terminalLocationId,
+  allowWallet,
 }: {
   fairId: string;
   items: Item[];
   terminalLocationId: string | null;
+  allowWallet: boolean;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>("idle");
@@ -317,59 +319,61 @@ export function CheckoutClient({
           {charging ? "Charging…" : `Charge $${total.toFixed(2)} with reader`}
         </Button>
 
-        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
-          <p className="text-xs font-semibold text-neutral-600">Or charge a student wallet</p>
-          <Input
-            placeholder="Search student name…"
-            value={walletQuery}
-            onChange={(e) => void handleWalletSearch(e.target.value)}
-          />
-          {walletMatches.length > 0 && !selectedWallet && (
-            <ul className="flex flex-col gap-1">
-              {walletMatches.map((w) => (
-                <li key={w.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedWallet(w)}
-                    className="flex w-full items-center justify-between rounded-lg bg-neutral-50 p-2 text-left text-sm hover:bg-neutral-100"
-                  >
-                    <span>
-                      <span className="font-semibold">{w.student_name}</span>{" "}
-                      {(w.grade || w.teacher) && (
-                        <span className="text-neutral-500">
-                          ({[w.grade, w.teacher].filter(Boolean).join(", ")})
-                        </span>
-                      )}
-                    </span>
-                    <span>${w.balance.toFixed(2)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {selectedWallet && (
-            <div className="rounded-lg bg-accent-50 p-2 text-sm">
-              <p>
-                <span className="font-semibold">{selectedWallet.student_name}</span> — balance: $
-                {selectedWallet.balance.toFixed(2)}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                className="mt-2"
-                disabled={charging || total <= 0 || total > selectedWallet.balance}
-                onClick={chargeSelectedWallet}
-              >
-                {charging ? "Charging…" : `Charge $${total.toFixed(2)} to wallet`}
-              </Button>
-              {total > selectedWallet.balance && (
-                <p className="mt-1 text-xs text-red-600">
-                  Cart total exceeds this wallet&apos;s balance.
+        {allowWallet && (
+          <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
+            <p className="text-xs font-semibold text-neutral-600">Or charge a student wallet</p>
+            <Input
+              placeholder="Search student name…"
+              value={walletQuery}
+              onChange={(e) => void handleWalletSearch(e.target.value)}
+            />
+            {walletMatches.length > 0 && !selectedWallet && (
+              <ul className="flex flex-col gap-1">
+                {walletMatches.map((w) => (
+                  <li key={w.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWallet(w)}
+                      className="flex w-full items-center justify-between rounded-lg bg-neutral-50 p-2 text-left text-sm hover:bg-neutral-100"
+                    >
+                      <span>
+                        <span className="font-semibold">{w.student_name}</span>{" "}
+                        {(w.grade || w.teacher) && (
+                          <span className="text-neutral-500">
+                            ({[w.grade, w.teacher].filter(Boolean).join(", ")})
+                          </span>
+                        )}
+                      </span>
+                      <span>${w.balance.toFixed(2)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedWallet && (
+              <div className="rounded-lg bg-accent-50 p-2 text-sm">
+                <p>
+                  <span className="font-semibold">{selectedWallet.student_name}</span> — balance:
+                  ${selectedWallet.balance.toFixed(2)}
                 </p>
-              )}
-            </div>
-          )}
-        </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-2"
+                  disabled={charging || total <= 0 || total > selectedWallet.balance}
+                  onClick={chargeSelectedWallet}
+                >
+                  {charging ? "Charging…" : `Charge $${total.toFixed(2)} to wallet`}
+                </Button>
+                {total > selectedWallet.balance && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Cart total exceeds this wallet&apos;s balance.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {message && <p className="mt-3 text-sm text-neutral-700">{message}</p>}
       </Card>

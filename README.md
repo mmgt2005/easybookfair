@@ -15,10 +15,21 @@ cash (already existed). All four write through the same channel-agnostic
 Buyer-facing polish since then: cover-image storefront browsing with
 search/category/sort, order recovery by email, item titles carried through
 to the pickup/confirmation screens, and confirmation emails via Resend for
-both online orders and wallet fundings. Still ahead: Tap to Pay/Bluetooth-
-reader support (needs a native mobile companion app — not reachable from a
-browser) and promotions/bundle discounts (schema exists, no checkout path
-reads it yet).
+both online orders and wallet fundings.
+
+An **org staff portal** (`/org`) now exists too: an org requests a fair
+(with each buyer payment option explained before they choose it) instead
+of an admin creating one directly, and an admin reviews/approves it from
+`/admin/fair-requests` — approving copies the requested dates and payment
+choices into a real `fairs` row. Payment options are enforced per fair
+(online/wallet/in-person can each be turned off), not just decorative.
+
+Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
+companion app — not reachable from a browser), promotions/bundle
+discounts (schema exists, no checkout path reads it yet), an author
+submission flow, a software tour, a demo/training fair, and a
+donation-notice email when a closed fair's unused wallet balance sweeps
+into the org's payout.
 
 ## Stack
 
@@ -66,6 +77,10 @@ code (everything that needs to be unit-tested).
    - `0026_fair_storefront_items_category.sql`
    - `0027_checkout_sessions_by_email.sql`
    - `0028_wallet_fundings_parent_email.sql`
+   - `0029_fair_payment_options.sql`
+   - `0030_fair_requests.sql`
+   - `0031_fair_public_info_payment_options.sql`
+   - `0032_fair_storefront_items_allow_online.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -74,9 +89,15 @@ code (everything that needs to be unit-tested).
    insert into public.platform_admins (user_id)
    values ('<your auth.users id>');
    ```
-5. Set up Stripe (see "Stripe setup" below) if you want to exercise org
+5. To try the org portal (`/org`), add someone to `org_members` the same
+   manual way (also no self-serve invite flow):
+   ```sql
+   insert into public.org_members (org_id, user_id, role)
+   values ('<organizations.id>', '<their auth.users id>', 'org_staff');
+   ```
+6. Set up Stripe (see "Stripe setup" below) if you want to exercise org
    onboarding or the payment webhook — everything else works without it.
-6. Run the app:
+7. Run the app:
    ```
    npm run dev
    ```
@@ -184,6 +205,22 @@ inventing new colors per page.
   Stripe's native iOS/Android Terminal SDK, unreachable from a browser.
   Would need a separate native (or React Native) companion app talking to
   the same backend.
+- `allow_cash` on `fairs`/`fair_requests` is captured but not enforced —
+  there's no cash-sale-recording UI anywhere in the app (cash sales only
+  exist at the database/ledger level, from Phase 1). Turning it off
+  changes nothing yet.
+- No self-serve invite flow for either `platform_admins` or `org_members`
+  — both are manual `insert` statements run directly against the
+  database (see "Local setup" above). An org admin can't add their own
+  staff from the UI yet.
+- No onboarding/software tour, no demo/training fair, and no
+  wallet-balance donation notice (a printable/downloadable receipt for a
+  parent when a closed fair's unused wallet balance becomes the org's) —
+  all sized but not yet built.
+- No author submission flow (a public form for authors to submit
+  books/merchandise with a suggested retail price and an auto-calculated
+  65% wholesale cost, reviewed by an admin, approving creates an author
+  account) — sized but not yet built.
 
 ## Database notes
 
@@ -237,3 +274,22 @@ inventing new colors per page.
   row's own id (an unguessable uuid) since there's no buyer login to check
   against — the same access-control shape as e.g. Stripe's own hosted
   receipt links.
+- `fair_requests` (migration `0030`) is a separate staging table, not a
+  status on `fairs` itself — it keeps "a real, scheduled fair" and "a
+  pending ask from an org" from being the same row shape, and reuses the
+  existing `application_status` enum rather than inventing a new one.
+  Its RLS deliberately has no `update` policy for `authenticated`: an org
+  member can insert a request for their own org (`org_id in
+  app.current_org_ids()`) but only a platform admin can move it to
+  `approved`/`declined`, so an org can't self-approve its own fair.
+  Approving copies the requested dates and the four `allow_*` payment-option
+  flags onto a new `fairs` row and stamps `fair_requests.fair_id` — the
+  flags then live independently on `fairs` and can be adjusted later from
+  `/admin/fairs/<id>/edit`.
+- The four `allow_online`/`allow_wallet`/`allow_in_person`/`allow_cash`
+  flags on `fairs` are enforced at the point of use, not just hidden in
+  the UI: `fair_public_info`/`fair_storefront_items` (migrations
+  `0031`–`0032`) filter on them for anon callers, and the guest-checkout/
+  wallet-funding server actions re-check them before writing — so even a
+  direct RPC call against a disabled channel is rejected, not just a
+  hidden button.

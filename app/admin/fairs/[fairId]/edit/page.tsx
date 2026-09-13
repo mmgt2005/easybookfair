@@ -14,7 +14,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, organizations(name)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, organizations(name)",
     )
     .eq("id", fairId)
     .single();
@@ -75,6 +75,27 @@ export default async function EditFairPage({
             Status doesn&apos;t transition automatically yet (that&apos;s a later
             phase) — this is a manual override for now.
           </p>
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
+            <p className="text-xs font-semibold text-neutral-600">
+              Payment options — set when the org requested this fair, adjustable here after.
+            </p>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" name="allow_in_person" defaultChecked={fair.allow_in_person} />
+              In-person card reader
+            </label>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" name="allow_online" defaultChecked={fair.allow_online} />
+              Online storefront
+            </label>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" name="allow_wallet" defaultChecked={fair.allow_wallet} />
+              Student wallets
+            </label>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" name="allow_cash" defaultChecked={fair.allow_cash} />
+              Cash (no recording UI yet — this flag isn&apos;t enforced anywhere)
+            </label>
+          </div>
           <Button type="submit">Save changes</Button>
         </form>
       </Card>

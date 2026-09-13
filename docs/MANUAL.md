@@ -4,9 +4,11 @@
 > onboarding, the payment webhook), and most of Phase 4 (buyer payment
 > options — in-person reader, online storefront with pickup, student
 > wallets, cash) are built and described below as they actually work, not
-> just intended behavior. Everything else in this manual still describes
-> intended behavior per [`docs/spec.md`](./spec.md), pending its build-plan
-> phase.
+> just intended behavior. An org staff portal (`/org`) also now exists —
+> an org requests a fair instead of an admin creating one directly, and
+> chooses which payment options it wants (each explained before they
+> choose). Everything else in this manual still describes intended
+> behavior per [`docs/spec.md`](./spec.md), pending its build-plan phase.
 
 ## Signing in
 
@@ -17,14 +19,21 @@ signed in isn't enough on its own: your user id also has to be a row in
 now — there's no self-serve admin invite flow yet), or you'll land on
 `/unauthorized` after signing in.
 
+Org staff screens live under `/org` and work the same way, except your
+user id needs to be a row in `org_members` instead (also added directly
+in the database for now by an existing admin — see "Local setup" in the
+README).
+
 ## Roles
 
-- **Platform admin** — manages the catalog, reviews org applications,
-  assigns allocations, closes fairs. (Phase 7 adds tenant admin and
-  platform super-admin above this.)
-- **Org staff** (`org_admin` / `org_staff` in `org_members`) — runs their
-  organization's fair: checkout, live sales tracking, viewing payout
-  status.
+- **Platform admin** — manages the catalog, reviews org applications and
+  fair requests, assigns allocations, closes fairs. (Phase 7 adds tenant
+  admin and platform super-admin above this.)
+- **Org staff** (`org_admin` / `org_staff` in `org_members`) — requests a
+  fair for their organization (choosing which payment options it should
+  offer) and tracks its status from `/org`. Running checkout, live sales
+  tracking, and payout status are still admin-only for now — see "Org
+  staff guide" below for exactly what's built versus still intended.
 - **Buyer** — browses and checks out on the public, per-fair storefront.
   No account required.
 
@@ -100,6 +109,25 @@ onboarding flow. **Charges/payouts status only updates once Stripe's
 org clicked through the link — so it can take a moment (or a page
 refresh) to reflect after finishing onboarding.
 
+### Reviewing fair requests (`/admin/fair-requests`)
+
+An org staff member requests a fair from their own portal (`/org/fairs/request`)
+instead of an admin creating one directly — the request lists the org,
+requested dates, and which payment options they asked for (in-person
+reader, online storefront, student wallets, cash). Each pending request
+shows **Approve** and **Decline** buttons:
+
+- **Approve** creates the real `fairs` row from the requested name,
+  dates, and payment-option choices, and links the request to it. From
+  there it behaves exactly like a fair created directly (allocate stock,
+  set up a Terminal reader, etc. — see below).
+- **Decline** takes an optional note (shown back to the org on their
+  dashboard) and does not create a fair.
+
+Once reviewed, a request is final — there's no re-opening a declined
+request or un-approving one; create a new fair (or edit the resulting
+one) instead.
+
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
 Change the name, dates, or `status`, and override the platform's default
@@ -107,6 +135,15 @@ cash-sales-ratio assumption for this specific fair. Status is a manual
 field for now — nothing transitions it automatically yet (that's tied to
 the settlement/close-fair work in a later phase), so set it yourself as
 the fair progresses.
+
+**Payment options** (same page): the four checkboxes an org chose from
+when requesting the fair (in-person reader, online storefront, student
+wallets, cash) live here too and can be adjusted after approval — turning
+one off actually disables that channel, not just hides it: the public
+storefront/wallet pages stop offering it, and the underlying checkout/
+funding actions reject it even if called directly. The cash checkbox is
+the exception — it's captured but not enforced anywhere, since there's no
+cash-sale-recording UI in the app yet.
 
 **Terminal setup** (same page): needed once per fair before the checkout
 screen can charge cards with a physical reader. Fill in the venue's
@@ -250,35 +287,40 @@ settlement — it posts as a separate adjustment entry referencing it.
 
 ## Org staff guide
 
-### Running checkout (volunteer checkout)
+The org portal (`/org`) is real and working for the two things below.
+Running checkout, a live sales feed, and payout status are **not** part
+of it yet — those screens are still admin-only (see "Payments" above);
+this section describes what's actually built today, not the eventual
+full scope.
 
-- Find items by barcode scan, search, or a "top sellers" quick list.
-- Add to cart — bundle discounts from active promotions apply
-  automatically; you don't choose discounts at checkout.
-- Take payment by card (online Checkout or in-person Stripe Terminal) or
-  cash. Cash sales are recorded the same way as card sales in the
-  system, just flagged `channel = cash`.
+### Your dashboard (`/org`)
 
-### Tracking your fair
+Lists your organization's fairs (with a shareable link to the public
+storefront and/or student-wallet page for each, if those options are
+enabled) and your fair requests with their current status (pending,
+approved, declined — with the admin's note if declined).
 
-The org portal shows live allocation status, a live sales feed, and an
-estimated payout that updates as sales come in — final numbers are only
-locked when the admin closes the fair.
+### Requesting a fair (`/org/fairs/request`)
 
-### Cash sales — what you actually owe
+Fill in a name and dates, then choose which payment options you want —
+each has an explanation right below its checkbox so you know what you're
+picking before you submit, not after:
 
-Because you hold the cash directly when a buyer pays cash, you don't get
-a separate payout for those units — you already have your margin in the
-cash box. What you owe the supplier is the wholesale cost of each cash
-sale, which is netted against your card/online payout at fair close, not
-paid separately.
+- **In-person card reader** — a physical Stripe Terminal reader at your
+  table, on by default.
+- **Online storefront** — a public link buyers can browse and pay from
+  ahead of time, for pickup at the fair, on by default.
+- **Student wallets** — only offered (and only selectable) if your
+  organization is marked "a school"; parents load money onto a named
+  student's balance and the student spends it down themselves at
+  checkout.
+- **Cash** — on by default; captured as a flag but not enforced, since
+  there's no cash-recording screen yet either way.
 
-### Returning unsold inventory
-
-Return unsold items by the fair's return deadline. Reminders go out
-before the deadline. Anything not returned by then is billed to you at
-wholesale cost as part of the same fair-close settlement — there's no
-separate "missing inventory" bill later.
+Submitting creates a `fair_requests` row for an admin to review — you
+can't approve your own request. Once approved, it becomes a real fair
+with those same payment options (an admin can still adjust them
+afterward from the fair's edit page).
 
 ## Buyer guide
 
@@ -313,5 +355,15 @@ automatically at checkout — not built yet (see below).
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't
   invoke from a browser.
+- Running checkout, a live sales feed, or payout status from the org
+  portal — those stay admin-only for now (see "Org staff guide" above).
+- Self-serve invites for platform admins or org staff — both are added
+  directly in the database by an existing admin.
+- A software onboarding tour (on fair approval, on being added as staff,
+  or on first org login), a demo/training fair, a donation-notice
+  receipt for a parent when a closed fair's unused wallet balance
+  becomes the org's, and an author submission flow (public form with a
+  suggested-retail-price input auto-calculating a 65% wholesale cost,
+  admin review, and an author account on approval).
 
 These are called out as deferred, not silently missing.

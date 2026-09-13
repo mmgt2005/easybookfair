@@ -26,9 +26,16 @@ export async function createWalletFunding(
 
   const service = createServiceClient();
 
-  const { data: fair } = await service.from("fairs").select("org_id").eq("id", fairId).single();
+  const { data: fair } = await service
+    .from("fairs")
+    .select("org_id, allow_wallet")
+    .eq("id", fairId)
+    .single();
   if (!fair) {
     throw new Error("Fair not found");
+  }
+  if (!fair.allow_wallet) {
+    throw new Error("Student wallets aren't available for this fair");
   }
 
   const { data: org } = await service

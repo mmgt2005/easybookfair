@@ -48,6 +48,10 @@ export async function updateFair(fairId: string, formData: FormData) {
   const returnDeadline = String(formData.get("return_deadline") ?? "");
   const status = String(formData.get("status") ?? "");
   const cashPct = formData.get("cash_sales_assumption_pct");
+  const allowInPerson = formData.get("allow_in_person") === "on";
+  const allowOnline = formData.get("allow_online") === "on";
+  const allowWallet = formData.get("allow_wallet") === "on";
+  const allowCash = formData.get("allow_cash") === "on";
 
   if (!name || !startDate || !endDate || !returnDeadline || !status) {
     throw new Error("All fields are required");
@@ -62,6 +66,10 @@ export async function updateFair(fairId: string, formData: FormData) {
       return_deadline: returnDeadline,
       status,
       cash_sales_assumption_pct: cashPct ? Number(cashPct) : null,
+      allow_in_person: allowInPerson,
+      allow_online: allowOnline,
+      allow_wallet: allowWallet,
+      allow_cash: allowCash,
     })
     .eq("id", fairId);
 
