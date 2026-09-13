@@ -66,9 +66,20 @@ export async function POST(request: Request) {
       }
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const { error } = await supabase.rpc("record_checkout_sale", {
-          p_payment_intent_id: paymentIntent.id,
-        });
+        // Two kinds of PaymentIntent now land here: a cart checkout
+        // (in-person reader or guest online) and a student-wallet funding.
+        // metadata.kind tags which RPC actually owns finishing it up —
+        // set when each PaymentIntent is created (checkout/actions.ts,
+        // fairs/[fairId]/actions.ts, fairs/[fairId]/wallet/actions.ts).
+        const kind = paymentIntent.metadata?.kind;
+        const { error } =
+          kind === "wallet_funding"
+            ? await supabase.rpc("record_wallet_funding", {
+                p_payment_intent_id: paymentIntent.id,
+              })
+            : await supabase.rpc("record_checkout_sale", {
+                p_payment_intent_id: paymentIntent.id,
+              });
         if (error) throw new Error(error.message);
         break;
       }

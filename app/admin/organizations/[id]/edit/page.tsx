@@ -16,7 +16,7 @@ export default async function EditOrganizationPage({
   const { data: org, error } = await supabase
     .from("organizations")
     .select(
-      "id, name, contact_name, contact_email, status, stripe_connect_account_id, stripe_charges_enabled, stripe_payouts_enabled",
+      "id, name, contact_name, contact_email, status, is_school, stripe_connect_account_id, stripe_charges_enabled, stripe_payouts_enabled",
     )
     .eq("id", id)
     .single();
@@ -65,6 +65,10 @@ export default async function EditOrganizationPage({
               <option value="declined">Declined</option>
             </Select>
           </Field>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" name="is_school" defaultChecked={org.is_school} />
+            Is a school (enables the student-wallet feature for its fairs)
+          </label>
           <Button type="submit">Save changes</Button>
         </form>
       </Card>

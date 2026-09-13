@@ -2,7 +2,13 @@
 
 import { useRef, useState } from "react";
 import { loadStripeTerminal, type Reader, type Terminal } from "@stripe/terminal-js";
-import { createInPersonCheckout, getCheckoutSessionStatus } from "./actions";
+import {
+  createInPersonCheckout,
+  getCheckoutSessionStatus,
+  searchWallets,
+  chargeWallet,
+  type WalletMatch,
+} from "./actions";
 import { Button, Card, Input } from "@/components/ui";
 
 type Item = { catalog_item_id: string; title: string; price: number; available: number };
@@ -23,6 +29,9 @@ export function CheckoutClient({
   const [discoveredReaders, setDiscoveredReaders] = useState<Reader[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [charging, setCharging] = useState(false);
+  const [walletQuery, setWalletQuery] = useState("");
+  const [walletMatches, setWalletMatches] = useState<WalletMatch[]>([]);
+  const [selectedWallet, setSelectedWallet] = useState<WalletMatch | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
 
   const total = items.reduce(
@@ -163,6 +172,48 @@ export function CheckoutClient({
     }
   }
 
+  async function handleWalletSearch(q: string) {
+    setWalletQuery(q);
+    setSelectedWallet(null);
+    if (q.trim().length < 2) {
+      setWalletMatches([]);
+      return;
+    }
+    try {
+      const matches = await searchWallets(fairId, q);
+      setWalletMatches(matches);
+    } catch {
+      setWalletMatches([]);
+    }
+  }
+
+  async function chargeSelectedWallet() {
+    if (!selectedWallet) return;
+    const lines = Object.entries(cart).map(([catalog_item_id, quantity]) => ({
+      catalog_item_id,
+      quantity,
+    }));
+    if (lines.length === 0) {
+      setMessage("Cart is empty");
+      return;
+    }
+
+    setCharging(true);
+    setMessage("Charging wallet…");
+    try {
+      await chargeWallet(fairId, selectedWallet.id, lines);
+      setMessage(`Charged $${total.toFixed(2)} to ${selectedWallet.student_name}'s wallet ✅`);
+      setCart({});
+      setSelectedWallet(null);
+      setWalletQuery("");
+      setWalletMatches([]);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Wallet charge failed");
+    } finally {
+      setCharging(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <Card className="flex-1 overflow-x-auto p-0">
@@ -265,6 +316,60 @@ export function CheckoutClient({
         >
           {charging ? "Charging…" : `Charge $${total.toFixed(2)} with reader`}
         </Button>
+
+        <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
+          <p className="text-xs font-semibold text-neutral-600">Or charge a student wallet</p>
+          <Input
+            placeholder="Search student name…"
+            value={walletQuery}
+            onChange={(e) => void handleWalletSearch(e.target.value)}
+          />
+          {walletMatches.length > 0 && !selectedWallet && (
+            <ul className="flex flex-col gap-1">
+              {walletMatches.map((w) => (
+                <li key={w.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedWallet(w)}
+                    className="flex w-full items-center justify-between rounded-lg bg-neutral-50 p-2 text-left text-sm hover:bg-neutral-100"
+                  >
+                    <span>
+                      <span className="font-semibold">{w.student_name}</span>{" "}
+                      {(w.grade || w.teacher) && (
+                        <span className="text-neutral-500">
+                          ({[w.grade, w.teacher].filter(Boolean).join(", ")})
+                        </span>
+                      )}
+                    </span>
+                    <span>${w.balance.toFixed(2)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {selectedWallet && (
+            <div className="rounded-lg bg-accent-50 p-2 text-sm">
+              <p>
+                <span className="font-semibold">{selectedWallet.student_name}</span> — balance: $
+                {selectedWallet.balance.toFixed(2)}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2"
+                disabled={charging || total <= 0 || total > selectedWallet.balance}
+                onClick={chargeSelectedWallet}
+              >
+                {charging ? "Charging…" : `Charge $${total.toFixed(2)} to wallet`}
+              </Button>
+              {total > selectedWallet.balance && (
+                <p className="mt-1 text-xs text-red-600">
+                  Cart total exceeds this wallet&apos;s balance.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {message && <p className="mt-3 text-sm text-neutral-700">{message}</p>}
       </Card>

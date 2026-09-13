@@ -125,7 +125,7 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
     currency: "usd",
     payment_method_types: ["card_present"],
     capture_method: "automatic",
-    metadata: { checkout_session_id: session.id },
+    metadata: { checkout_session_id: session.id, kind: "checkout_session" },
   });
 
   const { error: updateError } = await service
@@ -156,4 +156,54 @@ export async function getCheckoutSessionStatus(checkoutSessionId: string) {
 
   if (error) throw new Error(error.message);
   return data.status as string;
+}
+
+export type WalletMatch = {
+  id: string;
+  student_name: string;
+  grade: string | null;
+  teacher: string | null;
+  balance: number;
+};
+
+// Looks up active wallets for this fair by student name — mirrors how
+// Scholastic's own cashier tool works (name/grade/teacher lookup, no
+// login), not a strict single-match search since duplicate names are
+// resolved by a human glancing at grade/teacher.
+export async function searchWallets(fairId: string, query: string): Promise<WalletMatch[]> {
+  await requireAdmin();
+  if (!query.trim()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("student_wallets")
+    .select("id, student_name, grade, teacher, balance")
+    .eq("fair_id", fairId)
+    .eq("status", "active")
+    .ilike("student_name", `%${query.trim()}%`)
+    .order("student_name")
+    .limit(10);
+
+  if (error) throw new Error(error.message);
+  return data as WalletMatch[];
+}
+
+// Spends from a student wallet — a third tender alongside the reader and
+// cash, using the same cart the admin already built. Unlike the reader
+// path, this settles synchronously (no webhook involved — spend_from_wallet
+// writes the sales/ledger rows directly), so there's nothing to poll.
+export async function chargeWallet(fairId: string, walletId: string, cart: CartLine[]) {
+  await requireAdmin();
+  if (!cart.length) {
+    throw new Error("Cart is empty");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("spend_from_wallet", {
+    p_wallet_id: walletId,
+    p_fair_id: fairId,
+    p_line_items: cart,
+  });
+
+  if (error) throw new Error(error.message);
 }

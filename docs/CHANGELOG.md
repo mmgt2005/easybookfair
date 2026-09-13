@@ -9,6 +9,86 @@ which point versioning starts.
 
 ### Added
 
+- **Four buyer payment options, all writing through the same ledger core**
+  (migrations `0015`–`0025`): online storefront with fair pickup, a
+  parent-funded student wallet, plus the existing in-person reader and
+  cash paths — pulling most of Phase 4 forward alongside Phase 3.
+  - **Online storefront** (`/fairs/<id>`, public, no login): browse a
+    fair's available-to-sell stock and check out as a guest with Stripe
+    Elements. `createGuestCheckout` (`app/fairs/[fairId]/actions.ts`)
+    snapshots price/cost server-side and re-validates availability, same
+    as the admin in-person checkout action. Orders are for pickup, not
+    shipping — `checkout_sessions` gained `buyer_name`, `buyer_email`,
+    and `fulfillment_status` (migration `0023`); `record_checkout_sale`
+    now sets `fulfillment_status = 'awaiting_pickup'` for online orders
+    the moment payment clears. No confirmation email is sent (no
+    transactional email service configured) — the order confirmation
+    page (`/fairs/<id>/order/<id>`, reachable by the session's own
+    unguessable id, no buyer login to check against) is the buyer's only
+    record.
+  - **Order pickup** (`/admin/fairs/<id>/pickup`): search online orders by
+    buyer name/email, mark them picked up (`mark_checkout_picked_up`,
+    admin-gated RPC rather than an RLS update grant, keeping
+    `checkout_sessions`' service-role/RPC-only write boundary intact).
+  - **Student wallets** (schools only — `organizations.is_school`,
+    migration `0015`, a checkbox on the org edit page): a parent loads
+    money onto a named student's balance at `/fairs/<id>/wallet` (public);
+    the student spends it down themselves at
+    `/admin/fairs/<id>/checkout` (a new wallet-search section in
+    `CheckoutClient`) by name — no login for either party, a plain
+    name/grade/teacher lookup mirroring how Scholastic's own eWallet
+    identifies students at the register. New pieces: `student_wallets`
+    and `wallet_fundings` tables, a `wallet` value on `sale_channel`
+    (migration `0016`, added in its own migration since Postgres won't
+    let a new enum value be used in the same transaction that added it),
+    a `Buyer Wallet Liability` ledger account (`1400`, migration `0017`),
+    `record_wallet_funding()` (mirrors `record_checkout_sale`'s
+    idempotency pattern), and `spend_from_wallet()` (re-validates
+    availability, writes one `record_sale()` call per unit, and leans on
+    `student_wallets`' own `check (balance >= 0)` constraint for overdraft
+    protection instead of a separate application-level check — a failed
+    overdraft aborts the whole call, rolling back every sale already
+    written in it). `record_sale()` (migration `0020`) now branches which
+    account it debits by channel: Stripe Clearing for card/online (as
+    before), the new wallet liability account for a wallet spend (the
+    cash already arrived at funding time, so a wallet sale only relieves
+    that liability rather than debiting Stripe Clearing again). Unused
+    balance does **not** refund or roll over to the student's next fair —
+    per explicit product decision, `close_wallets_for_fair()`
+    (`/admin/fairs/<id>/wallets`, migration `0022`) sweeps it into that
+    fair's org payout instead, a manual, irreversible admin action.
+  - The payment webhook now tells apart a cart checkout from a wallet
+    funding via a `kind` tag (`checkout_session` / `wallet_funding`) set
+    in each PaymentIntent's metadata at creation time, dispatching to
+    `record_checkout_sale` or `record_wallet_funding` accordingly.
+  - Two new anon-facing `SECURITY DEFINER` RPCs (`fair_storefront_items`,
+    `fair_public_info`/`get_checkout_session_public`, migrations
+    `0024`–`0025`) are the storefront/wallet pages' only route to
+    buyer-safe data — `catalog_items`/`allocations`/`sales`/`fairs`/
+    `organizations` still have no anon SELECT policy at all, keeping the
+    existing default-deny RLS posture intact rather than opening those
+    tables up.
+  - New dependencies: `@stripe/stripe-js` + `@stripe/react-stripe-js`
+    (Stripe Elements, for the two public payment pages — a separate
+    integration from the admin checkout screen's Terminal SDK). New
+    required env var: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+  - Known gap, same shape as the in-person checkout's: none of the three
+    new availability/balance checks are row-locked the way
+    `allocate_inventory` is — fine for normal single-station traffic, not
+    safe against simultaneous checkouts racing for the last unit without
+    added locking.
+  - Validated against a real local Postgres instance: wallet funding
+    (including idempotent redelivery), spending (including overdraft
+    rejection via the balance check constraint, and availability
+    rejection), close-out sweeping into Org Payable with a balanced
+    ledger entry, and the pickup flow (`awaiting_pickup` on an online
+    order, `null` on an in-person one, idempotent double-pickup, correct
+    ledger balances on wallet sales). Also fixed a real, unrelated
+    dependency issue surfaced while validating: `npm install` had floated
+    an ESLint 9 upgrade that broke `npm run lint` against this project's
+    old-style `.eslintrc.json` (needs the new flat-config format) — noted
+    here since it's pre-existing and out of scope for this change, not
+    fixed.
 - **Manual & version in the admin dashboard** (`/admin/manual`, linked from
   the admin nav) — renders `docs/MANUAL.md` and `docs/CHANGELOG.md` as HTML
   (via `marked`) alongside the running app's version, read from

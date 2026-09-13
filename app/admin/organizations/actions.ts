@@ -43,6 +43,7 @@ export async function updateOrganization(orgId: string, formData: FormData) {
   const contactName = String(formData.get("contact_name") ?? "").trim() || null;
   const contactEmail = String(formData.get("contact_email") ?? "").trim() || null;
   const status = String(formData.get("status") ?? "");
+  const isSchool = formData.get("is_school") === "on";
 
   if (!name || !status) {
     throw new Error("Name and status are required");
@@ -55,6 +56,7 @@ export async function updateOrganization(orgId: string, formData: FormData) {
       contact_name: contactName,
       contact_email: contactEmail,
       status,
+      is_school: isSchool,
     })
     .eq("id", orgId);
 

@@ -4,16 +4,18 @@ Book fair consignment platform. See [`docs/spec.md`](./docs/spec.md) for the
 full design, [`docs/MANUAL.md`](./docs/MANUAL.md) for intended usage, and
 [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) for what's shipped so far.
 
-**Status**: Phase 3 (Stripe Connect and webhooks) in progress — org Stripe
-Connect Express onboarding, the payment webhook (`account.updated`,
-`payment_intent.succeeded`), channel-agnostic sale writing
-(`record_sale`/`record_checkout_sale`), and now a first real caller: an
-admin-only in-person checkout screen (`/admin/fairs/<id>/checkout`) using a
-physical Stripe Terminal reader. Phase 2 (admin catalog + allocation) is
-done. The buyer-facing online storefront — public per-fair browsing and
-self-checkout — is still ahead (Phase 4 proper); the in-person reader flow
-was pulled forward since it plugs into the same `checkout_sessions`/webhook
-path with no dependency on the storefront.
+**Status**: Phase 3 (Stripe Connect and webhooks) done, and most of Phase 4
+(buyer payment options) pulled forward alongside it — four working ways to
+buy: a physical Stripe Terminal reader at the table
+(`/admin/fairs/<id>/checkout`), a public online storefront with same-day
+pickup at the fair (`/fairs/<id>`), a parent-funded student wallet a kid
+spends down independently (`/fairs/<id>/wallet`, schools only), and plain
+cash (already existed). All four write through the same channel-agnostic
+`record_sale()`/ledger core. Phase 2 (admin catalog + allocation) is done.
+Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
+companion app — not reachable from a browser) and transactional email for
+order/wallet confirmations (currently shown on-screen only, nothing is
+emailed).
 
 ## Stack
 
@@ -47,6 +49,17 @@ code (everything that needs to be unit-tested).
    - `0012_deallocate_inventory.sql`
    - `0013_restock_order_date.sql`
    - `0014_fair_terminal_location.sql`
+   - `0015_organizations_is_school.sql`
+   - `0016_sale_channel_wallet.sql`
+   - `0017_wallet_liability_account.sql`
+   - `0018_student_wallets.sql`
+   - `0019_wallet_fundings.sql`
+   - `0020_record_sale_wallet_channel.sql`
+   - `0021_spend_from_wallet.sql`
+   - `0022_close_wallets_for_fair.sql`
+   - `0023_checkout_sessions_pickup.sql`
+   - `0024_fair_storefront_items.sql`
+   - `0025_public_fair_and_order_lookup.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -65,7 +78,9 @@ code (everything that needs to be unit-tested).
 ## Stripe setup
 
 1. From your Stripe dashboard (test mode), grab the secret key
-   (Developers → API keys) for `STRIPE_SECRET_KEY`.
+   (Developers → API keys) for `STRIPE_SECRET_KEY`, and the **publishable**
+   key (same page) for `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — the public
+   storefront/wallet pages need it client-side for Stripe.js (Elements).
 2. Create a webhook endpoint (Developers → Webhooks) pointing at
    `<your-deployment-url>/api/webhooks/stripe`, subscribed to at least
    `account.updated` and `payment_intent.succeeded`. Its signing secret is
@@ -83,29 +98,38 @@ code (everything that needs to be unit-tested).
    reader to it using the registration code shown on the reader's own
    screen. **Only internet-connected readers work here** — BBPOS WisePOS E
    or Stripe Reader S700. Bluetooth readers (BBPOS Chipper 2X BT, Stripe
-   Reader M2) need Stripe's native iOS/Android Terminal SDKs, which this
-   web app doesn't use — Tap to Pay on iPhone/Android is native-SDK-only
-   for the same reason and isn't reachable from a browser at all. Once a
-   reader shows `online`, `/admin/fairs/<id>/checkout` lets you build a
-   cart from that fair's allocated stock and charge it — this creates the
-   `checkout_sessions` row and PaymentIntent for real, so
-   `payment_intent.succeeded` now has a live caller for the in-person
-   channel.
-5. The buyer-facing online storefront (self-checkout, no reader involved)
-   is still Phase 4 proper — nothing yet creates an `online`-channel
-   `checkout_sessions` row. To exercise that path manually in the
-   meantime: insert one via SQL with a `payment_intent_id` you control,
-   then use `stripe trigger payment_intent.succeeded` (Stripe CLI) or the
-   dashboard to fire a matching test event.
+   Reader M2) and Tap to Pay on iPhone/Android need Stripe's native
+   iOS/Android Terminal SDKs, which this web app doesn't use — not
+   reachable from a browser at all. Once a reader shows `online`,
+   `/admin/fairs/<id>/checkout` builds a cart from that fair's allocated
+   stock and charges it (or spends from a student wallet — see below).
+5. Online storefront (`/fairs/<id>`, public, no login): buyers browse a
+   fair's allocated stock and check out with Stripe Elements — a guest
+   checkout, no buyer account. Paid orders are for **pickup at the fair**,
+   not shipped; the confirmation page (`/fairs/<id>/order/<id>`) shows an
+   order code — there's no confirmation email (no transactional email
+   service is configured), so that page/code is the buyer's only record.
+   Admins redeem orders at `/admin/fairs/<id>/pickup`.
+6. Student wallets (`/fairs/<id>/wallet`, public, schools only — set
+   "Is a school" on the org's edit page first): a parent loads money onto
+   a named student's balance; the student then spends it down themselves
+   at the checkout table (search by name in the wallet section of
+   `/admin/fairs/<id>/checkout` — no login for the student either, same
+   name/grade/teacher lookup Scholastic's own eWallet uses). Unspent
+   balance does **not** refund or roll over — an admin sweeps it into the
+   fair's org payout from `/admin/fairs/<id>/wallets` ("Close eWallets for
+   this fair"), a manual, irreversible action.
 
 ## Deploying
 
 Also deployable to Vercel: import the repo, set the **Production Branch**
 (Project Settings → Git) to `claude/new-session-dm851x` since that's where
-this project's work lives, and add the three variables from `.env.example`
-under Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones can
-use the "Config" type, `SUPABASE_SERVICE_ROLE_KEY` should stay "Secret".
-Every push to that branch triggers a new deployment automatically.
+this project's work lives, and add the variables from `.env.example` under
+Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones (including
+the new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) can use the "Config" type,
+`SUPABASE_SERVICE_ROLE_KEY`/`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`
+should stay "Secret". Every push to that branch triggers a new deployment
+automatically.
 
 ## Design system
 
@@ -119,12 +143,26 @@ a rounded heading font loaded via `next/font/google` in `app/layout.tsx`).
 used across the schema to a consistent color meaning — reuse it rather than
 inventing new colors per page.
 
-## Known gap
+## Known gaps
 
-`lib/supabase/types.ts` is still the Phase 1 placeholder — a couple of
-joined-column reads in the allocation/fairs pages use an `as unknown as`
-cast to work around it. Regenerate real types once a project exists
-(command's in that file) and those casts should come out.
+- `lib/supabase/types.ts` is still the Phase 1 placeholder — a couple of
+  joined-column reads in the allocation/fairs pages use an `as unknown as`
+  cast to work around it. Regenerate real types once a project exists
+  (command's in that file) and those casts should come out.
+- No transactional email service is configured. Order and wallet-funding
+  confirmations only ever show on-screen (an order code, a "funded"
+  message) — nothing is emailed, so a buyer who closes that tab without
+  noting their order code has no other way to find it later.
+- Available-to-sell checks (online checkout, wallet spending, in-person
+  checkout) aren't row-locked the way `allocate_inventory` is — two carts
+  finishing at the same instant for the last unit of an item could both
+  pass. Fine for one checkout station/reader at a time in practice, not
+  safe for high-concurrency simultaneous checkouts without adding real
+  locking.
+- No Tap to Pay or Bluetooth-reader (M2, Chipper) support — both need
+  Stripe's native iOS/Android Terminal SDK, unreachable from a browser.
+  Would need a separate native (or React Native) companion app talking to
+  the same backend.
 
 ## Database notes
 
@@ -143,8 +181,11 @@ cast to work around it. Regenerate real types once a project exists
   locked down — those writes only happen via the service-role key from
   trusted server code (webhook handlers, close-fair logic), not this app's
   RLS-governed client.
-- `record_sale()` is the channel-agnostic sale writer (one write path for
-  card/online and cash, branching only the journal entry pattern);
+- `record_sale()` is the channel-agnostic sale writer — one write path for
+  `cash`, `online`/`in_person` (card), and `wallet`, branching only which
+  account gets debited (A/R for cash, Stripe Clearing for card/online, the
+  Buyer Wallet Liability account for a wallet spend — migration `0020`) and
+  whether an Org Payable margin line applies (cash doesn't get one).
   `record_checkout_sale()` wraps it to process an entire cart atomically
   from the webhook — a `for update` lock plus a status check on
   `checkout_sessions` is what actually makes a redelivered
@@ -152,3 +193,26 @@ cast to work around it. Regenerate real types once a project exists
   `webhook_events` table alone (see the comment on `record_checkout_sale`
   in migration `0010` for the one gap that tradeoff leaves: a failed
   attempt needs manual reconciliation, not automatic retry).
+- Student wallets (migrations `0016`–`0022`) are a second, parallel money
+  path: funding a wallet debits Stripe Clearing and credits Buyer Wallet
+  Liability (`1400`) — money collected but not yet earned as revenue,
+  same shape as a retail gift-card liability — while `spend_from_wallet()`
+  relieves that liability the same way a sale relieves inventory.
+  Overdraft protection is the table's own `check (balance >= 0)`
+  constraint, not application logic: a spend that would overdraw aborts
+  the whole call (every `record_sale()` in it included) rather than
+  needing its own explicit balance check. Wallets are scoped to one fair,
+  not carried across fairs/years, because unused balance becomes that
+  fair's org payout at close-out (`close_wallets_for_fair()`) rather than
+  the student's own credit for next time.
+- The public storefront/wallet-funding pages (`/fairs/<id>`,
+  `/fairs/<id>/wallet`) are the only anon-facing (unauthenticated) surface
+  in the schema. Rather than opening RLS SELECT policies on
+  `catalog_items`/`allocations`/`sales`/`fairs`/`organizations` to `anon`,
+  narrow `SECURITY DEFINER` functions (`fair_storefront_items`,
+  `fair_public_info`, `get_checkout_session_public`, migrations
+  `0024`–`0025`) expose only the specific, buyer-safe shape each page
+  needs. The order confirmation page is reachable by the `checkout_sessions`
+  row's own id (an unguessable uuid) since there's no buyer login to check
+  against — the same access-control shape as e.g. Stripe's own hosted
+  receipt links.

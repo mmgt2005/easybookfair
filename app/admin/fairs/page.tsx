@@ -9,7 +9,7 @@ export default async function FairsPage() {
   const [{ data: fairs, error: fairsError }, { data: organizations }] = await Promise.all([
     supabase
       .from("fairs")
-      .select("id, name, status, start_date, end_date, organizations(name)")
+      .select("id, name, status, start_date, end_date, organizations(name, is_school)")
       .order("start_date", { ascending: false }),
     supabase.from("organizations").select("id, name").order("name"),
   ]);
@@ -57,6 +57,20 @@ export default async function FairsPage() {
                   >
                     Checkout
                   </Link>
+                  <Link
+                    href={`/admin/fairs/${fair.id}/pickup`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Pickup
+                  </Link>
+                  {(fair.organizations as unknown as { is_school: boolean } | null)?.is_school && (
+                    <Link
+                      href={`/admin/fairs/${fair.id}/wallets`}
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      Wallets
+                    </Link>
+                  )}
                   <Link
                     href={`/admin/fairs/${fair.id}/edit`}
                     className="font-semibold text-accent-600 hover:underline"

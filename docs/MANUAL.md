@@ -1,10 +1,10 @@
 # User manual
 
-> **Status**: Phase 2 (admin catalog + allocation) and the Phase 3 pieces
-> that exist so far (Stripe Connect onboarding, the payment webhook, and
-> an admin-only in-person checkout using a physical Stripe Terminal
-> reader) are built and described below as they actually work, not just
-> intended behavior. Everything else in this manual still describes
+> **Status**: Phase 2 (admin catalog + allocation), Phase 3 (Stripe Connect
+> onboarding, the payment webhook), and most of Phase 4 (buyer payment
+> options — in-person reader, online storefront with pickup, student
+> wallets, cash) are built and described below as they actually work, not
+> just intended behavior. Everything else in this manual still describes
 > intended behavior per [`docs/spec.md`](./spec.md), pending its build-plan
 > phase.
 
@@ -87,16 +87,18 @@ review step. This exists so a fair has an org to belong to, and
 allocation has a fair to allocate against.
 
 **Editing an organization** (`/admin/organizations/<id>/edit`): change
-name, contact info, and `status` (pending/approved/declined). Below that,
-a **Stripe Connect** card shows current charges/payouts status and a
-button — "Start Stripe onboarding" the first time, "Continue Stripe
-onboarding" if an account exists but isn't fully set up yet, "Update
-Stripe details" once it is. Clicking it creates (or reuses) a Connect
-Express account and sends you to Stripe's own hosted onboarding flow.
-**Charges/payouts status only updates once Stripe's `account.updated`
-webhook actually confirms it** — not just because the org clicked through
-the link — so it can take a moment (or a page refresh) to reflect after
-finishing onboarding.
+name, contact info, `status` (pending/approved/declined), and whether it's
+**"a school"** — a checkbox that gates the student-wallet feature (see
+"Student wallets" below) for all of that org's fairs; leave it off for any
+non-school consignor. Below that, a **Stripe Connect** card shows current
+charges/payouts status and a button — "Start Stripe onboarding" the first
+time, "Continue Stripe onboarding" if an account exists but isn't fully
+set up yet, "Update Stripe details" once it is. Clicking it creates (or
+reuses) a Connect Express account and sends you to Stripe's own hosted
+onboarding flow. **Charges/payouts status only updates once Stripe's
+`account.updated` webhook actually confirms it** — not just because the
+org clicked through the link — so it can take a moment (or a page
+refresh) to reflect after finishing onboarding.
 
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
@@ -169,26 +171,61 @@ never just from clicking the link.
 ### Payments
 
 The payment webhook (`/api/webhooks/stripe`) and its sale-writing
-functions exist and are tested. `payment_intent.succeeded` looks up a
-`checkout_sessions` row by `payment_intent_id` and writes one `sales`
-row (plus its ledger entry) per unit in the cart, atomically.
+functions handle four ways to pay, all writing through the same
+channel-agnostic `record_sale()`/ledger core — none of them are
+second-class:
 
-**In-person checkout with a physical reader** (`/admin/fairs/<id>/checkout`)
-is the first real caller of this path — see "Allocating a fair" → this
-page's parent, and "Terminal setup" on the fair's Edit page, above.
-Build a cart from that fair's available-to-sell stock (allocated minus
-already-completed sales), click "Connect reader" once, then "Charge $X
-with reader" — this creates the `checkout_sessions` row and PaymentIntent,
-collects payment on the physical reader, and the webhook finalizes the
-sale asynchronously once Stripe confirms it (the screen polls briefly and
-shows "Sale recorded" when it lands). This screen is admin-only for now —
-there's no separate org-staff login yet, so it isn't scoped to "whoever
-is running the booth" the way the eventual volunteer checkout will be.
+1. **Card, in person** — `/admin/fairs/<id>/checkout`. Build a cart from
+   that fair's available-to-sell stock, click "Connect reader" once, then
+   "Charge $X with reader" — creates the `checkout_sessions` row and
+   PaymentIntent, collects payment on the physical reader, and the
+   webhook finalizes the sale asynchronously once Stripe confirms it (the
+   screen polls briefly and shows "Sale recorded" when it lands). Needs
+   "Terminal setup" done first — see above. This screen is admin-only for
+   now — there's no separate org-staff login yet, so it isn't scoped to
+   "whoever is running the booth" the way an eventual volunteer checkout
+   would be.
+2. **Card, online** — the public storefront, `/fairs/<id>` (no login).
+   Buyers browse that fair's allocated stock and pay with Stripe Elements
+   as a guest. Orders are for **pickup at the fair, not shipped** — see
+   "Order pickup" below.
+3. **Student wallet** — a parent-funded balance a student spends down
+   themselves at the checkout table. See "Student wallets" below.
+4. **Cash** — recorded the same as before (`channel = cash`), no reader or
+   online step involved.
 
-The buyer-facing **online storefront** (self-checkout, no reader) is
-still Phase 4 proper — nothing yet creates an `online`-channel
-`checkout_sessions` row. See the README's "Stripe setup" section for how
-to exercise that path manually via the Stripe CLI in the meantime.
+Card-in-person, online, and wallet spends all funnel into the same
+`payment_intent.succeeded` webhook handler (cash doesn't, since there's no
+PaymentIntent for cash at all) — it tells apart a cart checkout from a
+wallet funding by a `kind` tag in the PaymentIntent's metadata, set when
+each is created.
+
+### Order pickup (`/admin/fairs/<id>/pickup`)
+
+Every online order is for pickup during the fair, not shipping — search
+by the buyer's name or email, see what they bought, and **Mark picked
+up** once you've handed it over. There's no confirmation email sent to
+buyers (no transactional email service is configured) — their order
+confirmation page (shown right after paying, with an order code) is their
+only record, so they need to bring that or otherwise identify themselves.
+
+### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
+
+Only available for organizations marked "a school" (see "Editing an
+organization" above). A parent loads money onto a named student's balance
+from `/fairs/<id>/wallet` (public, no login) — Stripe Elements, same as
+the storefront. The student then spends it down **themselves**, with no
+login either: at `/admin/fairs/<id>/checkout`, search the wallet section
+by the student's name, pick the matching student (grade/teacher shown to
+tell apart same-name students), and charge the cart to that balance —
+same identity approach as Scholastic's own eWallet (a name/grade/teacher
+lookup, not a PIN or account). Overdrawing a wallet is rejected outright.
+
+Unspent balance does **not** refund to the parent or roll over to next
+year — from the wallets page, **"Close eWallets for this fair"** sweeps
+every remaining balance into that fair's org payout as additional
+revenue, and is irreversible. Do this once the fair's pickup window has
+ended.
 
 ### Closing a fair
 
@@ -242,13 +279,35 @@ separate "missing inventory" bill later.
 
 ## Buyer guide
 
-Browse a fair's storefront (scoped to that specific fair — you won't see
-other orgs' inventory), add items to your cart, and check out online.
-Promotions/bundle discounts, if any are active, apply automatically.
+Browse a fair's storefront at `/fairs/<id>` (scoped to that specific
+fair — you won't see other orgs' inventory), add items to your cart, and
+check out with a card as a guest — no account needed, just your name and
+email. **Orders are for pickup at the fair, not shipped.** After paying,
+your confirmation page shows an order code — **there's no confirmation
+email**, so save that page or write the code down; it's your only record
+of the order. Bring it (or just your name) to the pickup table during the
+fair.
+
+If your student's school offers **student wallets**, you can instead load
+money onto your kid's own balance at `/fairs/<id>/wallet` (only shown for
+schools) so they can shop the fair independently, without carrying cash —
+they spend it down themselves at the checkout table by giving their name.
+Any amount left unspent after the fair becomes an additional donation
+toward the school — **it isn't refunded or carried over to next time**.
+
+Promotions/bundle discounts, if any are active, are meant to apply
+automatically at checkout — not built yet (see below).
 
 ## Not yet supported
 
 - Sales tax calculation or remittance.
 - Chargeback/dispute reconciliation beyond a basic refund.
+- Promotions/bundle discounts (schema exists, no checkout logic reads it
+  yet).
+- Confirmation emails for online orders or wallet funding — everything is
+  shown on-screen only.
+- Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
+  need Stripe's native mobile Terminal SDK, which this web app can't
+  invoke from a browser.
 
-These are called out as deferred in the spec, not silently missing.
+These are called out as deferred, not silently missing.
