@@ -85,6 +85,12 @@ export default async function DemoFairPage() {
               Pickup
             </Link>
             <Link
+              href={`/admin/fairs/${fair.id}/sales`}
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              Sales
+            </Link>
+            <Link
               href={`/admin/fairs/${fair.id}/wallets`}
               className="font-semibold text-accent-600 hover:underline"
             >

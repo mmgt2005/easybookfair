@@ -37,6 +37,18 @@ which point versioning starts.
 
 ### Added
 
+- **Live sales feed** (`/admin/fairs/<id>/sales`, `/org/fairs/<id>/sales`):
+  every completed sale for a fair — item title, channel, price, time —
+  itemized and refreshing automatically, plus a running units-sold/
+  revenue total. Built on polling (`getRecentSales()`, called every few
+  seconds), not a Supabase Realtime subscription — no new infrastructure
+  dependency, and comfortably responsive at book-fair transaction
+  volumes. Diffs the polled batch by row id rather than cursoring on
+  `sold_at`, since `record_cash_sale()`/`spend_from_wallet()` insert one
+  row per unit in a tight loop and two sales can land with the identical
+  timestamp (confirmed while testing this). No new schema or RLS was
+  needed — `sales_select` (migration `0005`) already scoped reads
+  correctly for both an admin and that fair's own org staff.
 - **Org staff can run their own fair day-of** (migration `0046`):
   checkout, pickup, and wallets were effectively admin-only — not just the
   UI (`requireAdmin()`), but the underlying RPCs

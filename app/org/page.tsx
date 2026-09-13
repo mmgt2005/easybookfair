@@ -126,6 +126,12 @@ export default async function OrgDashboard() {
                         Wallets →
                       </Link>
                     )}
+                    <Link
+                      href={`/org/fairs/${fair.id}/sales`}
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      Sales feed →
+                    </Link>
                     {!fair.allow_in_person &&
                       !fair.allow_cash &&
                       !fair.allow_online &&

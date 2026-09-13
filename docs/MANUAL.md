@@ -52,10 +52,9 @@ not.
 - **Org staff** (`org_admin` / `org_staff` in `org_members`) — requests a
   fair for their organization (choosing which payment options it should
   offer), tracks its status and eventual payout from `/org`, and can run
-  it day-of at `/org/fairs/<id>/{checkout,pickup,wallets}` — the same
-  screens an admin uses, scoped to fairs their own org owns. A live sales
-  feed is still not built (see "Org staff guide" below) — you'd read
-  sales from the checkout screen and payout from the dashboard instead.
+  it day-of at `/org/fairs/<id>/{checkout,pickup,wallets,sales}` — the
+  same screens an admin uses, scoped to fairs their own org owns (see
+  "Org staff guide" below).
 - **Author** — submits books/merchandise for the platform to carry
   (`/author/submit`, no account needed) and, once approved, tracks their
   submissions and sales from `/author`. See "Author guide" below.
@@ -391,6 +390,17 @@ never depends on it arriving — their confirmation page, or
 `/fairs/<id>/orders` (looks orders up by email) if they lose that too, are
 the reliable paths.
 
+### Sales feed (`/admin/fairs/<id>/sales`)
+
+A live, itemized view of every completed sale for that fair — time, item
+title, channel (Card reader/Card online/Wallet/Cash), and price — across
+all four payment paths, plus a running units-sold/revenue total. It's
+"live" via polling (checks for new sales every few seconds and refreshes
+the list), not a websocket subscription — plenty responsive at book-fair
+transaction volumes without taking on Realtime infrastructure. A row that
+just arrived is briefly highlighted so you can see it land. Also
+available to that fair's own org staff (`/org/fairs/<id>/sales`).
+
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an
@@ -464,8 +474,8 @@ yet (see "Not yet supported").
 ## Org staff guide
 
 The org portal (`/org`) covers requesting a fair, tracking its payout,
-and — since migration `0046` — actually running it day-of. A live sales
-feed is the one piece still not built; everything else below is real.
+and — since migration `0046` — actually running it day-of, sales feed
+included.
 
 ### Your dashboard (`/org`)
 
@@ -474,17 +484,18 @@ storefront and/or student-wallet page for each, if those options are
 enabled) and your fair requests with their current status (pending,
 approved, declined — with the admin's note if declined). A **Run this
 fair** column links to whichever of Checkout/Pickup/Wallets apply to that
-fair's payment options.
+fair's payment options, plus a **Sales feed** link that's always there.
 
-### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets}`)
+### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets,sales}`)
 
-The exact same screens an admin uses (see "Payments" and "Order pickup"
-above, and "Student wallets" below) — reader/wallet/cash checkout,
-marking online orders picked up, and viewing/closing out student
-wallets — just scoped to fairs your own organization owns. A different
-organization's staff (or a non-member) can't reach your fair's screens
-even with the direct URL: both the page and the underlying action
-re-check that the fair belongs to an org you're a member of.
+The exact same screens an admin uses (see "Payments", "Order pickup", and
+"Sales feed" above, and "Student wallets" below) — reader/wallet/cash
+checkout, marking online orders picked up, viewing/closing out student
+wallets, and the live sales feed — just scoped to fairs your own
+organization owns. A different organization's staff (or a non-member)
+can't reach your fair's screens even with the direct URL: both the page
+and the underlying action re-check that the fair belongs to an org you're
+a member of.
 
 ### Requesting a fair (`/org/fairs/request`)
 
@@ -584,9 +595,6 @@ submit something new.
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't
   invoke from a browser.
-- A live sales feed in the org portal — checkout, pickup, and wallets are
-  now available to org staff too (see "Org staff guide" above), but
-  there's no real-time view of sales as they happen yet.
 - Self-serve invites for platform admins or org staff — both are added
   directly in the database by an existing admin. (Author accounts are
   different — created automatically on approval, no manual step.)

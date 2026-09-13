@@ -30,15 +30,24 @@ off), not just decorative — both the org portal and the fair's admin edit
 page show the actual buyer-facing links.
 
 Org staff can now also run their own fair day-of, not just request and
-track it: `/org/fairs/<id>/{checkout,pickup,wallets}` (migration `0046`)
-mirror the admin equivalents exactly — same `CheckoutClient`, same Server
-Actions — because the underlying RPCs (`record_cash_sale`,
+track it: `/org/fairs/<id>/{checkout,pickup,wallets,sales}` (migration
+`0046`) mirror the admin equivalents exactly — same `CheckoutClient`,
+same Server Actions — because the underlying RPCs (`record_cash_sale`,
 `spend_from_wallet`, `mark_checkout_picked_up`, `close_wallets_for_fair`)
 now check `app.can_operate_fair()` (a platform admin, or an org member
 whose org owns that specific fair) instead of admin-only. A different
 org's staff, or a non-member, still gets rejected — both at the RPC layer
 and by `requireFairStaff()` (`lib/auth.ts`), the shared page/action gate
 both route trees call.
+
+A **live sales feed** (`/admin/fairs/<id>/sales`, `/org/fairs/<id>/sales`)
+shows every completed sale for a fair — item, channel, price, timestamp —
+plus a running units/revenue total, refreshing every few seconds
+(polling `getRecentSales()`, diffed by row id rather than a `sold_at`
+cursor — two sales can land in the same instant, since
+`record_cash_sale`/`spend_from_wallet` insert one row per unit in a tight
+loop). No new schema or RLS needed — `sales_select` (migration `0005`)
+already scoped this correctly for both admin and org staff.
 
 A big batch pulling several later-phase pieces forward at once:
 
