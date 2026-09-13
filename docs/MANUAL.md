@@ -24,10 +24,14 @@ now — there's no self-serve admin invite flow yet), or you'll land on
 `/unauthorized` after signing in.
 
 Org staff screens live under `/org` and work the same way, except your
-user id needs to be a row in `org_members` instead (also added directly
-in the database for now by an existing admin — see "Local setup" in the
-README). Once a fair request is approved, the requester gets an email
-pointing them at `/org` — signing in there works the same magic-link way.
+user id needs to be a row in `org_members` instead. Getting one added
+works two ways: an existing admin can add it directly in the database
+(see "Local setup" in the README), or — no account or database access
+needed — a new organization can submit `/join` and an admin approves it
+from `/admin/org-signups`, which creates the organization, invites the
+contact by email, and adds them as org staff in one step. Once a fair
+request is approved, the requester gets an email pointing them at
+`/org` — signing in there works the same magic-link way.
 
 Author screens live under `/author` and are different from the other
 two: there's no manual database insert — your account is created
@@ -304,6 +308,24 @@ signed in — it pre-fills their name/email and links the new submission to
 their account immediately, without waiting for another approval. A
 submission made by an admin "viewing as" that author (see below) is
 flagged inline the same way an admin-submitted fair request is.
+
+### Reviewing organization signups (`/admin/org-signups`)
+
+A school or organization can express interest with no account at all from
+the public `/join` form — organization name, contact name/email, whether
+it's a school (unlocks student wallets once approved), and an optional
+message. Each pending signup shows **Approve** and **Decline**:
+
+- **Approve** creates the real `organizations` row, invites the contact by
+  email (Supabase's own invite flow, same mechanism as author approval),
+  and adds them as org staff (`org_members`) — they can sign in to `/org`
+  immediately and request their first fair, with no separate database
+  step needed.
+- **Decline** takes an optional note and creates nothing.
+
+This is the organization-side counterpart to author submissions above —
+the only self-serve way into the platform for either role, both reviewed
+by an admin before anything is created.
 
 ### Viewing as an org or author (`/admin/organizations`, `/admin/authors`)
 

@@ -37,6 +37,20 @@ which point versioning starts.
 
 ### Added
 
+- **Organization signups** (`/join`, public, no login; migration `0045`,
+  `org_signups` table): the organization-side counterpart to author
+  submissions — before this, an organization could only ever be created
+  directly by an admin (`app/admin/organizations/actions.ts`), with no
+  self-serve path in at all, unlike authors. A school or org now submits
+  name/contact/is-school/message with no account, an admin reviews it at
+  `/admin/org-signups`, and approving creates the real `organizations`
+  row, invites the contact by email (Supabase's own invite flow, same
+  mechanism as author-submission approval), and adds them as org staff
+  (`org_members`) in one step — they can sign in to `/org` immediately.
+  Deliberately placed at `/join`, not under `/org`, since the middleware
+  gates every `/org/*` path behind an existing session. The root landing
+  page (`/`, previously a stale Phase 1 placeholder) now actually links to
+  this, to `/author/submit`, and to `/login`.
 - **Cash tender on the admin checkout screen** (migration `0043`,
   `record_cash_sale()`): cash has been a real `sale_channel` since Phase 1
   (`record_sale()` already had a dedicated ledger-posting branch for it),

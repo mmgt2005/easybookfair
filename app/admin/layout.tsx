@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/admin/authors", label: "Authors" },
   { href: "/admin/fairs", label: "Fairs" },
   { href: "/admin/fair-requests", label: "Fair requests" },
+  { href: "/admin/org-signups", label: "Org signups" },
   { href: "/admin/author-submissions", label: "Author submissions" },
   { href: "/admin/carton-specs", label: "Carton specs" },
   { href: "/admin/demo", label: "Demo fair" },
@@ -42,6 +43,11 @@ const adminTourSteps = [
     title: "Fair requests",
     description:
       "Orgs request fairs from their own portal, picking payment options. Approving here copies those choices into a real, scheduled fair.",
+  },
+  {
+    title: "Org signups",
+    description:
+      "A new organization can express interest at /join with no account. Approving here creates the organization, invites the contact, and adds them as org staff.",
   },
   {
     title: "Manual",

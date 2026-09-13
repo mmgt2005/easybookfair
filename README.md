@@ -59,6 +59,16 @@ A big batch pulling several later-phase pieces forward at once:
   invites the author to a real account and adds the item to the catalog.
   A minimal author portal (`/author`) shows submission status and, once
   approved, units sold/revenue.
+- **Organization signups** (`/join`, public, no login; migration `0045`):
+  the organization-side equivalent — a school or org expresses interest
+  with no account, admin review at `/admin/org-signups`, approving creates
+  the real `organizations` row, invites the contact to a real account, and
+  adds them as org staff so `/org` lets them in immediately to request
+  their first fair. Deliberately at `/join`, not under `/org` — the
+  middleware gates every `/org/*` path behind an existing session, so a
+  public, no-login form can't live there. The actual landing page (`/`)
+  links to both this and author submissions, alongside admin/org staff
+  sign-in.
 - **Admin "view as"** (`/admin/organizations`, `/admin/authors`): an admin
   can preview and act in the org or author portal as a specific
   org/author — a "View as" link switches into it (an amber banner makes
@@ -136,6 +146,7 @@ code (everything that needs to be unit-tested).
    - `0042_settlement_reconciliation.sql`
    - `0043_record_cash_sale.sql`
    - `0044_demo_admin_lockdown.sql`
+   - `0045_org_signups.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -144,12 +155,16 @@ code (everything that needs to be unit-tested).
    insert into public.platform_admins (user_id)
    values ('<your auth.users id>');
    ```
-5. To try the org portal (`/org`), add someone to `org_members` the same
-   manual way (also no self-serve invite flow):
+5. To try the org portal (`/org`), either add someone to `org_members`
+   directly:
    ```sql
    insert into public.org_members (org_id, user_id, role)
    values ('<organizations.id>', '<their auth.users id>', 'org_staff');
    ```
+   or go through the real flow: submit `/join` (no login), then approve it
+   from `/admin/org-signups` — this creates the organization, invites the
+   contact by email, and adds them as org staff in one step (migration
+   `0045`).
 6. Set up Stripe (see "Stripe setup" below) if you want to exercise org
    onboarding or the payment webhook — everything else works without it.
 7. The demo/training fair (`/admin/demo`) and its five `[Demo]`-prefixed
