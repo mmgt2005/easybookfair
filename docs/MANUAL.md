@@ -51,10 +51,11 @@ not.
   fairs. (Phase 7 adds tenant admin and platform super-admin above this.)
 - **Org staff** (`org_admin` / `org_staff` in `org_members`) — requests a
   fair for their organization (choosing which payment options it should
-  offer) and tracks its status, including its eventual payout, from
-  `/org`. Running checkout and a live sales feed are still admin-only for
-  now — see "Org staff guide" below for exactly what's built versus still
-  intended.
+  offer), tracks its status and eventual payout from `/org`, and can run
+  it day-of at `/org/fairs/<id>/{checkout,pickup,wallets}` — the same
+  screens an admin uses, scoped to fairs their own org owns. A live sales
+  feed is still not built (see "Org staff guide" below) — you'd read
+  sales from the checkout screen and payout from the dashboard instead.
 - **Author** — submits books/merchandise for the platform to carry
   (`/author/submit`, no account needed) and, once approved, tracks their
   submissions and sales from `/author`. See "Author guide" below.
@@ -351,16 +352,17 @@ functions handle four ways to pay, all writing through the same
 channel-agnostic `record_sale()`/ledger core — none of them are
 second-class:
 
-1. **Card, in person** — `/admin/fairs/<id>/checkout`. Build a cart from
-   that fair's available-to-sell stock, click "Connect reader" once, then
-   "Charge $X with reader" — creates the `checkout_sessions` row and
-   PaymentIntent, collects payment on the physical reader, and the
-   webhook finalizes the sale asynchronously once Stripe confirms it (the
-   screen polls briefly and shows "Sale recorded" when it lands). Needs
-   "Terminal setup" done first — see above. This screen is admin-only for
-   now — there's no separate org-staff login yet, so it isn't scoped to
-   "whoever is running the booth" the way an eventual volunteer checkout
-   would be.
+1. **Card, in person** — `/admin/fairs/<id>/checkout` (admin) or
+   `/org/fairs/<id>/checkout` (that fair's own org staff, migration
+   `0046`). Build a cart from that fair's available-to-sell stock, click
+   "Connect reader" once, then "Charge $X with reader" — creates the
+   `checkout_sessions` row and PaymentIntent, collects payment on the
+   physical reader, and the webhook finalizes the sale asynchronously
+   once Stripe confirms it (the screen polls briefly and shows "Sale
+   recorded" when it lands). Needs "Terminal setup" done first (admin
+   only — see above). Still not scoped to "whoever is running the booth"
+   the way an eventual volunteer checkout would be — anyone with the org
+   staff login can use it, not a specific person assigned to that table.
 2. **Card, online** — the public storefront, `/fairs/<id>` (no login).
    Buyers browse that fair's allocated stock and pay with Stripe Elements
    as a guest. Orders are for **pickup at the fair, not shipped** — see
@@ -461,18 +463,28 @@ yet (see "Not yet supported").
 
 ## Org staff guide
 
-The org portal (`/org`) is real and working for the two things below.
-Running checkout, a live sales feed, and payout status are **not** part
-of it yet — those screens are still admin-only (see "Payments" above);
-this section describes what's actually built today, not the eventual
-full scope.
+The org portal (`/org`) covers requesting a fair, tracking its payout,
+and — since migration `0046` — actually running it day-of. A live sales
+feed is the one piece still not built; everything else below is real.
 
 ### Your dashboard (`/org`)
 
 Lists your organization's fairs (with a shareable link to the public
 storefront and/or student-wallet page for each, if those options are
 enabled) and your fair requests with their current status (pending,
-approved, declined — with the admin's note if declined).
+approved, declined — with the admin's note if declined). A **Run this
+fair** column links to whichever of Checkout/Pickup/Wallets apply to that
+fair's payment options.
+
+### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets}`)
+
+The exact same screens an admin uses (see "Payments" and "Order pickup"
+above, and "Student wallets" below) — reader/wallet/cash checkout,
+marking online orders picked up, and viewing/closing out student
+wallets — just scoped to fairs your own organization owns. A different
+organization's staff (or a non-member) can't reach your fair's screens
+even with the direct URL: both the page and the underlying action
+re-check that the fair belongs to an org you're a member of.
 
 ### Requesting a fair (`/org/fairs/request`)
 
@@ -572,9 +584,9 @@ submit something new.
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't
   invoke from a browser.
-- Running checkout or a live sales feed from the org portal — those stay
-  admin-only for now (see "Org staff guide" above); payout status is
-  built (see "Your payout"), just not those two.
+- A live sales feed in the org portal — checkout, pickup, and wallets are
+  now available to org staff too (see "Org staff guide" above), but
+  there's no real-time view of sales as they happen yet.
 - Self-serve invites for platform admins or org staff — both are added
   directly in the database by an existing admin. (Author accounts are
   different — created automatically on approval, no manual step.)

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getViewAsOrgId, getViewAsAuthorId } from "@/lib/viewAs";
 
@@ -114,6 +115,60 @@ export async function requireOrgStaff() {
     viewingAs: false,
     adminId: null as string | null,
   };
+}
+
+/**
+ * Guard for running a specific fair's day-of operations (checkout,
+ * pickup, wallets) — used by both /admin/fairs/<id>/{checkout,pickup,
+ * wallets} and the /org equivalents, and by the Server Actions those
+ * screens call, so a request against those actions is authorized the
+ * same way regardless of which route it came from. A platform admin can
+ * operate any fair; org staff only the fair(s) belonging to an org they're
+ * a member of (migration 0046, app.can_operate_fair() enforces the same
+ * rule at the RPC layer for defense in depth — this is the UX/redirect
+ * gate, not the security boundary).
+ */
+export async function requireFairStaff(
+  fairId: string,
+): Promise<{ user: User; isAdmin: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: adminRow } = await supabase
+    .from("platform_admins")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (adminRow) {
+    return { user, isAdmin: true };
+  }
+
+  const { data: memberships } = await supabase
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", user.id);
+  const orgIds = (memberships ?? []).map((m) => m.org_id);
+
+  if (orgIds.length > 0) {
+    const { data: fair } = await supabase
+      .from("fairs")
+      .select("id")
+      .eq("id", fairId)
+      .in("org_id", orgIds)
+      .maybeSingle();
+    if (fair) {
+      return { user, isAdmin: false };
+    }
+  }
+
+  redirect("/unauthorized");
 }
 
 /**

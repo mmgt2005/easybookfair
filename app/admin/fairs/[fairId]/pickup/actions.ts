@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireFairStaff } from "@/lib/auth";
 
 export async function markPickedUp(fairId: string, formData: FormData) {
+  await requireFairStaff(fairId);
   const checkoutSessionId = String(formData.get("checkout_session_id"));
   const supabase = await createClient();
 

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { createPromotion, togglePromotionActive, deletePromotion } from "./actions";
+import { createPromotion } from "./actions";
 import { PromotionForm } from "./PromotionForm";
-import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { PromotionCard } from "./PromotionCard";
+import { PageHeader } from "@/components/ui";
 import type { BundleConfig, PercentConfig } from "@/lib/promotions";
 
 export default async function PromotionsPage({
@@ -64,42 +65,23 @@ export default async function PromotionsPage({
       )}
 
       <div className="flex flex-col gap-4">
-        {(promotions ?? []).map((promo) => {
-          const toggleForPromo = togglePromotionActive.bind(null, fairId, promo.id, !promo.active);
-          const deleteForPromo = deletePromotion.bind(null, fairId, promo.id);
-          return (
-            <Card key={promo.id} className="max-w-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-heading font-bold text-neutral-900">{promo.name}</h3>
-                  <p className="text-sm text-neutral-600">
-                    {describeConfig(promo.kind, promo.config)}
-                  </p>
-                  {(promo.starts_at || promo.ends_at) && (
-                    <p className="text-xs text-neutral-500">
-                      {promo.starts_at ?? "no start"} – {promo.ends_at ?? "no end"}
-                    </p>
-                  )}
-                </div>
-                <Badge tone={promo.active ? "success" : "neutral"}>
-                  {promo.active ? "active" : "inactive"}
-                </Badge>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <form action={toggleForPromo}>
-                  <Button type="submit" size="sm" variant="outline">
-                    {promo.active ? "Deactivate" : "Activate"}
-                  </Button>
-                </form>
-                <form action={deleteForPromo}>
-                  <Button type="submit" size="sm" variant="ghost">
-                    Delete
-                  </Button>
-                </form>
-              </div>
-            </Card>
-          );
-        })}
+        {(promotions ?? []).map((promo) => (
+          <PromotionCard
+            key={promo.id}
+            fairId={fairId}
+            promotion={{
+              id: promo.id,
+              name: promo.name,
+              kind: promo.kind as "percent" | "bundle",
+              config: promo.config as PercentConfig | BundleConfig,
+              active: promo.active,
+              starts_at: promo.starts_at,
+              ends_at: promo.ends_at,
+            }}
+            items={items}
+            description={describeConfig(promo.kind, promo.config)}
+          />
+        ))}
         {(promotions ?? []).length === 0 && (
           <p className="text-sm text-neutral-500">No promotions yet for this fair.</p>
         )}

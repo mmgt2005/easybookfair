@@ -37,6 +37,27 @@ which point versioning starts.
 
 ### Added
 
+- **Org staff can run their own fair day-of** (migration `0046`):
+  checkout, pickup, and wallets were effectively admin-only — not just the
+  UI (`requireAdmin()`), but the underlying RPCs
+  (`record_cash_sale`/`spend_from_wallet`/`mark_checkout_picked_up`/
+  `close_wallets_for_fair`) hard-gated to `app.is_platform_admin()`
+  internally. A new `app.can_operate_fair(p_fair_id)` generalizes that
+  check (true for any admin, or for org staff whose org owns that
+  specific fair — the same org-scoping `fairs_select`/`sales_select`
+  already use), and `requireFairStaff()` (`lib/auth.ts`) is the matching
+  page/action-level gate. New `/org/fairs/<id>/{checkout,pickup,wallets}`
+  mirror the admin screens exactly (same `CheckoutClient`, same Server
+  Actions) for org staff, and the org dashboard's fairs table gained a
+  **Run this fair** column linking to whichever apply. `student_wallets`/
+  `wallet_fundings` also gained additive org-scoped `SELECT` policies
+  (previously admin-only), the same pattern as `sales_select_author`
+  being additive to `sales_select`.
+- **Promotion editing**: promotions could only be created, toggled
+  active/inactive, or deleted — never edited. `PromotionForm` now accepts
+  optional `initial` values and a new `updatePromotion()` action; each
+  promotion card has an **Edit** button that reopens the same form,
+  prefilled, in place.
 - **Organization signups** (`/join`, public, no login; migration `0045`,
   `org_signups` table): the organization-side counterpart to author
   submissions — before this, an organization could only ever be created

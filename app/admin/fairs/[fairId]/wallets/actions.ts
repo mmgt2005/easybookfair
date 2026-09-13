@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireFairStaff } from "@/lib/auth";
 import { sendWalletDonationReceiptEmail, siteUrl } from "@/lib/email";
 
 function pagePath(fairId: string) {
@@ -14,6 +15,7 @@ function pagePath(fairId: string) {
 // deliberate manual action, same posture as the rest of "closing a fair"
 // being manual until the full settlement engine exists.
 export async function closeWalletsForFair(fairId: string) {
+  await requireFairStaff(fairId);
   const supabase = await createClient();
 
   // Captured *before* closing — close_wallets_for_fair() zeroes balance

@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireAdmin } from "@/lib/auth";
+import { requireFairStaff } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import {
   applyPromotions,
@@ -29,7 +29,7 @@ export type CartLine = { catalog_item_id: string; quantity: number };
 // acceptable for one reader/one cashier at a time in practice, not safe for
 // multiple concurrent checkout stations without adding real locking.
 export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
-  await requireAdmin();
+  await requireFairStaff(fairId);
 
   if (!cart.length) {
     throw new Error("Cart is empty");
@@ -169,18 +169,22 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
 // Polled by the client after Terminal reports the payment collected — the
 // actual sales/ledger rows are written asynchronously by the
 // payment_intent.succeeded webhook, not synchronously in this request.
+// Only the checkout session id is known here, not its fair, so the fair id
+// is looked up first (service role — purely to identify which fair this
+// session belongs to for the requireFairStaff() check, not to bypass it).
 export async function getCheckoutSessionStatus(checkoutSessionId: string) {
-  await requireAdmin();
   const service = createServiceClient();
 
-  const { data, error } = await service
+  const { data: session, error: lookupError } = await service
     .from("checkout_sessions")
-    .select("status")
+    .select("fair_id, status")
     .eq("id", checkoutSessionId)
     .single();
+  if (lookupError) throw new Error(lookupError.message);
 
-  if (error) throw new Error(error.message);
-  return data.status as string;
+  await requireFairStaff(session.fair_id);
+
+  return session.status as string;
 }
 
 export type WalletMatch = {
@@ -199,7 +203,7 @@ export async function searchWallets(
   fairId: string,
   query: string,
 ): Promise<WalletMatch[]> {
-  await requireAdmin();
+  await requireFairStaff(fairId);
   if (!query.trim()) return [];
 
   const supabase = await createClient();
@@ -232,7 +236,7 @@ export async function chargeWallet(
   walletId: string,
   cart: CartLine[],
 ) {
-  await requireAdmin();
+  await requireFairStaff(fairId);
   if (!cart.length) {
     throw new Error("Cart is empty");
   }
@@ -274,7 +278,7 @@ export async function chargeWallet(
 // asynchronously like the reader (no PaymentIntent/webhook involved for
 // cash at all).
 export async function chargeCash(fairId: string, cart: CartLine[]) {
-  await requireAdmin();
+  await requireFairStaff(fairId);
   if (!cart.length) {
     throw new Error("Cart is empty");
   }

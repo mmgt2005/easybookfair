@@ -29,12 +29,25 @@ options are enforced per fair (online/wallet/in-person can each be turned
 off), not just decorative — both the org portal and the fair's admin edit
 page show the actual buyer-facing links.
 
+Org staff can now also run their own fair day-of, not just request and
+track it: `/org/fairs/<id>/{checkout,pickup,wallets}` (migration `0046`)
+mirror the admin equivalents exactly — same `CheckoutClient`, same Server
+Actions — because the underlying RPCs (`record_cash_sale`,
+`spend_from_wallet`, `mark_checkout_picked_up`, `close_wallets_for_fair`)
+now check `app.can_operate_fair()` (a platform admin, or an org member
+whose org owns that specific fair) instead of admin-only. A different
+org's staff, or a non-member, still gets rejected — both at the RPC layer
+and by `requireFairStaff()` (`lib/auth.ts`), the shared page/action gate
+both route trees call.
+
 A big batch pulling several later-phase pieces forward at once:
 
 - **Promotions/bundle discounts** (`/admin/fairs/<id>/promotions`): percent-off
   or "any N for $X" bundle deals, scoped per fair, applied automatically —
-  not buyer-chosen — across all three checkout paths (online, in-person,
-  wallet). See `lib/promotions.ts`.
+  not buyer-chosen — across all four checkout paths (online, in-person,
+  wallet, cash). See `lib/promotions.ts`. Each promotion has an **Edit**
+  button, not just activate/deactivate/delete — reopens the same form,
+  prefilled, as an update instead of a new row.
 - **Closing a fair** (`/admin/fairs/<id>/edit`): a real, if deliberately
   scoped-down, `close_fair()` — computes payout (or amount owed) straight
   from the ledger, nets the equipment rental fee, and locks it. A button
@@ -147,6 +160,7 @@ code (everything that needs to be unit-tested).
    - `0043_record_cash_sale.sql`
    - `0044_demo_admin_lockdown.sql`
    - `0045_org_signups.sql`
+   - `0046_org_staff_fair_operations.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve

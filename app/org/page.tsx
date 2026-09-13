@@ -18,7 +18,7 @@ export default async function OrgDashboard() {
     supabase
       .from("fairs")
       .select(
-        "id, name, status, start_date, end_date, allow_online, allow_wallet, organizations(is_school)",
+        "id, name, status, start_date, end_date, allow_online, allow_wallet, allow_in_person, allow_cash, organizations(is_school)",
       )
       .in("org_id", orgIds)
       .order("start_date", { ascending: false }),
@@ -54,6 +54,7 @@ export default async function OrgDashboard() {
               <th className="py-2 pr-4">Dates</th>
               <th className="py-2 pr-4">Status</th>
               <th className="py-2 pr-4">Payout</th>
+              <th className="py-2 pr-4">Run this fair</th>
               <th className="py-2 pr-4">Share with buyers</th>
             </tr>
           </thead>
@@ -101,6 +102,38 @@ export default async function OrgDashboard() {
                     )}
                   </td>
                   <td className="flex flex-col gap-1 py-2 pr-4">
+                    {(fair.allow_in_person || fair.allow_cash) && (
+                      <Link
+                        href={`/org/fairs/${fair.id}/checkout`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Checkout →
+                      </Link>
+                    )}
+                    {fair.allow_online && (
+                      <Link
+                        href={`/org/fairs/${fair.id}/pickup`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Pickup →
+                      </Link>
+                    )}
+                    {fair.allow_wallet && org?.is_school && (
+                      <Link
+                        href={`/org/fairs/${fair.id}/wallets`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Wallets →
+                      </Link>
+                    )}
+                    {!fair.allow_in_person &&
+                      !fair.allow_cash &&
+                      !fair.allow_online &&
+                      !(fair.allow_wallet && org?.is_school) && (
+                        <span className="text-xs text-neutral-400">No payment options on</span>
+                      )}
+                  </td>
+                  <td className="flex flex-col gap-1 py-2 pr-4">
                     {fair.allow_online && (
                       <Link
                         href={`/fairs/${fair.id}`}
@@ -128,7 +161,7 @@ export default async function OrgDashboard() {
             })}
             {(fairs ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="py-4 pl-4 text-neutral-500">
+                <td colSpan={6} className="py-4 pl-4 text-neutral-500">
                   No fairs yet — request one to get started.
                 </td>
               </tr>
