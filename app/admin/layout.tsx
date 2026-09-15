@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/admin/authors", label: "Authors" },
   { href: "/admin/fairs", label: "Fairs" },
   { href: "/admin/fair-requests", label: "Fair requests" },
+  { href: "/admin/event-requests", label: "Event requests" },
   { href: "/admin/org-signups", label: "Org signups" },
   { href: "/admin/author-submissions", label: "Author submissions" },
   { href: "/admin/carton-specs", label: "Carton specs" },

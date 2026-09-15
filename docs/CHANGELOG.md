@@ -47,6 +47,36 @@ which point versioning starts.
 
 ### Added
 
+- **Org dashboard marketing toolkit** (`/org/fairs/<id>/marketing`): a
+  per-fair page with the storefront/student-wallet links (copy-to-clipboard
+  buttons), a QR code for each (new `qrcode` dependency, rendered as a
+  `data:` URL — no external service call), a printable one-page flyer
+  (fair name/dates, QR code, storefront URL) using the browser's own
+  print-to-PDF, and ready-to-copy social-media/parent-email text templated
+  from the fair's real name/dates/links — no invented pricing or claims.
+  The flyer needed its own route rather than an inline dashboard section,
+  same reasoning as the existing wallet donation receipt page: `window.
+  print()` should print only the flyer, not the whole dashboard. Promoted
+  the receipt page's `PrintButton` into `components/ui` since it now has a
+  second caller, and added a new shared `CopyButton`. Linked from `/org`'s
+  existing "Share with buyers" column.
+- **Author reading / book signing requests** (`event_requests`, migration
+  `0049`): an org can request an author event for a book already allocated
+  to one of their own fairs, from a new `/org/events/request` form (fair
+  picker → book picker, the book list scoped to that fair's `allocations`
+  so an org can't request an event for a book it isn't actually carrying).
+  Mirrors the `fair_requests` staging-table pattern exactly — org proposes,
+  admin reviews at `/admin/event-requests` (approve/decline, no
+  authenticated update policy), best-effort approval email to the org.
+  The `(fair_id, catalog_item_id)` pair is enforced by a composite foreign
+  key straight to `allocations`, so "this book isn't actually at this
+  fair" is a database-level rejection, not just a client-side filter. The
+  admin review screen also reverse-looks-up the submitting author (via
+  `author_submissions.catalog_item_id`) so an admin knows who to actually
+  coordinate the event with — the author is never auto-emailed, that's a
+  manual step for the admin. Org staff already had read access to
+  `allocations` for their own fairs (`allocations_select`, migration
+  `0005`) — no new RLS needed there.
 - **Real landing page at `/`**: replaced the placeholder root page with a
   fundraising-focused landing page — hero, "How it works" (4 steps),
   feature highlights, "Who it's for" (schools/orgs, authors/vendors,

@@ -65,3 +65,65 @@ export async function createFairRequest(formData: FormData) {
 
   redirect("/org");
 }
+
+// Mirrors createFairRequest above — same org_id/viewingAs/requested_by_email
+// resolution, same "RLS is the real boundary, this is just a clearer error"
+// reasoning (event_requests_org_insert, or event_requests_admin_insert
+// while an admin is "viewing as" this org).
+export async function createEventRequest(formData: FormData) {
+  const { user, orgIds, viewingAs, adminId } = await requireOrgStaff();
+  const supabase = await createClient();
+
+  const fairId = String(formData.get("fair_id") ?? "");
+  const catalogItemId = String(formData.get("catalog_item_id") ?? "");
+  const eventType = String(formData.get("event_type") ?? "");
+  const requestedDate = String(formData.get("requested_date") ?? "").trim() || null;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  if (!fairId || !catalogItemId) {
+    throw new Error("Pick a fair and a book");
+  }
+  if (eventType !== "author_reading" && eventType !== "book_signing") {
+    throw new Error("Pick an event type");
+  }
+
+  const { data: fair } = await supabase
+    .from("fairs")
+    .select("org_id")
+    .eq("id", fairId)
+    .single();
+  if (!fair || !orgIds.includes(fair.org_id)) {
+    throw new Error("You don't have access to that fair");
+  }
+  const orgId = fair.org_id;
+
+  let requestedByEmail = user.email ?? null;
+  if (viewingAs) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("contact_email")
+      .eq("id", orgId)
+      .single();
+    requestedByEmail = org?.contact_email ?? requestedByEmail;
+  }
+
+  const { error } = await supabase.from("event_requests").insert({
+    org_id: orgId,
+    fair_id: fairId,
+    catalog_item_id: catalogItemId,
+    event_type: eventType,
+    requested_date: requestedDate,
+    notes,
+    requested_by: user.id,
+    requested_by_email: requestedByEmail,
+    submitted_by_admin_id: viewingAs ? adminId : null,
+  });
+
+  if (error) {
+    redirect(
+      `/org/events/request?fair_id=${fairId}&error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  redirect("/org");
+}

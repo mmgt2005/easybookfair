@@ -59,6 +59,26 @@ the fair, confirmed `settlements.net_payout` matched exactly). Once a
 `settlements` row exists for the fair, the feed shows that locked-in
 figure instead and labels it "Final payout" rather than an estimate.
 
+Org staff also get a **marketing toolkit** (`/org/fairs/<id>/marketing`)
+for each fair — the storefront/wallet links with copy buttons, a QR code
+for each (`qrcode` package, rendered as a `data:` image, no external
+service), a printable one-page flyer (its own route, so `window.print()`
+prints only the flyer — same reasoning as the wallet donation receipt
+page), and ready-to-copy social-media/email text templated from the
+fair's real name, dates, and links. Linked from `/org`'s existing "Share
+with buyers" column.
+
+Orgs can also **request an author reading or book signing**
+(`event_requests`, migration `0049`) for a book already allocated to one
+of their fairs, from `/org/events/request` — mirrors the `fair_requests`
+review pattern exactly (org proposes, admin reviews at
+`/admin/event-requests`, no authenticated update policy). A composite
+foreign key ties `(fair_id, catalog_item_id)` straight to `allocations`,
+so a request for a book that isn't actually at that fair is rejected at
+the database level. The admin screen reverse-looks-up the author via
+`author_submissions` for display, but never auto-emails them — coordinating
+the actual event is a manual step for the admin.
+
 A big batch pulling several later-phase pieces forward at once:
 
 - **Promotions/bundle discounts** (`/admin/fairs/<id>/promotions`): percent-off
@@ -187,6 +207,7 @@ code (everything that needs to be unit-tested).
    - `0046_org_staff_fair_operations.sql`
    - `0047_author_submission_files.sql`
    - `0048_author_submission_files_required.sql`
+   - `0049_event_requests.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve

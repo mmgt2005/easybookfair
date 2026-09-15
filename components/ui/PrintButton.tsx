@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui";
+import { Button } from "./Button";
 
 // window.print() covers both "print" and "download" (browsers' own
 // print-to-PDF) — no PDF-generation library needed for a receipt this

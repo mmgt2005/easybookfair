@@ -6,3 +6,5 @@ export { Card } from "./Card";
 export { Badge, statusTone } from "./Badge";
 export { PageHeader } from "./PageHeader";
 export { Field } from "./Field";
+export { CopyButton } from "./CopyButton";
+export { PrintButton } from "./PrintButton";

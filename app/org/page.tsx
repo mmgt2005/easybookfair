@@ -14,28 +14,36 @@ export default async function OrgDashboard() {
   // so without these filters they'd see every org's fairs/requests/
   // settlements here instead of just the one they're supposed to be
   // previewing.
-  const [{ data: fairs }, { data: requests }, { data: settlements }] = await Promise.all([
-    supabase
-      .from("fairs")
-      .select(
-        "id, name, status, start_date, end_date, allow_online, allow_wallet, allow_in_person, allow_cash, organizations(is_school)",
-      )
-      .in("org_id", orgIds)
-      .order("start_date", { ascending: false }),
-    supabase
-      .from("fair_requests")
-      .select(
-        "id, requested_name, requested_start_date, requested_end_date, status, admin_note, created_at",
-      )
-      .in("org_id", orgIds)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("settlements")
-      .select(
-        "fair_id, net_payout, transfer_confirmed_at, transfer_reversed_at, payment_link_paid_at",
-      )
-      .in("org_id", orgIds),
-  ]);
+  const [{ data: fairs }, { data: requests }, { data: settlements }, { data: eventRequests }] =
+    await Promise.all([
+      supabase
+        .from("fairs")
+        .select(
+          "id, name, status, start_date, end_date, allow_online, allow_wallet, allow_in_person, allow_cash, organizations(is_school)",
+        )
+        .in("org_id", orgIds)
+        .order("start_date", { ascending: false }),
+      supabase
+        .from("fair_requests")
+        .select(
+          "id, requested_name, requested_start_date, requested_end_date, status, admin_note, created_at",
+        )
+        .in("org_id", orgIds)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("settlements")
+        .select(
+          "fair_id, net_payout, transfer_confirmed_at, transfer_reversed_at, payment_link_paid_at",
+        )
+        .in("org_id", orgIds),
+      supabase
+        .from("event_requests")
+        .select(
+          "id, event_type, requested_date, notes, status, admin_note, created_at, fairs(name), catalog_items(title)",
+        )
+        .in("org_id", orgIds)
+        .order("created_at", { ascending: false }),
+    ]);
 
   const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s]));
 
@@ -161,6 +169,14 @@ export default async function OrgDashboard() {
                     {!fair.allow_online && !(fair.allow_wallet && org?.is_school) && (
                       <span className="text-xs text-neutral-400">No public links enabled</span>
                     )}
+                    {(fair.allow_online || (fair.allow_wallet && org?.is_school)) && (
+                      <Link
+                        href={`/org/fairs/${fair.id}/marketing`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Marketing toolkit →
+                      </Link>
+                    )}
                   </td>
                 </tr>
               );
@@ -206,6 +222,49 @@ export default async function OrgDashboard() {
               <tr>
                 <td colSpan={4} className="py-4 pl-4 text-neutral-500">
                   No requests yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Card className="overflow-x-auto p-0">
+        <h2 className="p-4 pb-0 font-heading font-bold text-neutral-900">Event requests</h2>
+        <table className="w-full max-w-3xl text-sm">
+          <thead>
+            <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
+              <th className="py-2 pl-4 pr-4">Fair</th>
+              <th className="py-2 pr-4">Book</th>
+              <th className="py-2 pr-4">Type</th>
+              <th className="py-2 pr-4">Requested date</th>
+              <th className="py-2 pr-4">Status</th>
+              <th className="py-2 pr-4">Admin note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(eventRequests ?? []).map((r) => {
+              const fair = r.fairs as unknown as { name: string } | null;
+              const book = r.catalog_items as unknown as { title: string } | null;
+              return (
+                <tr key={r.id} className="border-b border-neutral-50 last:border-0">
+                  <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{fair?.name}</td>
+                  <td className="py-2 pr-4 text-neutral-600">{book?.title}</td>
+                  <td className="py-2 pr-4 text-neutral-600">
+                    {r.event_type === "author_reading" ? "Author reading" : "Book signing"}
+                  </td>
+                  <td className="py-2 pr-4 text-neutral-600">{r.requested_date ?? "TBD"}</td>
+                  <td className="py-2 pr-4">
+                    <Badge tone={statusTone(r.status)}>{r.status}</Badge>
+                  </td>
+                  <td className="py-2 pr-4 text-neutral-600">{r.admin_note ?? "—"}</td>
+                </tr>
+              );
+            })}
+            {(eventRequests ?? []).length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-4 pl-4 text-neutral-500">
+                  No event requests yet.
                 </td>
               </tr>
             )}

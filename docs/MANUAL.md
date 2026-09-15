@@ -158,6 +158,22 @@ one) instead. A request submitted by an admin "viewing as" that org (see
 below) is flagged inline so it's never mistaken for something the org
 submitted themselves.
 
+### Reviewing event requests (`/admin/event-requests`)
+
+An org can ask for an author reading or book signing tied to a specific
+book, from their own portal (`/org/events/request`) — the book has to
+already be allocated to the fair they're requesting the event for, so
+this list always shows a real book at a real one of their fairs, never
+something they aren't actually carrying. Each card shows the book, event
+type, fair, requested date ("TBD" if they didn't pick one), any notes,
+and — if the book came from an approved author submission — that
+author's name and email, so you know who to actually reach out to.
+**Approve** and **Decline** work the same as fair requests: approving
+just marks it approved and emails the org (not the author) to let them
+know; there's no automatic fair or catalog change, since coordinating the
+actual reading/signing with the author is on you. **Decline** takes an
+optional note shown back to the org.
+
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
 Change the name, dates, or `status`, and override the platform's default
@@ -493,10 +509,12 @@ included.
 
 Lists your organization's fairs (with a shareable link to the public
 storefront and/or student-wallet page for each, if those options are
-enabled) and your fair requests with their current status (pending,
-approved, declined — with the admin's note if declined). A **Run this
-fair** column links to whichever of Checkout/Pickup/Wallets apply to that
-fair's payment options, plus a **Sales feed** link that's always there.
+enabled, plus a **Marketing toolkit** link) and your fair requests with
+their current status (pending, approved, declined — with the admin's note
+if declined). A **Run this fair** column links to whichever of
+Checkout/Pickup/Wallets apply to that fair's payment options, plus a
+**Sales feed** link that's always there. A separate **Event requests**
+table tracks any author reading/book signing requests you've submitted.
 
 ### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets,sales}`)
 
@@ -548,6 +566,28 @@ account (once Stripe Connect onboarding is finished), shown as "✅ Sent"
 once it does; if you owe money, you'll get an email with a link to pay
 it directly, and the column shows "⏳ Awaiting payment" until you do,
 then "✅ Paid" (with another email confirming it) once you have.
+
+### Marketing toolkit (`/org/fairs/<id>/marketing`)
+
+Everything you need to spread the word about a fair in one place: your
+storefront and student-wallet links with a **Copy** button next to each,
+a QR code for each one, a printable one-page flyer (fair name, dates, QR
+code, storefront link — click **Print / save as PDF** to print it or save
+it as a PDF, only the flyer itself prints), and ready-to-copy text for a
+social media post and a parent email, already filled in with your fair's
+real name, dates, and links. Reach it from the **Marketing toolkit** link
+next to your fair in the dashboard's fairs table.
+
+### Requesting an author reading or book signing (`/org/events/request`)
+
+Pick one of your upcoming fairs, then pick a book from the ones actually
+allocated to it — the book list only shows what your fair is actually
+carrying, so you can't request an event for a book you don't have.
+Choose author reading or book signing, optionally add the date you'd
+like (leave it blank if you don't have one in mind yet) and any notes,
+then submit. A platform admin reviews it and reaches out to you (and
+coordinates directly with the author) once approved — track its status
+in the **Event requests** table on your dashboard.
 
 ## Buyer guide
 

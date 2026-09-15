@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui";
-import { PrintButton } from "./PrintButton";
+import { Card, PrintButton } from "@/components/ui";
 
 type WalletDonationReceipt = {
   student_name: string;

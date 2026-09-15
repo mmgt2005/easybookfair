@@ -84,6 +84,34 @@ export async function sendFairApprovedEmail(params: {
   });
 }
 
+// Sent when an admin approves an org's event request (author reading /
+// book signing) — does NOT go to the author (out of scope; the admin
+// coordinates the actual reading/signing with them directly, using the
+// author info shown on the admin review page). Mirrors
+// sendFairApprovedEmail: best-effort, links to /org, no attachment.
+export async function sendEventRequestApprovedEmail(params: {
+  to: string;
+  fairName: string;
+  bookTitle: string;
+  eventType: "author_reading" | "book_signing";
+  requestedDate: string | null;
+}) {
+  const eventLabel = params.eventType === "author_reading" ? "author reading" : "book signing";
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Your ${eventLabel} request was approved 🎉`,
+    html: `
+      <p>Good news — your ${eventLabel} for <strong>${params.bookTitle}</strong>
+      at <strong>${params.fairName}</strong>
+      ${params.requestedDate ? `(requested for ${params.requestedDate})` : "(date still to be scheduled)"}
+      has been approved.</p>
+      <p>A platform admin will follow up directly to coordinate the details.</p>
+      <p><a href="${siteUrl()}/org">Sign in to your dashboard</a> to track it.</p>
+    `,
+  });
+}
+
 // Sent when an admin closes out a fair's wallets (close_wallets_for_fair,
 // migration 0022/0037) — the parent's only notice that their child's
 // unspent balance became a donation to the org rather than a refund. Links

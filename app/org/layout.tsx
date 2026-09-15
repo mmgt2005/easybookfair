@@ -8,6 +8,7 @@ import packageJson from "@/package.json";
 const navLinks = [
   { href: "/org", label: "Dashboard" },
   { href: "/org/fairs/request", label: "Request a fair" },
+  { href: "/org/events/request", label: "Request an event" },
 ];
 
 const orgTourSteps = [
