@@ -349,6 +349,20 @@ Vercel's Deployment Protection commonly puts behind a login wall — a
 buyer scanning that QR code would hit a Vercel login page instead of the
 storefront.
 
+**Also update Supabase's own Auth URL Configuration** (Supabase dashboard
+→ Authentication → URL Configuration) once you have a real domain —
+`app/login/page.tsx`'s magic link passes `emailRedirectTo:
+<your-domain>/auth/callback` (`app/auth/callback/route.ts`), but Supabase
+only honors that override if it's listed under **Redirect URLs**;
+otherwise it silently falls back to the project's **Site URL** instead.
+If that fallback still points at `localhost` or an old preview domain (or
+if the Site URL itself is just the bare domain with no path), a magic
+link click lands on `/` with no session ever established — indistinguishable
+from "the sign-in link didn't work." Add `<your-domain>/auth/callback`
+(and `http://localhost:3000/auth/callback` for local dev) to Redirect
+URLs, and set Site URL to your real production domain, whenever the
+domain changes.
+
 ## Design system
 
 `components/ui/` holds the shared primitives (`Button`, `Input`, `Select`,

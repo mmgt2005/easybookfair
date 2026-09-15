@@ -9,6 +9,17 @@ which point versioning starts.
 
 ### Fixed
 
+- **Magic-link sign-in could land back on `/` with no session**: not a
+  code bug — `app/login/page.tsx`/`app/auth/callback/route.ts` were
+  already correct — but a deployment-configuration gap: Supabase Auth
+  only honors the app's `emailRedirectTo` (`<domain>/auth/callback`) if
+  that URL is listed under the Supabase project's Redirect URLs;
+  otherwise it silently falls back to the project's Site URL, and if that
+  still points at `localhost` or an old domain (or has no path at all), a
+  magic-link click lands on `/` — a static page that ignores any leftover
+  query string — with no session ever established. Documented in the
+  README's `## Deploying` section as a required step whenever the
+  production domain changes.
 - **Storefront QR code (and email/redirect links) could hit a Vercel login
   page instead of the real page**: `siteUrl()` (`lib/email.ts`), the one
   function every absolute link in the app is built from — the org
