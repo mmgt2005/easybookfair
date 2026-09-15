@@ -218,10 +218,7 @@ export default function Home() {
 
       {/* Footer */}
       <div className="mx-auto w-full max-w-5xl border-t border-neutral-100 px-5 py-8 pb-14 sm:px-12">
-        <p className="text-xs text-neutral-500">
-          Already running a fair, or a platform admin? See <code>docs/MANUAL.md</code> for how
-          everything works and <code>docs/CHANGELOG.md</code> for what&apos;s shipped so far.
-        </p>
+        <p className="text-xs text-neutral-500">Already running a fair, or a platform admin?</p>
         <Link href="/login" className="mt-2 inline-block text-xs font-bold text-accent-600 hover:underline">
           Sign in →
         </Link>
