@@ -47,6 +47,29 @@ which point versioning starts.
 
 ### Added
 
+- **Real landing page at `/`**: replaced the placeholder root page with a
+  fundraising-focused landing page — hero, "How it works" (4 steps),
+  feature highlights, "Who it's for" (schools/orgs, authors/vendors,
+  already-set-up staff), and an FAQ — linking out to `/join`,
+  `/author/submit`, and `/login`. Positions EasyBookFair as a fundraiser
+  for the organization first, with the platform's actual features (four
+  payment options, student wallets, live sales feed, automatic payout,
+  org-run checkout) as the supporting detail, rather than leading with the
+  software itself. Designed as a mockup first (Claude's design skill) and
+  iterated on before being ported into `app/page.tsx`, so its copy stays
+  accurate to what's actually built rather than aspirational.
+- **Author submissions: front cover, back cover, and interior PDF**
+  (migration `0047`): the public submission form (`/author/submit`) now
+  collects a front cover image, a back cover image, and a PDF of the
+  interior for admin review, in addition to the existing title/description/
+  price fields — all still optional and all still uploaded before the
+  author has any account, into the same `author-submissions` storage
+  bucket. `author_submissions.image_url` is renamed to
+  `front_cover_image_url` for clarity (still the field copied to
+  `catalog_items.image_url` on approval) and gains
+  `back_cover_image_url`/`interior_pdf_url`. The admin review screen
+  (`/admin/author-submissions`) shows both cover thumbnails and a link to
+  the interior PDF alongside each pending submission.
 - **Live sales feed** (`/admin/fairs/<id>/sales`, `/org/fairs/<id>/sales`):
   every completed sale for a fair — item title, channel, price, time —
   itemized and refreshing automatically, plus a running units-sold/

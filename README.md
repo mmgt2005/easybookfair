@@ -87,10 +87,13 @@ A big batch pulling several later-phase pieces forward at once:
   link.
 - **Author submissions** (`/author/submit`, public, no login): authors
   submit books/merchandise with a suggested retail price (65% wholesale
-  auto-calculated); admin review at `/admin/author-submissions`; approving
-  invites the author to a real account and adds the item to the catalog.
-  A minimal author portal (`/author`) shows submission status and, once
-  approved, units sold/revenue.
+  auto-calculated), plus optional front cover, back cover, and interior
+  PDF uploads for admin review (migration `0047`); admin review at
+  `/admin/author-submissions` shows both covers and a link to the interior
+  PDF; approving invites the author to a real account and adds the item to
+  the catalog using the front cover as its image. A minimal author portal
+  (`/author`) shows submission status and, once approved, units
+  sold/revenue.
 - **Organization signups** (`/join`, public, no login; migration `0045`):
   the organization-side equivalent — a school or org expresses interest
   with no account, admin review at `/admin/org-signups`, approving creates
@@ -98,9 +101,10 @@ A big batch pulling several later-phase pieces forward at once:
   adds them as org staff so `/org` lets them in immediately to request
   their first fair. Deliberately at `/join`, not under `/org` — the
   middleware gates every `/org/*` path behind an existing session, so a
-  public, no-login form can't live there. The actual landing page (`/`)
-  links to both this and author submissions, alongside admin/org staff
-  sign-in.
+  public, no-login form can't live there. The landing page (`/`) — a
+  fundraising-focused page covering how it works, feature highlights, who
+  it's for, and an FAQ — links to both this and author submissions,
+  alongside admin/org staff sign-in.
 - **Admin "view as"** (`/admin/organizations`, `/admin/authors`): an admin
   can preview and act in the org or author portal as a specific
   org/author — a "View as" link switches into it (an amber banner makes
@@ -180,6 +184,7 @@ code (everything that needs to be unit-tested).
    - `0044_demo_admin_lockdown.sql`
    - `0045_org_signups.sql`
    - `0046_org_staff_fair_operations.sql`
+   - `0047_author_submission_files.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -489,7 +494,12 @@ inventing new colors per page.
   it can never drift from the retail price independently. `sales_select_
   author` is an additive RLS policy (Postgres OR's multiple permissive
   policies for the same command together) — it doesn't touch or replace
-  `sales_select`'s existing org/admin scoping.
+  `sales_select`'s existing org/admin scoping. Migration `0047` renames
+  `image_url` to `front_cover_image_url` (still the field copied to
+  `catalog_items.image_url` on approval) and adds `back_cover_image_url`/
+  `interior_pdf_url`, all uploaded to the same public `author-submissions`
+  bucket as before — no new storage policies needed since they already
+  allow any file under that bucket, not just images.
 - Admin "view as" (migration `0041`, `lib/viewAs.ts`) is deliberately
   **not** a real session swap — an admin never holds an org/author's
   actual credentials, only a routing cookie that `requireOrgStaff()`/

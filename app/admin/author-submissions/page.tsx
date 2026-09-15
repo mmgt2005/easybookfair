@@ -13,7 +13,7 @@ export default async function AuthorSubmissionsPage({
   const { data: submissions } = await supabase
     .from("author_submissions")
     .select(
-      "id, author_name, author_email, title, item_type, category, image_url, suggested_retail_price, wholesale_price, status, admin_note, submitted_by_admin_id, created_at",
+      "id, author_name, author_email, title, item_type, category, front_cover_image_url, back_cover_image_url, interior_pdf_url, suggested_retail_price, wholesale_price, status, admin_note, submitted_by_admin_id, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -36,13 +36,25 @@ export default async function AuthorSubmissionsPage({
             <Card key={s.id} className="max-w-2xl">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-3">
-                  {s.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={s.image_url}
-                      alt=""
-                      className="h-16 w-12 rounded object-cover"
-                    />
+                  {(s.front_cover_image_url || s.back_cover_image_url) && (
+                    <div className="flex gap-1.5">
+                      {s.front_cover_image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={s.front_cover_image_url}
+                          alt="Front cover"
+                          className="h-16 w-12 rounded object-cover"
+                        />
+                      )}
+                      {s.back_cover_image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={s.back_cover_image_url}
+                          alt="Back cover"
+                          className="h-16 w-12 rounded object-cover"
+                        />
+                      )}
+                    </div>
                   )}
                   <div>
                     <h2 className="font-heading font-bold text-neutral-900">{s.title}</h2>
@@ -54,6 +66,16 @@ export default async function AuthorSubmissionsPage({
                       {s.suggested_retail_price.toFixed(2)}, wholesale $
                       {s.wholesale_price.toFixed(2)}
                     </p>
+                    {s.interior_pdf_url && (
+                      <a
+                        href={s.interior_pdf_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-accent-600 hover:underline"
+                      >
+                        View interior PDF →
+                      </a>
+                    )}
                     {s.submitted_by_admin_id && (
                       <p className="mt-1 text-xs text-amber-700">
                         👁️ Submitted by an admin viewing as this author.

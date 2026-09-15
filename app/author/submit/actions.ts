@@ -70,21 +70,25 @@ export async function submitAuthorSubmission(formData: FormData) {
     );
   }
 
-  let imageUrl: string | null = null;
-  const imageFile = formData.get("image") as File | null;
-  if (imageFile && imageFile.size > 0) {
-    const extension = imageFile.name.split(".").pop() || "jpg";
+  async function uploadSubmissionFile(fieldName: string, label: string): Promise<string | null> {
+    const file = formData.get(fieldName) as File | null;
+    if (!file || file.size === 0) return null;
+    const extension = file.name.split(".").pop() || "bin";
     const path = `${crypto.randomUUID()}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("author-submissions")
-      .upload(path, imageFile, { contentType: imageFile.type });
+      .upload(path, file, { contentType: file.type });
     if (uploadError) {
       redirect(
-        `/author/submit?error=${encodeURIComponent(`Image upload failed: ${uploadError.message}`)}`,
+        `/author/submit?error=${encodeURIComponent(`${label} upload failed: ${uploadError.message}`)}`,
       );
     }
-    imageUrl = supabase.storage.from("author-submissions").getPublicUrl(path).data.publicUrl;
+    return supabase.storage.from("author-submissions").getPublicUrl(path).data.publicUrl;
   }
+
+  const frontCoverUrl = await uploadSubmissionFile("front_cover", "Front cover");
+  const backCoverUrl = await uploadSubmissionFile("back_cover", "Back cover");
+  const interiorPdfUrl = await uploadSubmissionFile("interior_pdf", "Interior PDF");
 
   const { error } = await supabase.from("author_submissions").insert({
     author_user_id: authorUserId,
@@ -95,7 +99,9 @@ export async function submitAuthorSubmission(formData: FormData) {
     item_type: itemType,
     category,
     description,
-    image_url: imageUrl,
+    front_cover_image_url: frontCoverUrl,
+    back_cover_image_url: backCoverUrl,
+    interior_pdf_url: interiorPdfUrl,
     suggested_retail_price: suggestedRetailPrice,
   });
 

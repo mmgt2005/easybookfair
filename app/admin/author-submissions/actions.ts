@@ -19,7 +19,7 @@ export async function approveAuthorSubmission(submissionId: string) {
   const { data: submission, error: fetchError } = await service
     .from("author_submissions")
     .select(
-      "author_name, author_email, title, description, item_type, category, image_url, suggested_retail_price, wholesale_price, status",
+      "author_name, author_email, title, description, item_type, category, front_cover_image_url, suggested_retail_price, wholesale_price, status",
     )
     .eq("id", submissionId)
     .single();
@@ -75,7 +75,7 @@ export async function approveAuthorSubmission(submissionId: string) {
       item_type: submission!.item_type,
       category: submission!.category,
       description: submission!.description,
-      image_url: submission!.image_url,
+      image_url: submission!.front_cover_image_url,
       price: submission!.suggested_retail_price,
       cost: submission!.wholesale_price,
     })

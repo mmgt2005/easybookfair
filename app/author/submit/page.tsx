@@ -108,8 +108,14 @@ export default async function AuthorSubmitPage({
           <Field label="Description (optional)">
             <Textarea name="description" rows={3} />
           </Field>
-          <Field label="Cover image (optional)">
-            <Input name="image" type="file" accept="image/*" />
+          <Field label="Front cover image (optional)">
+            <Input name="front_cover" type="file" accept="image/*" />
+          </Field>
+          <Field label="Back cover image (optional)">
+            <Input name="back_cover" type="file" accept="image/*" />
+          </Field>
+          <Field label="Interior PDF, for review (optional)">
+            <Input name="interior_pdf" type="file" accept="application/pdf" />
           </Field>
 
           <PriceInput />
