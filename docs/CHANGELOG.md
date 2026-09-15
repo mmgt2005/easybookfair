@@ -9,6 +9,27 @@ which point versioning starts.
 
 ### Fixed
 
+- **Event requests silently vanished after submitting**: `event_requests`
+  (migration `0049`) only had a *composite* foreign key,
+  `(fair_id, catalog_item_id) → allocations`, deliberately, to enforce
+  "this book is allocated to this fair" — but Supabase's embedded-select
+  syntax (`.select("...catalog_items(title)")`, used on both `/org`'s
+  Event requests table and `/admin/event-requests`) resolves relationships
+  from single-column foreign keys, and finds no path from
+  `event_requests.catalog_item_id` straight to `catalog_items` on its own.
+  Both reads failed (and, since neither checked the returned `error`,
+  failed silently), so a request that inserted successfully never showed
+  up anywhere — indistinguishable from "not recorded" to an org submitting
+  one, even though the row existed in the database the whole time. Fixed
+  by migration `0050`, which adds the missing direct
+  `catalog_item_id → catalog_items(id)` foreign key alongside the existing
+  composite one — they enforce different things and don't conflict.
+- **Marketing flyer printed the org portal's nav bar and banners**:
+  `app/org/layout.tsx`'s persistent nav, "view as" banner, and onboarding
+  tour had no `print:hidden`, so printing the flyer from
+  `/org/fairs/<id>/marketing` (or saving it as a PDF) included the whole
+  portal chrome around it, not just the flyer. Added `print:hidden` to all
+  three.
 - **Promotion "Ends" date silently disabled the discount all day, every
   day, instead of at end of day**: `promotions.starts_at`/`ends_at` are
   `timestamptz`, but the promotion form only lets you pick a date (no
@@ -51,10 +72,11 @@ which point versioning starts.
   per-fair page with the storefront/student-wallet links (copy-to-clipboard
   buttons), a QR code for each (new `qrcode` dependency, rendered as a
   `data:` URL — no external service call), a printable one-page flyer
-  (fair name/dates, QR code, storefront URL) using the browser's own
-  print-to-PDF, and ready-to-copy social-media/parent-email text templated
-  from the fair's real name/dates/links — no invented pricing or claims.
-  The flyer needed its own route rather than an inline dashboard section,
+  (fair name/dates, cover images of up to 8 allocated books, a QR code,
+  storefront URL) using the browser's own print-to-PDF, and ready-to-copy
+  social-media/parent-email text templated from the fair's real
+  name/dates/links — no invented pricing or claims. The flyer needed its
+  own route rather than an inline dashboard section,
   same reasoning as the existing wallet donation receipt page: `window.
   print()` should print only the flyer, not the whole dashboard. Promoted
   the receipt page's `PrintButton` into `components/ui` since it now has a

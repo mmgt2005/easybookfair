@@ -48,10 +48,22 @@ export default async function OrgMarketingToolkitPage({
     );
   }
 
-  const [storefrontQr, walletQr] = await Promise.all([
+  const [storefrontQr, walletQr, { data: allocatedItems }] = await Promise.all([
     fair.allow_online ? qrCodeDataUrl(storefrontUrl) : Promise.resolve(null),
     walletUrl ? qrCodeDataUrl(walletUrl) : Promise.resolve(null),
+    supabase
+      .from("allocations")
+      .select("catalog_items(title, image_url)")
+      .eq("fair_id", fair.id),
   ]);
+
+  // Only items with a cover image actually add anything visual to the
+  // flyer — cap at 8 so a fair with a big catalog doesn't blow out the
+  // one-page layout.
+  const coverBooks = (allocatedItems ?? [])
+    .map((a) => a.catalog_items as unknown as { title: string; image_url: string | null } | null)
+    .filter((item): item is { title: string; image_url: string } => !!item?.image_url)
+    .slice(0, 8);
 
   const copyParams = {
     fairName: fair.name,
@@ -138,17 +150,43 @@ export default async function OrgMarketingToolkitPage({
         </Card>
       </div>
 
-      <Card className="hidden flex-col items-center gap-4 py-10 text-center print:flex">
-        <h1 className="font-heading text-3xl font-extrabold text-neutral-900">{fair.name}</h1>
-        <p className="text-lg text-neutral-700">
-          {fair.start_date} – {fair.end_date}
-        </p>
-        {storefrontQr && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={storefrontQr} alt="Storefront QR code" className="h-48 w-48" />
+      <Card className="hidden flex-col items-center gap-6 py-10 text-center print:flex">
+        <div className="flex flex-col items-center gap-2">
+          <h1 className="font-heading text-4xl font-extrabold text-primary-600">
+            📚 {fair.name}
+          </h1>
+          <p className="text-lg text-neutral-700">
+            {fair.start_date} – {fair.end_date}
+          </p>
+        </div>
+
+        {coverBooks.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-4 px-8">
+            {coverBooks.map((book) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={book.title}
+                src={book.image_url}
+                alt={book.title}
+                title={book.title}
+                className="h-32 w-24 rounded-lg border border-neutral-200 object-cover shadow-sm"
+              />
+            ))}
+          </div>
         )}
-        <p className="text-base text-neutral-700">Shop online any time at:</p>
-        <p className="text-base font-semibold text-neutral-900">{storefrontUrl}</p>
+
+        <div className="flex flex-col items-center gap-2">
+          {storefrontQr && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={storefrontQr}
+              alt="Storefront QR code"
+              className="h-40 w-40 rounded-lg border border-neutral-200 p-2"
+            />
+          )}
+          <p className="text-base text-neutral-700">Shop online any time at:</p>
+          <p className="text-base font-semibold text-neutral-900">{storefrontUrl}</p>
+        </div>
       </Card>
 
       <div className="print:hidden">

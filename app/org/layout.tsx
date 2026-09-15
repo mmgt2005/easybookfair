@@ -54,8 +54,12 @@ export default async function OrgLayout({
 
   return (
     <div className="min-h-screen">
-      {viewingAs && <ViewAsBanner label={orgName} />}
-      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm">
+      {viewingAs && (
+        <div className="print:hidden">
+          <ViewAsBanner label={orgName} />
+        </div>
+      )}
+      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm print:hidden">
         <Link href="/org" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair — Org Portal
         </Link>
@@ -73,8 +77,10 @@ export default async function OrgLayout({
         ))}
         <TourLauncherButton storageKey="org_v1" />
       </nav>
-      <div className="px-6 py-6">{children}</div>
-      <Tour storageKey="org_v1" steps={orgTourSteps} />
+      <div className="px-6 py-6 print:p-0">{children}</div>
+      <div className="print:hidden">
+        <Tour storageKey="org_v1" steps={orgTourSteps} />
+      </div>
     </div>
   );
 }

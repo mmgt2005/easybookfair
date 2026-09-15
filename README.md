@@ -208,6 +208,7 @@ code (everything that needs to be unit-tested).
    - `0047_author_submission_files.sql`
    - `0048_author_submission_files_required.sql`
    - `0049_event_requests.sql`
+   - `0050_event_requests_catalog_item_fk.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
