@@ -33,3 +33,11 @@ export function buildParentEmailBlurb(params: FairCopyParams): string {
     walletParagraph
   );
 }
+
+// A short encouraging line for the printable flyer — deliberately generic
+// (no invented pricing, item counts, or goal amounts the fair doesn't
+// actually have set anywhere), just a nudge that shopping here supports
+// the fundraiser.
+export function buildFlyerTagline(fairName: string): string {
+  return `Every purchase supports ${fairName} — thank you for helping our fundraiser!`;
+}

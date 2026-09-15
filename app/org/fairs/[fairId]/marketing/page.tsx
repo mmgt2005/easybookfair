@@ -2,7 +2,7 @@ import { requireOrgStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/email";
 import { qrCodeDataUrl } from "@/lib/qr";
-import { buildSocialPost, buildParentEmailBlurb } from "@/lib/marketingCopy";
+import { buildSocialPost, buildParentEmailBlurb, buildFlyerTagline } from "@/lib/marketingCopy";
 import { Card, CopyButton, PageHeader, PrintButton } from "@/components/ui";
 
 // Same page-level gate as app/org/fairs/[fairId]/sales/page.tsx — an
@@ -74,6 +74,7 @@ export default async function OrgMarketingToolkitPage({
   };
   const socialPost = buildSocialPost(copyParams);
   const parentBlurb = buildParentEmailBlurb(copyParams);
+  const flyerTagline = buildFlyerTagline(fair.name);
 
   return (
     <div className="flex flex-col gap-6 print:gap-0">
@@ -158,6 +159,7 @@ export default async function OrgMarketingToolkitPage({
           <p className="text-lg text-neutral-700">
             {fair.start_date} – {fair.end_date}
           </p>
+          <p className="font-heading text-lg font-bold text-accent-600">{flyerTagline}</p>
         </div>
 
         {coverBooks.length > 0 && (

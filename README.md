@@ -332,6 +332,16 @@ Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones (including
 `RESEND_API_KEY` should stay "Secret". Every push to that branch triggers a
 new deployment automatically.
 
+Set `NEXT_PUBLIC_SITE_URL` once you have a real domain (custom or
+Vercel's own) — `siteUrl()` (`lib/email.ts`) falls back sensibly without
+it, but an explicit value is the most reliable option. Without it, on a
+project with no production domain configured, links (email links, and
+the org marketing toolkit's storefront QR code) can fall all the way
+back to the current deployment's own unique URL (`VERCEL_URL`), which
+Vercel's Deployment Protection commonly puts behind a login wall — a
+buyer scanning that QR code would hit a Vercel login page instead of the
+storefront.
+
 ## Design system
 
 `components/ui/` holds the shared primitives (`Button`, `Input`, `Select`,

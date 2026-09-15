@@ -9,6 +9,20 @@ which point versioning starts.
 
 ### Fixed
 
+- **Storefront QR code (and email/redirect links) could hit a Vercel login
+  page instead of the real page**: `siteUrl()` (`lib/email.ts`), the one
+  function every absolute link in the app is built from — the org
+  marketing toolkit's QR codes/copyable links, every transactional email,
+  and a couple of auth redirects — fell back to Vercel's `VERCEL_URL` when
+  `NEXT_PUBLIC_SITE_URL` wasn't set. `VERCEL_URL` is the *current
+  deployment's own unique URL* (e.g. `easybookfair-abc123.vercel.app`),
+  which Vercel's Deployment Protection commonly puts behind a login wall
+  even in production — so a QR code built from it sent buyers to a Vercel
+  login page instead of the storefront. Fixed by checking
+  `VERCEL_PROJECT_PRODUCTION_URL` (Vercel's stable production domain
+  alias, not behind that wall) before falling back to `VERCEL_URL`.
+  `.env.example` and the README's deploy section now also call out
+  setting `NEXT_PUBLIC_SITE_URL` explicitly once a real domain exists.
 - **Event requests silently vanished after submitting**: `event_requests`
   (migration `0049`) only had a *composite* foreign key,
   `(fair_id, catalog_item_id) → allocations`, deliberately, to enforce
@@ -72,8 +86,9 @@ which point versioning starts.
   per-fair page with the storefront/student-wallet links (copy-to-clipboard
   buttons), a QR code for each (new `qrcode` dependency, rendered as a
   `data:` URL — no external service call), a printable one-page flyer
-  (fair name/dates, cover images of up to 8 allocated books, a QR code,
-  storefront URL) using the browser's own print-to-PDF, and ready-to-copy
+  (fair name/dates, an encouraging "every purchase supports [fair name]"
+  tagline, cover images of up to 8 allocated books, a QR code, storefront
+  URL) using the browser's own print-to-PDF, and ready-to-copy
   social-media/parent-email text templated from the fair's real
   name/dates/links — no invented pricing or claims. The flyer needed its
   own route rather than an inline dashboard section,

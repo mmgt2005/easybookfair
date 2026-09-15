@@ -14,14 +14,24 @@ function emailFrom(): string {
   return from;
 }
 
-// Absolute base URL for links inside emails — these are sent from Server
-// Actions with no browser `window` to read an origin from. Falls back to
-// Vercel's own env var (set automatically on every deployment, host only,
-// no protocol) so most deployments need no extra configuration; override
-// with NEXT_PUBLIC_SITE_URL for a custom domain or local testing against a
-// tunnel.
+// Absolute base URL for links inside emails, and for QR codes/copyable
+// links on the org marketing toolkit (app/org/fairs/[fairId]/marketing) —
+// these are built from Server Components/Actions with no browser `window`
+// to read an origin from. VERCEL_URL is deliberately checked *after*
+// VERCEL_PROJECT_PRODUCTION_URL: VERCEL_URL is the current deployment's
+// own unique URL (e.g. easybookfair-abc123.vercel.app), which Vercel's
+// Deployment Protection commonly puts behind a login wall even for
+// production deployments — a QR code or email link built from it would
+// send a buyer to that login page instead of the real page. Vercel's
+// production URL alias (the custom domain if one's set as primary,
+// otherwise the project's stable .vercel.app domain) isn't behind that
+// wall. Override either with NEXT_PUBLIC_SITE_URL for a custom domain or
+// local testing against a tunnel.
 export function siteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
