@@ -13,7 +13,7 @@ export default async function EventRequestsPage({
   const { data: requests } = await supabase
     .from("event_requests")
     .select(
-      "id, event_type, requested_date, notes, status, admin_note, submitted_by_admin_id, catalog_item_id, organizations(name), fairs(name), catalog_items(title)",
+      "id, event_type, requested_date, notes, status, admin_note, submitted_by_admin_id, catalog_item_id, organizations(name), fairs(name), catalog_items(title, author_name, author_email, author_phone)",
     )
     .order("created_at", { ascending: false });
 
@@ -22,7 +22,7 @@ export default async function EventRequestsPage({
     catalogItemIds.length > 0
       ? await supabase
           .from("author_submissions")
-          .select("catalog_item_id, author_name, author_email")
+          .select("catalog_item_id, author_name, author_email, author_phone")
           .in("catalog_item_id", catalogItemIds)
           .eq("status", "approved")
       : { data: [] };
@@ -43,8 +43,20 @@ export default async function EventRequestsPage({
         {(requests ?? []).map((request) => {
           const org = request.organizations as unknown as { name: string } | null;
           const fair = request.fairs as unknown as { name: string } | null;
-          const book = request.catalog_items as unknown as { title: string } | null;
-          const author = authorByItem.get(request.catalog_item_id);
+          const book = request.catalog_items as unknown as {
+            title: string;
+            author_name: string | null;
+            author_email: string | null;
+            author_phone: string | null;
+          } | null;
+          // Prefer the author_submissions match (a real author with a
+          // portal account) over the book's own author_name/email/phone
+          // columns, which only exist to cover a book an admin added
+          // directly and never went through the submission flow.
+          const submissionAuthor = authorByItem.get(request.catalog_item_id);
+          const authorName = submissionAuthor?.author_name ?? book?.author_name ?? null;
+          const authorEmail = submissionAuthor?.author_email ?? book?.author_email ?? null;
+          const authorPhone = submissionAuthor?.author_phone ?? book?.author_phone ?? null;
           const approveForRequest = approveEventRequest.bind(null, request.id);
           const declineForRequest = declineEventRequest.bind(null, request.id);
 
@@ -66,8 +78,10 @@ export default async function EventRequestsPage({
                     <p className="mt-1 text-xs text-neutral-500">Notes: {request.notes}</p>
                   )}
                   <p className="mt-1 text-xs text-neutral-500">
-                    {author
-                      ? `🖋️ Author: ${author.author_name} — ${author.author_email}`
+                    {authorName || authorEmail || authorPhone
+                      ? `🖋️ Author: ${authorName ?? "—"} — ${authorEmail ?? "—"}${
+                          authorPhone ? ` — ${authorPhone}` : ""
+                        }`
                       : "No author on file — item was admin-added."}
                   </p>
                   {request.submitted_by_admin_id && (

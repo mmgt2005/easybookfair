@@ -22,7 +22,7 @@ export default async function AuthorSubmitPage({
   // author's profile instead. Purely a display convenience: the action
   // (submitAuthorSubmission) re-derives the real author_user_id itself
   // server-side rather than trusting anything from this page.
-  let authorProfile: { name: string; email: string } | null = null;
+  let authorProfile: { name: string; email: string; phone: string | null } | null = null;
   let viewingAsAuthor = false;
   if (user) {
     const viewAsAuthorId = await getViewAsAuthorId();
@@ -35,7 +35,7 @@ export default async function AuthorSubmitPage({
       if (adminRow) {
         const { data } = await supabase
           .from("authors")
-          .select("name, email")
+          .select("name, email, phone")
           .eq("user_id", viewAsAuthorId)
           .maybeSingle();
         authorProfile = data;
@@ -46,7 +46,7 @@ export default async function AuthorSubmitPage({
     if (!authorProfile && !viewingAsAuthor) {
       const { data } = await supabase
         .from("authors")
-        .select("name, email")
+        .select("name, email, phone")
         .eq("user_id", user.id)
         .maybeSingle();
       authorProfile = data;
@@ -92,6 +92,9 @@ export default async function AuthorSubmitPage({
               required
               defaultValue={authorProfile?.email ?? ""}
             />
+          </Field>
+          <Field label="Your phone (optional)">
+            <Input name="author_phone" type="tel" defaultValue={authorProfile?.phone ?? ""} />
           </Field>
           <Field label="Title">
             <Input name="title" required placeholder="Book or item title" />

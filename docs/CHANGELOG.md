@@ -82,6 +82,30 @@ which point versioning starts.
 
 ### Added
 
+- **Author phone number, and linking a book to an author** (migration
+  `0051`): closes two gaps found while reviewing the event-request
+  feature. Email was the only contact channel anywhere in the schema for
+  an author — `authors`/`author_submissions` now also have `phone`
+  (optional field on `/author/submit`, carried through
+  `approveAuthorSubmission`'s `authors` upsert, shown on
+  `/admin/author-submissions`). Separately, a book an admin added
+  directly (never through `/author/submit`) had *no* author info at all —
+  `catalog_items` had no author columns and no FK to `authors`, so
+  `/admin/event-requests` could only ever show "No author on file" for
+  it, even though an org can still submit an event request for that book.
+  Fixed with three new optional columns directly on `catalog_items`
+  (`author_name`/`author_email`/`author_phone` — plain fields, not a FK,
+  since the point is covering a book whose "author" may have no account
+  in the system at all), editable from the catalog item's create/edit
+  forms. The event-requests review screen now prefers a matching approved
+  `author_submissions` row (a real author with a portal account) and
+  falls back to the book's own contact fields, only showing "No author on
+  file" when both are empty. Confirmed safe to add to `catalog_items`:
+  the public storefront never reads it directly (it goes through
+  `fair_storefront_items()`, a SECURITY DEFINER RPC with a fixed return
+  shape) and the existing `catalog_items_select_authenticated` RLS policy
+  already exposes every column, including `cost`, to any authenticated
+  user — the same tradeoff this schema already accepts.
 - **Org dashboard marketing toolkit** (`/org/fairs/<id>/marketing`): a
   per-fair page with the storefront/student-wallet links (copy-to-clipboard
   buttons), a QR code for each (new `qrcode` dependency, rendered as a

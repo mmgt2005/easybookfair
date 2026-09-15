@@ -77,7 +77,13 @@ foreign key ties `(fair_id, catalog_item_id)` straight to `allocations`,
 so a request for a book that isn't actually at that fair is rejected at
 the database level. The admin screen reverse-looks-up the author via
 `author_submissions` for display, but never auto-emails them — coordinating
-the actual event is a manual step for the admin.
+the actual event is a manual step for the admin. That lookup falls back to
+optional `author_name`/`author_email`/`author_phone` columns directly on
+`catalog_items` (migration `0051`) for a book an admin added without an
+author submission, so there's still a contact on file to reach — those
+same three fields (plus a new `phone` on `authors`/`author_submissions`)
+are editable from the catalog item's create/edit forms and the author
+submission form respectively.
 
 A big batch pulling several later-phase pieces forward at once:
 
@@ -209,6 +215,7 @@ code (everything that needs to be unit-tested).
    - `0048_author_submission_files_required.sql`
    - `0049_event_requests.sql`
    - `0050_event_requests_catalog_item_fk.sql`
+   - `0051_catalog_author_contact.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve

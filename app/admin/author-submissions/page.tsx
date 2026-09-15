@@ -13,7 +13,7 @@ export default async function AuthorSubmissionsPage({
   const { data: submissions } = await supabase
     .from("author_submissions")
     .select(
-      "id, author_name, author_email, title, item_type, category, front_cover_image_url, back_cover_image_url, interior_pdf_url, suggested_retail_price, wholesale_price, status, admin_note, submitted_by_admin_id, created_at",
+      "id, author_name, author_email, author_phone, title, item_type, category, front_cover_image_url, back_cover_image_url, interior_pdf_url, suggested_retail_price, wholesale_price, status, admin_note, submitted_by_admin_id, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -60,6 +60,7 @@ export default async function AuthorSubmissionsPage({
                     <h2 className="font-heading font-bold text-neutral-900">{s.title}</h2>
                     <p className="text-sm text-neutral-600">
                       {s.author_name} — {s.author_email}
+                      {s.author_phone ? ` — ${s.author_phone}` : ""}
                     </p>
                     <p className="text-xs text-neutral-500">
                       {s.item_type} {s.category ? `· ${s.category}` : ""} — retail $

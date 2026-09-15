@@ -18,6 +18,9 @@ type CatalogItem = {
   category: string | null;
   tags: string[] | null;
   description: string | null;
+  author_name: string | null;
+  author_email: string | null;
+  author_phone: string | null;
   weight_oz: number | null;
   length_in: number | null;
   width_in: number | null;
@@ -108,6 +111,24 @@ export default function EditCatalogItemForm({ item }: { item: CatalogItem }) {
           <Field label="Description">
             <Textarea name="description" defaultValue={item.description ?? ""} />
           </Field>
+          <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
+            <p className="text-xs font-semibold text-neutral-600">
+              Author contact (optional) — for a book added directly here, not
+              through the public submission form, so there&apos;s still a way to
+              reach someone about an event request for it.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="Author name">
+                <Input name="author_name" defaultValue={item.author_name ?? ""} />
+              </Field>
+              <Field label="Author email">
+                <Input name="author_email" type="email" defaultValue={item.author_email ?? ""} />
+              </Field>
+              <Field label="Author phone">
+                <Input name="author_phone" type="tel" defaultValue={item.author_phone ?? ""} />
+              </Field>
+            </div>
+          </div>
           <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
             <p className="text-xs font-semibold text-neutral-600">
               Packing &amp; shipping — dimensions and weight drive the packing

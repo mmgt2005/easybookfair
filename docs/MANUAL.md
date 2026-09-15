@@ -73,26 +73,29 @@ to check either.
 ### Catalog and inventory (`/admin/catalog`)
 
 - **Add an item** (`/admin/catalog/new`): quick-add form — title, cost,
-  price, an image file to upload, category, tags, description, and a
-  "Packing & shipping" section covering dimensions, weight, lead time, and
-  `stock_on_hand` (how many you actually have on the shelf right now —
-  added in Phase 2 since allocation needs something concrete to check
-  availability against). Dimensions and weight are both optional but feed
-  the packing suggestion (see "Allocating a fair" below) — fill in
-  whichever you have; the suggestion falls back gracefully when one or
-  both are missing. Applies to books and non-book merchandise (pencils,
-  erasers, posters, journals, etc.) alike — set the item type to
-  distinguish them; ISBN is optional and only used for books.
+  price, an image file to upload, category, tags, description, an
+  optional "Author contact" group (name/email/phone — for a book added
+  here directly rather than through the public author submission form, so
+  there's still someone to reach if an org later requests a reading or
+  signing for it), and a "Packing & shipping" section covering dimensions,
+  weight, lead time, and `stock_on_hand` (how many you actually have on
+  the shelf right now — added in Phase 2 since allocation needs something
+  concrete to check availability against). Dimensions and weight are both
+  optional but feed the packing suggestion (see "Allocating a fair"
+  below) — fill in whichever you have; the suggestion falls back
+  gracefully when one or both are missing. Applies to books and non-book
+  merchandise (pencils, erasers, posters, journals, etc.) alike — set the
+  item type to distinguish them; ISBN is optional and only used for books.
 - **Receive stock**: on the catalog list, each row has a quantity field
   and a **Receive** button — adds to that item's `stock_on_hand` (e.g.
   more copies arrived from the supplier). Use this for routine restocking.
 - **Edit an item** (`/admin/catalog/<id>/edit`, via the **Edit** link on
   each row): change any field — title, cost, price, category, tags,
-  description, dimensions, weight, lead time, or `stock_on_hand` directly
-  (for corrections; prefer "Receive" above for routine restocking since
-  that's additive rather than an overwrite). Uploading a new image
-  replaces the old one; leaving the image field blank keeps the current
-  image as-is.
+  description, author contact, dimensions, weight, lead time, or
+  `stock_on_hand` directly (for corrections; prefer "Receive" above for
+  routine restocking since that's additive rather than an overwrite).
+  Uploading a new image replaces the old one; leaving the image field
+  blank keeps the current image as-is.
 - **Bulk upload** (`/admin/catalog/upload`): CSV with a header row —
   required columns `title`, `cost`, `price`; everything else (including
   `length_in`/`width_in`/`height_in`) optional. `tags` within a cell is
@@ -166,9 +169,11 @@ already be allocated to the fair they're requesting the event for, so
 this list always shows a real book at a real one of their fairs, never
 something they aren't actually carrying. Each card shows the book, event
 type, fair, requested date ("TBD" if they didn't pick one), any notes,
-and — if the book came from an approved author submission — that
-author's name and email, so you know who to actually reach out to.
-**Approve** and **Decline** work the same as fair requests: approving
+and an author contact line: name, email, and phone if available — from
+an approved author submission if the book came through one, otherwise
+falling back to whatever author contact info was entered directly on the
+catalog item (see "Catalog and inventory" above) — or "No author on
+file" if neither exists. **Approve** and **Decline** work the same as fair requests: approving
 just marks it approved and emails the org (not the author) to let them
 know; there's no automatic fair or catalog change, since coordinating the
 actual reading/signing with the author is on you. **Decline** takes an
@@ -620,7 +625,9 @@ choose anything, the discount is just reflected in your total.
 
 Submit a book or piece of merchandise for EasyBookFair to carry at
 `/author/submit` — no account needed the first time. Give your name,
-email, a title, and a **suggested retail price**; the page shows you the
+email, an optional phone number (a second way for an admin to reach you,
+e.g. about scheduling a reading or signing), a title, and a **suggested
+retail price**; the page shows you the
 wholesale price you'd be paid per unit as you type (65% of retail,
 computed automatically — you can't set it independently). You'll also
 need to upload a front cover image, a back cover image, and a PDF of the

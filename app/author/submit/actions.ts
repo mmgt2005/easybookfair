@@ -50,6 +50,7 @@ export async function submitAuthorSubmission(formData: FormData) {
 
   const authorName = String(formData.get("author_name") ?? "").trim();
   const authorEmail = String(formData.get("author_email") ?? "").trim();
+  const authorPhone = String(formData.get("author_phone") ?? "").trim() || null;
   const title = String(formData.get("title") ?? "").trim();
   const itemType = String(formData.get("item_type") ?? "book");
   const category = String(formData.get("category") ?? "").trim() || null;
@@ -105,6 +106,7 @@ export async function submitAuthorSubmission(formData: FormData) {
     submitted_by_admin_id: submittedByAdminId,
     author_name: authorName,
     author_email: authorEmail,
+    author_phone: authorPhone,
     title,
     item_type: itemType,
     category,

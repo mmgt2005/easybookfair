@@ -19,7 +19,7 @@ export async function approveAuthorSubmission(submissionId: string) {
   const { data: submission, error: fetchError } = await service
     .from("author_submissions")
     .select(
-      "author_name, author_email, title, description, item_type, category, front_cover_image_url, suggested_retail_price, wholesale_price, status",
+      "author_name, author_email, author_phone, title, description, item_type, category, front_cover_image_url, suggested_retail_price, wholesale_price, status",
     )
     .eq("id", submissionId)
     .single();
@@ -63,7 +63,12 @@ export async function approveAuthorSubmission(submissionId: string) {
 
   const { error: authorUpsertError } = await service
     .from("authors")
-    .upsert({ user_id: authorUserId, name: submission!.author_name, email: submission!.author_email });
+    .upsert({
+      user_id: authorUserId,
+      name: submission!.author_name,
+      email: submission!.author_email,
+      phone: submission!.author_phone,
+    });
   if (authorUpsertError) {
     redirect(`/admin/author-submissions?error=${encodeURIComponent(authorUpsertError.message)}`);
   }
