@@ -56,16 +56,26 @@ export async function submitAuthorSubmission(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const suggestedRetailPrice = Number(formData.get("suggested_retail_price") ?? NaN);
 
+  const frontCoverFile = formData.get("front_cover") as File | null;
+  const backCoverFile = formData.get("back_cover") as File | null;
+  const interiorPdfFile = formData.get("interior_pdf") as File | null;
+
   if (
     !authorName ||
     !authorEmail ||
     !title ||
     !Number.isFinite(suggestedRetailPrice) ||
-    suggestedRetailPrice <= 0
+    suggestedRetailPrice <= 0 ||
+    !frontCoverFile ||
+    frontCoverFile.size === 0 ||
+    !backCoverFile ||
+    backCoverFile.size === 0 ||
+    !interiorPdfFile ||
+    interiorPdfFile.size === 0
   ) {
     redirect(
       `/author/submit?error=${encodeURIComponent(
-        "Name, email, title, and a positive suggested price are required",
+        "Name, email, title, a positive suggested price, front cover, back cover, and interior PDF are all required",
       )}`,
     );
   }

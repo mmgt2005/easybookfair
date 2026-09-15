@@ -58,15 +58,18 @@ which point versioning starts.
   software itself. Designed as a mockup first (Claude's design skill) and
   iterated on before being ported into `app/page.tsx`, so its copy stays
   accurate to what's actually built rather than aspirational.
-- **Author submissions: front cover, back cover, and interior PDF**
-  (migration `0047`): the public submission form (`/author/submit`) now
-  collects a front cover image, a back cover image, and a PDF of the
-  interior for admin review, in addition to the existing title/description/
-  price fields — all still optional and all still uploaded before the
-  author has any account, into the same `author-submissions` storage
-  bucket. `author_submissions.image_url` is renamed to
-  `front_cover_image_url` for clarity (still the field copied to
-  `catalog_items.image_url` on approval) and gains
+- **Author submissions: required front cover, back cover, and interior
+  PDF** (migrations `0047`/`0048`): the public submission form
+  (`/author/submit`) now collects a front cover image, a back cover image,
+  and a PDF of the interior for admin review, alongside the existing
+  title/description/price fields — all three are **required**, enforced
+  both by the form and, since `0048`, by `NOT NULL` on the columns
+  themselves (the same pattern as every other required field on this
+  table), so a submission can't skip them even via a direct API call.
+  Still uploaded before the author has any account, into the same
+  `author-submissions` storage bucket. `author_submissions.image_url` is
+  renamed to `front_cover_image_url` for clarity (still the field copied
+  to `catalog_items.image_url` on approval) and gains
   `back_cover_image_url`/`interior_pdf_url`. The admin review screen
   (`/admin/author-submissions`) shows both cover thumbnails and a link to
   the interior PDF alongside each pending submission.

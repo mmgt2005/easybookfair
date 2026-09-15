@@ -87,8 +87,9 @@ A big batch pulling several later-phase pieces forward at once:
   link.
 - **Author submissions** (`/author/submit`, public, no login): authors
   submit books/merchandise with a suggested retail price (65% wholesale
-  auto-calculated), plus optional front cover, back cover, and interior
-  PDF uploads for admin review (migration `0047`); admin review at
+  auto-calculated), plus a required front cover, back cover, and interior
+  PDF for admin review (migrations `0047`/`0048` — `NOT NULL` at the
+  schema level, not just required by the form); admin review at
   `/admin/author-submissions` shows both covers and a link to the interior
   PDF; approving invites the author to a real account and adds the item to
   the catalog using the front cover as its image. A minimal author portal
@@ -185,6 +186,7 @@ code (everything that needs to be unit-tested).
    - `0045_org_signups.sql`
    - `0046_org_staff_fair_operations.sql`
    - `0047_author_submission_files.sql`
+   - `0048_author_submission_files_required.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve
@@ -499,7 +501,9 @@ inventing new colors per page.
   `catalog_items.image_url` on approval) and adds `back_cover_image_url`/
   `interior_pdf_url`, all uploaded to the same public `author-submissions`
   bucket as before — no new storage policies needed since they already
-  allow any file under that bucket, not just images.
+  allow any file under that bucket, not just images. Migration `0048`
+  makes all three `NOT NULL`, matching every other required field on this
+  table, once the form started requiring them too.
 - Admin "view as" (migration `0041`, `lib/viewAs.ts`) is deliberately
   **not** a real session swap — an admin never holds an org/author's
   actual credentials, only a routing cookie that `requireOrgStaff()`/

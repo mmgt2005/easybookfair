@@ -288,13 +288,12 @@ configured.
 ### Reviewing author submissions (`/admin/author-submissions`)
 
 Authors and vendors submit books/merchandise from the public,
-no-login `/author/submit` form — title, description, category, an
-optional front cover image, back cover image, and interior PDF (for
+no-login `/author/submit` form — title, description, category, a
+required front cover image, back cover image, and interior PDF (for
 review, not published anywhere), and a suggested retail price (the
 platform's wholesale cost, 65% of that, is computed automatically and
 can't be overridden). Each pending submission shows the front/back cover
-thumbnails, a link to the interior PDF if one was uploaded, and
-**Approve**/**Decline**:
+thumbnails, a link to the interior PDF, and **Approve**/**Decline**:
 
 - **Approve** finds or creates a real account for the author (Supabase's
   own invite-by-email — a different email than Resend's confirmation
@@ -583,12 +582,12 @@ Submit a book or piece of merchandise for EasyBookFair to carry at
 `/author/submit` — no account needed the first time. Give your name,
 email, a title, and a **suggested retail price**; the page shows you the
 wholesale price you'd be paid per unit as you type (65% of retail,
-computed automatically — you can't set it independently). You can also
-upload a front cover image, a back cover image, and a PDF of the interior
-— all optional, and the interior PDF is only for the admin reviewing your
-submission, not something that gets published anywhere. If your item is
-approved, remember it'll need to be **shipped to EasyBookFair** so there's
-physical stock on hand to sell at fairs.
+computed automatically — you can't set it independently). You'll also
+need to upload a front cover image, a back cover image, and a PDF of the
+interior — all three are required; the interior PDF is only for the admin
+reviewing your submission, not something that gets published anywhere. If
+your item is approved, remember it'll need to be **shipped to
+EasyBookFair** so there's physical stock on hand to sell at fairs.
 
 A platform admin reviews every submission. If approved:
 
