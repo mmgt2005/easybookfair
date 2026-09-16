@@ -363,6 +363,18 @@ from "the sign-in link didn't work." Add `<your-domain>/auth/callback`
 URLs, and set Site URL to your real production domain, whenever the
 domain changes.
 
+**Watch for a `www` vs. bare-domain mismatch** — a real case that hit
+this exact failure mode: the site was reachable at both
+`https://yourdomain.com` and `https://www.yourdomain.com`, but only the
+bare domain was in Redirect URLs. `emailRedirectTo` is built from
+`window.location.origin` (`app/login/page.tsx`), so a visitor on the
+`www` version requests `https://www.yourdomain.com/auth/callback` —
+a different origin than the allowlisted one — and Supabase falls back to
+Site URL exactly as above. Either add both variants to Redirect URLs, or
+better, pick one canonical domain (Vercel → Project → Settings →
+Domains, set one as primary so the other 308-redirects to it) and make
+Site URL/Redirect URLs/`NEXT_PUBLIC_SITE_URL` all agree with it.
+
 ## Design system
 
 `components/ui/` holds the shared primitives (`Button`, `Input`, `Select`,

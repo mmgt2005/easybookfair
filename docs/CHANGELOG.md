@@ -19,7 +19,12 @@ which point versioning starts.
   magic-link click lands on `/` — a static page that ignores any leftover
   query string — with no session ever established. Documented in the
   README's `## Deploying` section as a required step whenever the
-  production domain changes.
+  production domain changes. Confirmed a specific instance of this in
+  production: the site was reachable at both the bare domain and its
+  `www` subdomain, but only the bare domain was in Redirect URLs — a
+  visitor on `www` requests a different origin than the allowlisted one,
+  so it still fell back to Site URL. Documented that case too, with the
+  fix (add both, or pick one canonical domain and redirect the other).
 - **Storefront QR code (and email/redirect links) could hit a Vercel login
   page instead of the real page**: `siteUrl()` (`lib/email.ts`), the one
   function every absolute link in the app is built from — the org
