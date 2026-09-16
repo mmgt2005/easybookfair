@@ -59,14 +59,19 @@ the fair, confirmed `settlements.net_payout` matched exactly). Once a
 `settlements` row exists for the fair, the feed shows that locked-in
 figure instead and labels it "Final payout" rather than an estimate.
 
-Org staff also get a **marketing toolkit** (`/org/fairs/<id>/marketing`)
-for each fair — the storefront/wallet links with copy buttons, a QR code
-for each (`qrcode` package, rendered as a `data:` image, no external
-service), a printable one-page flyer (its own route, so `window.print()`
-prints only the flyer — same reasoning as the wallet donation receipt
-page), and ready-to-copy social-media/email text templated from the
-fair's real name, dates, and links. Linked from `/org`'s existing "Share
-with buyers" column.
+Org staff also get a **marketing toolkit** (`/org/fairs/<id>/marketing`,
+mirrored for admins at `/admin/fairs/<id>/marketing` — both routes render
+the same `MarketingToolkitContent`, gated by `requireFairStaff()`, the
+same admin-or-that-fair's-org-staff check used for checkout/pickup/
+wallets/sales) for each fair — the storefront/wallet links with copy
+buttons, a QR code for each (`qrcode` package, rendered as a `data:`
+image, no external service), a printable one-page flyer (its own route,
+so `window.print()` prints only the flyer — same reasoning as the wallet
+donation receipt page), and ready-to-copy social-media/email text
+templated from the fair's real name, dates, and links. Linked from
+`/org`'s "Share with buyers" column, and from the admin fairs
+list/edit/demo screens alongside the same buyer-facing links they
+already show.
 
 Orgs can also **request an author reading or book signing**
 (`event_requests`, migration `0049`) for a book already allocated to one

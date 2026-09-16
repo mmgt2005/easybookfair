@@ -9,6 +9,20 @@ which point versioning starts.
 
 ### Fixed
 
+- **Marketing toolkit was org-only, unlike every other fair-scoped admin
+  screen**: checkout, pickup, wallets, sales, promotions, and allocations
+  all exist as both an `/admin/fairs/<id>/...` page and an
+  `/org/fairs/<id>/...` page, gated by the shared `requireFairStaff()`
+  check (a platform admin, or that fair's own org staff). The marketing
+  toolkit only existed at `/org/fairs/<id>/marketing`, gated by
+  `requireOrgStaff()` — an admin could only reach it by first "viewing
+  as" that org. Extracted the shared rendering into
+  `MarketingToolkitContent` (`app/admin/fairs/[fairId]/marketing/`), now
+  gated by `requireFairStaff()` like the rest, and added
+  `/admin/fairs/<id>/marketing` plus links to it from the admin fairs
+  list, fair edit page, and demo fair page — same "Marketing" label,
+  same enabling condition (`allow_online` or `allow_wallet` + is a
+  school) as everywhere else these buyer links show up.
 - **Onboarding tour didn't cover every nav link**: the admin tour
   (migration-era, `app/admin/layout.tsx`) covered 6 of 11 nav items and
   the org tour (`app/org/layout.tsx`) covered 2 of 3 — several features

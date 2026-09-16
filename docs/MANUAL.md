@@ -199,7 +199,12 @@ here any time before the fair closes.
 
 **Public links** (same page, near the top): the same storefront/
 student-wallet links the org sees on their own dashboard — handy for
-sharing directly, or double-checking what a buyer would actually see.
+sharing directly, or double-checking what a buyer would actually see —
+plus a **Marketing toolkit →** link (when either is enabled) to the same
+toolkit the org has at `/org/fairs/<id>/marketing` (links, QR codes, a
+printable flyer, ready-to-copy text), also reachable from the fairs list
+and the demo fair page. You don't need to "view as" the org to use it —
+it's the same page either way.
 
 **Terminal setup** (same page): needed once per fair before the checkout
 screen can charge cards with a physical reader. Fill in the venue's

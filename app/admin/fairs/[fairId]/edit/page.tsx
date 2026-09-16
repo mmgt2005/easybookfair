@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   updateFair,
@@ -101,6 +102,14 @@ export default async function EditFairPage({
             <span className="text-xs text-neutral-400">
               Student wallets are turned off{!org?.is_school ? " (not a school)" : ""}.
             </span>
+          )}
+          {(fair.allow_online || (fair.allow_wallet && org?.is_school)) && (
+            <Link
+              href={`/admin/fairs/${fair.id}/marketing`}
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              Marketing toolkit →
+            </Link>
           )}
         </div>
       </Card>

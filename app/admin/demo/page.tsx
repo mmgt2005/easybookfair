@@ -11,14 +11,16 @@ export default async function DemoFairPage() {
   const { data: fair } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, status, organizations!inner(is_demo, is_demo_enabled)",
+      "id, name, start_date, end_date, status, allow_online, allow_wallet, organizations!inner(is_demo, is_demo_enabled, is_school)",
     )
     .eq("organizations.is_demo", true)
     .maybeSingle();
 
-  const isDemoEnabled = (
-    fair?.organizations as unknown as { is_demo_enabled: boolean } | null
-  )?.is_demo_enabled ?? true;
+  const org = fair?.organizations as unknown as {
+    is_demo_enabled: boolean;
+    is_school: boolean;
+  } | null;
+  const isDemoEnabled = org?.is_demo_enabled ?? true;
   const mode = stripeMode();
 
   return (
@@ -102,6 +104,14 @@ export default async function DemoFairPage() {
             >
               Promotions
             </Link>
+            {(fair.allow_online || (fair.allow_wallet && org?.is_school)) && (
+              <Link
+                href={`/admin/fairs/${fair.id}/marketing`}
+                className="font-semibold text-accent-600 hover:underline"
+              >
+                Marketing
+              </Link>
+            )}
             <Link
               href={`/admin/fairs/${fair.id}/edit`}
               className="font-semibold text-accent-600 hover:underline"

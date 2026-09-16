@@ -109,6 +109,17 @@ export default async function FairsPage() {
                       Wallets
                     </Link>
                   )}
+                  {(fair.allow_online ||
+                    (fair.allow_wallet &&
+                      (fair.organizations as unknown as { is_school: boolean } | null)
+                        ?.is_school)) && (
+                    <Link
+                      href={`/admin/fairs/${fair.id}/marketing`}
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      Marketing
+                    </Link>
+                  )}
                   <Link
                     href={`/admin/fairs/${fair.id}/edit`}
                     className="font-semibold text-accent-600 hover:underline"
