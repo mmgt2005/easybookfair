@@ -63,6 +63,26 @@ not.
 
 ## Admin guide
 
+### Dashboard (`/admin`)
+
+The landing page after logging in as an admin, with two reports right on
+it (no click-through needed):
+
+- **Pending applications**: a count and a link for each of the four
+  review queues that can have something waiting — fair requests, org
+  signups, author submissions, and event requests. A queue is only listed
+  when it has at least one pending item; "No pending applications" shows
+  when all four are clear.
+- **Active fairs**: every fair that isn't closed yet (scheduled, active,
+  or in its return window), with units sold, revenue, and an estimated
+  payout so far, plus a totals row. The payout column matches what that
+  fair's own live sales feed (`/admin/fairs/<id>/sales`) shows for it —
+  it's the same running estimate, not a snapshot, so it moves as more
+  sales land and only becomes final once the fair is actually closed out.
+
+Below both reports are the same navigation shortcuts as before (Catalog,
+Organizations, Fairs, Carton specs).
+
 ### Manual & version (`/admin/manual`)
 
 The admin nav's "Manual" link renders this file and `docs/CHANGELOG.md`

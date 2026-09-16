@@ -7,6 +7,23 @@ which point versioning starts.
 
 ## [Unreleased]
 
+### Added
+
+- **Admin dashboard report**: `/admin` now shows a "Pending applications"
+  card (counts + links for fair requests, org signups, author submissions,
+  and event requests — the four `application_status`-driven review
+  queues) and an "Active fairs" table (every fair not yet closed, with
+  units sold, revenue, and an estimated payout per fair plus a totals
+  row), replacing the placeholder "later phase" description that used to
+  sit above the four navigation shortcut cards. The payout estimate
+  reuses the exact same ledger-based formula as the per-fair sales page's
+  `getPayoutEstimate()` (`app/admin/fairs/[fairId]/sales/actions.ts`), run
+  across every listed fair at once instead of one at a time — safe to skip
+  the `settlements` table entirely here, since `close_fair()` always sets
+  a fair's status to `closed` in the same transaction it creates that row,
+  so no fair in this report's scope (`scheduled`/`active`/`return_window`)
+  can ever have one.
+
 ### Fixed
 
 - **Marketing toolkit was org-only, unlike every other fair-scoped admin
