@@ -9,6 +9,15 @@ which point versioning starts.
 
 ### Fixed
 
+- **Onboarding tour didn't cover every nav link**: the admin tour
+  (migration-era, `app/admin/layout.tsx`) covered 6 of 11 nav items and
+  the org tour (`app/org/layout.tsx`) covered 2 of 3 — several features
+  added since the tour was first written (Authors, Event requests, Author
+  submissions, Carton specs, Demo fair on the admin side; Request an
+  event on the org side) never got a step. Added the missing steps, in
+  the same order as the nav bar, for both. The author tour
+  (`app/author/(portal)/layout.tsx`) already covered both of its nav
+  items and needed no changes.
 - **Magic-link sign-in could land back on `/` with no session**: not a
   code bug — `app/login/page.tsx`/`app/auth/callback/route.ts` were
   already correct — but a deployment-configuration gap: Supabase Auth

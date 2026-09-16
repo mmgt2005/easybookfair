@@ -37,6 +37,11 @@ const adminTourSteps = [
       "Approve organizations, mark schools (unlocks student wallets for their fairs), and connect Stripe for payouts.",
   },
   {
+    title: "Authors",
+    description:
+      "Accounts created automatically once you approve a submission at Author submissions — no manual invite step. \"View as\" lets you preview an author's own portal.",
+  },
+  {
     title: "Fairs",
     description: "Create fairs directly, allocate stock, run checkout, and close them out.",
   },
@@ -46,9 +51,29 @@ const adminTourSteps = [
       "Orgs request fairs from their own portal, picking payment options. Approving here copies those choices into a real, scheduled fair.",
   },
   {
+    title: "Event requests",
+    description:
+      "Orgs can request an author reading or book signing for a book already allocated to one of their fairs. Approving lets the org know — you coordinate the actual event with the author yourself.",
+  },
+  {
     title: "Org signups",
     description:
       "A new organization can express interest at /join with no account. Approving here creates the organization, invites the contact, and adds them as org staff.",
+  },
+  {
+    title: "Author submissions",
+    description:
+      "Books and merchandise submitted from the public form at /author/submit, with a suggested price and wholesale cost computed automatically. Approving invites the author to a real account and adds the item to the catalog.",
+  },
+  {
+    title: "Carton specs",
+    description:
+      "Box dimensions used to suggest how to pack an allocation for shipping — reference data, set up once and reused across fairs.",
+  },
+  {
+    title: "Demo fair",
+    description:
+      "A permanent, resettable sandbox fair for training — click through catalog, allocation, checkout, the storefront, and student wallets without touching real data.",
   },
   {
     title: "Manual",

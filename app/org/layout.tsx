@@ -28,6 +28,11 @@ const orgTourSteps = [
       "Pick dates and which ways buyers can pay — each option is explained before you choose. An admin reviews the request before it becomes a real fair.",
   },
   {
+    title: "Request an event",
+    description:
+      "Ask for an author reading or book signing for a book already allocated to one of your fairs. An admin reviews it and coordinates the details with the author.",
+  },
+  {
     title: "Come back to this any time",
     description:
       "Click \"🎓 Take the tour\" in the nav whenever you want to see this again — it doesn't go away after the first time.",
