@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
 
 export default async function AuthorDashboard() {
-  const { name, authorUserId } = await requireAuthor();
+  const { name, authorUserId, email } = await requireAuthor();
   const supabase = await createClient();
 
   // Explicit author_user_id filter, not just RLS (author_submissions_
@@ -41,6 +41,35 @@ export default async function AuthorDashboard() {
     entry.units += 1;
     entry.revenue += sale.price_charged;
     salesByItem.set(sale.catalog_item_id, entry);
+  }
+
+  // Books where this author is only listed via a catalog item's own
+  // contact info (migration 0051) — never went through a submission, so
+  // they don't show up in the section above. Explicit email filter, not
+  // just RLS, for the same admin-"viewing-as" reason noted above.
+  const { data: catalogBooks } = email
+    ? await supabase
+        .from("catalog_items")
+        .select("id, title, price, item_type")
+        .ilike("author_email", email)
+    : { data: [] };
+
+  const catalogBookIds = (catalogBooks ?? []).map((b) => b.id);
+  const { data: catalogSales } =
+    catalogBookIds.length > 0
+      ? await supabase
+          .from("sales")
+          .select("catalog_item_id, price_charged")
+          .in("catalog_item_id", catalogBookIds)
+          .eq("status", "completed")
+      : { data: [] };
+
+  const catalogSalesByItem = new Map<string, { units: number; revenue: number }>();
+  for (const sale of catalogSales ?? []) {
+    const entry = catalogSalesByItem.get(sale.catalog_item_id) ?? { units: 0, revenue: 0 };
+    entry.units += 1;
+    entry.revenue += sale.price_charged;
+    catalogSalesByItem.set(sale.catalog_item_id, entry);
   }
 
   return (
@@ -84,6 +113,28 @@ export default async function AuthorDashboard() {
           </p>
         )}
       </div>
+
+      {catalogBooks && catalogBooks.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <h2 className="font-heading text-lg font-bold text-neutral-900">
+            Books you&apos;re listed as the author for
+          </h2>
+          {catalogBooks.map((book) => {
+            const sold = catalogSalesByItem.get(book.id);
+            return (
+              <Card key={book.id} className="max-w-lg">
+                <h3 className="font-heading font-bold text-neutral-900">{book.title}</h3>
+                <p className="text-sm text-neutral-600">Retail ${book.price.toFixed(2)}</p>
+                <p className="mt-2 text-sm text-neutral-700">
+                  {sold
+                    ? `${sold.units} sold so far — $${sold.revenue.toFixed(2)}`
+                    : "On sale — nothing sold yet"}
+                </p>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

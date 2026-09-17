@@ -393,6 +393,19 @@ on their behalf, not silently attributed to them as if they'd typed it
 themselves. `/admin/fair-requests` and `/admin/author-submissions` both
 flag rows created this way.
 
+Unlike an org, an author only has a "View as" link once a real account
+exists for them — `/admin/authors` has a second section, "From catalog
+items — no account yet," for an author who's only ever been named as
+plain contact info on a catalog item (title/edit page's optional "Author
+contact" fields), never through a real submission. Its **Create account &
+view as** button invites them (Supabase's own account-invite email, same
+as approving a submission) and switches you into `/author` as them in one
+step — that invite only ever fires from this explicit click, never
+automatically just because a catalog item lists their name/email. Once
+created, they move up into the regular authors table above like anyone
+else. Their `/author` portal shows those catalog-linked books (with
+sales) in their own section, separate from real submissions.
+
 ### Payments
 
 The payment webhook (`/api/webhooks/stripe`) and its sale-writing
@@ -676,6 +689,12 @@ A platform admin reviews every submission. If approved:
 Already have an account? `/author/submit` recognizes you when signed in
 and pre-fills your name/email — no need to wait for another approval to
 submit something new.
+
+You can also end up with an account without ever submitting anything —
+if an admin adds you as the author contact directly on a catalog item and
+then creates an account for you from `/admin/authors`. `/author` shows
+those books (and their sales) in their own section, separate from
+anything you've actually submitted yourself.
 
 ## Not yet supported
 

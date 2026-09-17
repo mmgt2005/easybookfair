@@ -90,6 +90,21 @@ same three fields (plus a new `phone` on `authors`/`author_submissions`)
 are editable from the catalog item's create/edit forms and the author
 submission form respectively.
 
+A catalog-only author like that has no real account and can't be
+"viewed as" the way `/admin/organizations` lets an admin preview any org
+— `authors.user_id` is a foreign key to `auth.users`, so a row can only
+exist for a real, already-invited account. `/admin/authors` (migration
+`0052`) now lists these catalog-only contacts in a second section, "no
+account yet," with a "Create account & view as" button that invites them
+(same invite-or-find logic `approveAuthorSubmission` already used,
+extracted to `lib/authors.ts`) and drops the admin straight into
+`/author` as them. That invite only fires on this explicit click, never
+just from saving contact info on a catalog item. The author portal itself
+now also shows books linked only by `catalog_items.author_email` (not
+just real submissions), and a new RLS policy
+(`sales_select_author_catalog`) lets a genuinely logged-in author — not
+just an admin viewing as them — see sales for those books too.
+
 A big batch pulling several later-phase pieces forward at once:
 
 - **Promotions/bundle discounts** (`/admin/fairs/<id>/promotions`): percent-off
@@ -221,6 +236,7 @@ code (everything that needs to be unit-tested).
    - `0049_event_requests.sql`
    - `0050_event_requests_catalog_item_fk.sql`
    - `0051_catalog_author_contact.sql`
+   - `0052_catalog_author_sales_rls.sql`
 4. Make yourself a platform admin: sign in once at `/login` (magic link)
    so a row exists in Supabase's `auth.users`, then insert your user id
    into `platform_admins` directly (SQL Editor — there's no self-serve

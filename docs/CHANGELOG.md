@@ -23,6 +23,23 @@ which point versioning starts.
   a fair's status to `closed` in the same transaction it creates that row,
   so no fair in this report's scope (`scheduled`/`active`/`return_window`)
   can ever have one.
+- **Catalog-only authors now appear on `/admin/authors` and can be
+  "viewed as"**: a catalog item's plain `author_name`/`author_email`/
+  `author_phone` contact info (migration `0051`) never had a real account
+  behind it, so it never showed up anywhere on the authors screen and
+  couldn't be previewed the way `/admin/organizations` lets an admin
+  "view as" any org. Unlike an org, `authors.user_id` is a foreign key to
+  `auth.users`, so a real account is unavoidable before "view as" can
+  work — `/admin/authors` now lists these in a second "no account yet"
+  section with a "Create account & view as" button that invites them
+  (reusing the same invite-or-find logic `approveAuthorSubmission` used,
+  now extracted to `lib/authors.ts`) and drops the admin straight into
+  `/author` as them. The invite only fires on that explicit click, never
+  automatically from saving contact info on a catalog item. The author
+  portal (`/author`) now also shows books linked only by
+  `catalog_items.author_email`, with their sales — authorized for a real
+  (not admin-viewing-as) author by a new RLS policy,
+  `sales_select_author_catalog` (migration `0052`).
 
 ### Fixed
 

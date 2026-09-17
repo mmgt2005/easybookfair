@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { siteUrl } from "@/lib/email";
+import { inviteOrFindAuthorAccount } from "@/lib/authors";
 
 // Approving does three things atomically-ish (best-effort, not a single
 // DB transaction — see the comment on the account lookup below for why
@@ -33,32 +34,20 @@ export async function approveAuthorSubmission(submissionId: string) {
 
   // Create the author's account, inviting them by email (Supabase's own
   // invite flow — no Resend involved here, this is Supabase Auth's
-  // built-in email). A returning author whose email is already registered
-  // makes this error instead of creating a duplicate account — fall back
-  // to finding their existing user id rather than failing the approval.
+  // built-in email).
   let authorUserId: string;
-  const invite = await service.auth.admin.inviteUserByEmail(submission!.author_email, {
-    redirectTo: `${siteUrl()}/author`,
-  });
-
-  if (invite.error) {
-    const { data: existing, error: listError } = await service.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    const match = existing?.users.find(
-      (u) => u.email?.toLowerCase() === submission!.author_email.toLowerCase(),
+  try {
+    authorUserId = await inviteOrFindAuthorAccount(
+      service,
+      submission!.author_email,
+      `${siteUrl()}/author`,
     );
-    if (listError || !match) {
-      redirect(
-        `/admin/author-submissions?error=${encodeURIComponent(
-          `Could not create or find an account for ${submission!.author_email}: ${invite.error.message}`,
-        )}`,
-      );
-    }
-    authorUserId = match!.id;
-  } else {
-    authorUserId = invite.data.user.id;
+  } catch (err) {
+    redirect(
+      `/admin/author-submissions?error=${encodeURIComponent(
+        err instanceof Error ? err.message : "Could not create or find an account",
+      )}`,
+    );
   }
 
   const { error: authorUpsertError } = await service
