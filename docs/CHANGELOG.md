@@ -9,6 +9,13 @@ which point versioning starts.
 
 ### Added
 
+- **Edit an author** (`/admin/authors/<id>/edit`): name/email/phone,
+  matching the same simple edit-page pattern as organizations and carton
+  specs. Deliberately doesn't touch the underlying Supabase Auth login —
+  only the `authors` profile row — since changing a real login email is a
+  separate, riskier operation nothing here asks for; the page notes that
+  editing the email does still change which catalog items that author's
+  own `/author` portal matches via `author_email`.
 - **Admin dashboard report**: `/admin` now shows a "Pending applications"
   card (counts + links for fair requests, org signups, author submissions,
   and event requests — the four `application_status`-driven review

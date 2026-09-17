@@ -406,6 +406,12 @@ created, they move up into the regular authors table above like anyone
 else. Their `/author` portal shows those catalog-linked books (with
 sales) in their own section, separate from real submissions.
 
+Every real author row has an **Edit** link (name/email/phone). Changing
+the email here only updates their profile — it's not the same as their
+Supabase Auth login, so it doesn't affect how they sign in — but it does
+change which catalog items their own `/author` portal matches via
+`author_email`, so double-check it's the one on file there too.
+
 ### Payments
 
 The payment webhook (`/api/webhooks/stripe`) and its sale-writing

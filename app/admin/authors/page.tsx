@@ -60,7 +60,13 @@ export default async function AuthorsPage() {
                 <td className="py-2 pr-4 text-neutral-600">
                   {new Date(author.created_at).toLocaleDateString()}
                 </td>
-                <td className="py-2 pr-4">
+                <td className="flex gap-3 py-2 pr-4">
+                  <Link
+                    href={`/admin/authors/${author.user_id}/edit`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Edit
+                  </Link>
                   <form action={startViewAsAuthor.bind(null, author.user_id)}>
                     <button
                       type="submit"
