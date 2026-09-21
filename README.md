@@ -17,10 +17,12 @@ settlement/close-out (payout statements, Stripe Transfer/Payment Link,
 reconciliation). Self-serve org and author onboarding, event requests,
 a marketing toolkit, and self-serve admin/org-staff invites have all
 shipped since, ahead of where the original build plan put them. Phase 6
-(QR labels, restock-timing-aware allocation checks) is next; Phase 7
-(multi-tenant SaaS) is deliberately last. See `docs/spec.md`'s "Build
-plan" for the full phase list and `docs/CHANGELOG.md` for the complete
-history.
+is done too — lead-time-aware allocation checks and the `restock_orders`
+"reorder now" flow already existed from earlier allocation work, and QR
+labels (configurable label-sheet templates, batch-printed per fair at
+packing time) are now built as well. Only Phase 7 (multi-tenant SaaS,
+deliberately last) remains. See `docs/spec.md`'s "Build plan" for the
+full phase list and `docs/CHANGELOG.md` for the complete history.
 
 An **org staff portal** (`/org`) now exists too: an org requests a fair
 (with each buyer payment option explained before they choose it) instead
@@ -242,6 +244,7 @@ code (everything that needs to be unit-tested).
    - `0051_catalog_author_contact.sql`
    - `0052_catalog_author_sales_rls.sql`
    - `0053_platform_admin_roles.sql`
+   - `0054_label_templates.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an

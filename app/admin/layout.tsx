@@ -16,6 +16,7 @@ const navLinks = [
   { href: "/admin/org-signups", label: "Org signups" },
   { href: "/admin/author-submissions", label: "Author submissions" },
   { href: "/admin/carton-specs", label: "Carton specs" },
+  { href: "/admin/label-templates", label: "Label templates" },
   { href: "/admin/demo", label: "Demo fair" },
   { href: "/admin/manual", label: "Manual" },
 ];
@@ -69,6 +70,11 @@ const adminTourSteps = [
     title: "Carton specs",
     description:
       "Box dimensions used to suggest how to pack an allocation for shipping — reference data, set up once and reused across fairs.",
+  },
+  {
+    title: "Label templates",
+    description:
+      "Sheet/label geometry (dimensions, margins, gaps, grid) for whatever label sheets you actually have — configure once, then pick it when printing labels for a fair's allocation.",
   },
   {
     title: "Demo fair",

@@ -101,6 +101,12 @@ export default async function FairsPage() {
                   >
                     Promotions
                   </Link>
+                  <Link
+                    href={`/admin/fairs/${fair.id}/labels`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Labels
+                  </Link>
                   {(fair.organizations as unknown as { is_school: boolean } | null)?.is_school && (
                     <Link
                       href={`/admin/fairs/${fair.id}/wallets`}

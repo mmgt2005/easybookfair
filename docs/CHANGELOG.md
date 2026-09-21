@@ -5,11 +5,29 @@ and [Semantic Versioning](https://semver.org/). Versioning starts here at
 `0.1.0` — the build plan's Phases 1-5 (foundation, admin catalog/
 allocation, Stripe Connect and all four payment channels, the org portal/
 storefront, settlement/close-out) are done and working end-to-end. The
-`0.x` prefix reflects that Phase 6 (QR labels, restock timing) and Phase
-7 (multi-tenant SaaS, deliberately last) are still open — see
-`docs/spec.md`'s "Build plan" for the full phase list.
+`0.x` prefix reflects that Phase 7 (multi-tenant SaaS, deliberately last)
+is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
+
+### Added
+
+- **Phase 6: QR labels**. Restock timing (lead-time-aware allocation
+  checks, the `restock_orders` "reorder now" flow) turned out to already
+  be built from earlier allocation work — this batch is the other half.
+  `label_templates` (migration `0054`) mirrors `carton_specs`' own
+  "configure once, reuse everywhere" pattern: sheet/label dimensions,
+  margins, gaps, and grid, admin-only, seeded with an Avery 5160 (3×10
+  US-Letter address labels) default. `/admin/label-templates` is the CRUD
+  screen; `/admin/fairs/<id>/labels` prints one label per unit allocated
+  to that fair, using whichever template is picked, each label showing
+  title/price/SKU-ISBN plus a QR code linking to that item's own admin
+  edit page (reuses `lib/qr.ts`'s `qrCodeDataUrl()`, built earlier for
+  the marketing toolkit — no new QR-generation code). Printing isolates
+  just the label sheets via the same `PrintButton`/`window.print()`
+  pattern as the wallet receipt and marketing flyer, with an injected
+  `@page` rule sizing the print output to the chosen template's actual
+  sheet dimensions.
 
 ## [0.1.0] - 2026-09-21
 

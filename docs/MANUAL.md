@@ -122,7 +122,33 @@ to check either.
   semicolon-separated (a CSV already uses commas as its own delimiter).
   `image_url` here is still a URL string, not a file — bulk-imported
   items are expected to already have hosted images.
-- **Labels**: not built yet — still Phase 6 per the build plan.
+- **Labels**: see "Label templates" and "Printing labels for a fair"
+  below.
+
+### Label templates (`/admin/label-templates`)
+
+A shared set of label-sheet geometries — sheet size, label size, margins,
+gaps, and the grid (columns × rows) — configured once and reused, the
+same "set up once, pick it later" pattern as carton specs above. Seeded
+with an Avery 5160 (3×10 US-Letter address labels) default; add your own
+if you use different sheets. Every field is inches, matching how carton
+specs and catalog item dimensions are already entered elsewhere.
+
+### Printing labels for a fair (`/admin/fairs/<id>/labels`)
+
+One label per unit allocated to the fair — 50 copies allocated prints 50
+labels, laid out across as many physical sheets as the chosen template
+fits. Pick a label template from the dropdown (defaults to whichever
+template sorts first alphabetically); the label count and sheet count
+update to match. Each label shows the item's title, price, SKU/ISBN, and
+a QR code that opens that item's own admin edit page when scanned — handy
+for a volunteer or packer to double-check details on the spot. Print with
+the same "Print / save as PDF" button used elsewhere in the app (the
+wallet receipt, the marketing flyer) — it isolates just the label sheets,
+not the rest of the page. Preview in your browser's print dialog before
+committing paper: the sheet size and label grid come from whichever
+template you picked, so double-check it matches your actual label stock
+first.
 
 ### Carton specs (`/admin/carton-specs`)
 
