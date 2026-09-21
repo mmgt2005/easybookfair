@@ -23,7 +23,7 @@ export async function requireAdmin() {
 
   const { data: adminRow } = await supabase
     .from("platform_admins")
-    .select("user_id")
+    .select("role")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -31,6 +31,21 @@ export async function requireAdmin() {
     redirect("/unauthorized");
   }
 
+  return { user, role: adminRow.role as "super_admin" | "admin" };
+}
+
+/**
+ * Guard for the "add/manage other admins" screen — only a super_admin,
+ * not just any platform admin, can promote or invite one (migration
+ * 0053). Same UX-convenience-not-security-boundary caveat as
+ * requireAdmin(): platform_admins is only ever written by trusted
+ * server-side code (service role), never through client RLS writes.
+ */
+export async function requireSuperAdmin() {
+  const { user, role } = await requireAdmin();
+  if (role !== "super_admin") {
+    redirect("/unauthorized");
+  }
   return user;
 }
 
@@ -96,7 +111,13 @@ export async function requireOrgStaff() {
       .maybeSingle();
 
     if (adminRow) {
-      return { user, orgIds: [viewAsOrgId], viewingAs: true, adminId: user.id };
+      return {
+        user,
+        orgIds: [viewAsOrgId],
+        orgAdminOrgIds: [viewAsOrgId],
+        viewingAs: true,
+        adminId: user.id,
+      };
     }
   }
 
@@ -112,6 +133,7 @@ export async function requireOrgStaff() {
   return {
     user,
     orgIds: memberships.map((m) => m.org_id),
+    orgAdminOrgIds: memberships.filter((m) => m.role === "org_admin").map((m) => m.org_id),
     viewingAs: false,
     adminId: null as string | null,
   };

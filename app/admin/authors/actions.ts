@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { setViewAsAuthor } from "@/lib/viewAs";
-import { inviteOrFindAuthorAccount } from "@/lib/authors";
+import { inviteOrFindAccount } from "@/lib/accounts";
 import { siteUrl } from "@/lib/email";
 
 // Edits the authors row itself — name/email/phone shown across the app
@@ -60,7 +60,7 @@ export async function createAuthorAccountAndViewAs(formData: FormData) {
   const service = createServiceClient();
   let userId: string;
   try {
-    userId = await inviteOrFindAuthorAccount(service, email, `${siteUrl()}/author`);
+    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/author`);
   } catch (err) {
     redirect(
       `/admin/authors?error=${encodeURIComponent(

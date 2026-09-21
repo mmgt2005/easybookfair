@@ -9,6 +9,7 @@ const navLinks = [
   { href: "/org", label: "Dashboard" },
   { href: "/org/fairs/request", label: "Request a fair" },
   { href: "/org/events/request", label: "Request an event" },
+  { href: "/org/staff", label: "Staff" },
 ];
 
 const orgTourSteps = [
@@ -31,6 +32,11 @@ const orgTourSteps = [
     title: "Request an event",
     description:
       "Ask for an author reading or book signing for a book already allocated to one of your fairs. An admin reviews it and coordinates the details with the author.",
+  },
+  {
+    title: "Staff",
+    description:
+      "Everyone with access to your fairs. If you're an org admin, invite new staff by email and pick their role — org admins can invite too, org staff can't.",
   },
   {
     title: "Come back to this any time",

@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Shared by author-submission approval and the "create account & view as"
-// action for a catalog-only author. Supabase errors on inviting an email
-// that's already registered, so fall back to finding their existing user
-// id via listUsers() (supabase-js has no getUserByEmail) rather than
-// failing the caller outright.
-export async function inviteOrFindAuthorAccount(
+// Shared by every "invite a real account for this email" flow in the app
+// (author-submission approval, the catalog-only-author "create account &
+// view as" action, org-signup approval, and the admin/org-staff invite
+// actions). Supabase errors on inviting an email that's already
+// registered, so fall back to finding their existing user id via
+// listUsers() (supabase-js has no getUserByEmail) rather than failing
+// the caller outright.
+export async function inviteOrFindAccount(
   service: SupabaseClient,
   email: string,
   redirectTo: string,

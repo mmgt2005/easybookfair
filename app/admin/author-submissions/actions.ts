@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { siteUrl } from "@/lib/email";
-import { inviteOrFindAuthorAccount } from "@/lib/authors";
+import { inviteOrFindAccount } from "@/lib/accounts";
 
 // Approving does three things atomically-ish (best-effort, not a single
 // DB transaction — see the comment on the account lookup below for why
@@ -37,7 +37,7 @@ export async function approveAuthorSubmission(submissionId: string) {
   // built-in email).
   let authorUserId: string;
   try {
-    authorUserId = await inviteOrFindAuthorAccount(
+    authorUserId = await inviteOrFindAccount(
       service,
       submission!.author_email,
       `${siteUrl()}/author`,

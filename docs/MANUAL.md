@@ -376,6 +376,18 @@ This is the organization-side counterpart to author submissions above —
 the only self-serve way into the platform for either role, both reviewed
 by an admin before anything is created.
 
+### Admins (`/admin/platform-admins`)
+
+Only visible to a **super admin** — a regular admin doesn't see this nav
+link, and hitting the URL directly redirects them away. Lists every
+platform admin with their role and a **Promote to super admin** /
+**Demote to admin** button per row. The invite form below creates a real
+account by email (Supabase's own invite — they don't need to have signed
+in first) at whichever role you pick; re-inviting someone already listed
+just changes their role. There's no removal flow yet — demoting to
+`admin` is as far as this screen goes; taking away access entirely is
+still a manual database step.
+
 ### Viewing as an org or author (`/admin/organizations`, `/admin/authors`)
 
 Each row on either list has a **View as** link — switches your admin
@@ -564,6 +576,21 @@ if declined). A **Run this fair** column links to whichever of
 Checkout/Pickup/Wallets apply to that fair's payment options, plus a
 **Sales feed** link that's always there. A separate **Event requests**
 table tracks any author reading/book signing requests you've submitted.
+
+### Staff (`/org/staff`)
+
+Every member of your organization, with their role — **org admin** or
+**org staff**. Anyone can see the list; only an org admin sees the invite
+form and the promote/demote buttons for their own org. Inviting someone
+by email creates a real account for them (Supabase's own invite email —
+they don't need to have signed in first) and adds them at whichever role
+you pick; re-inviting someone already on the list just changes their
+role instead of erroring. The org's founding contact (whoever signed up
+at `/join` or requested the org's first fair) is automatically an org
+admin, so there's always someone who can invite the rest of the team —
+no platform admin involvement needed for ordinary staff additions.
+There's no removal flow yet — demoting is self-serve, fully removing
+someone is still a manual database step for a platform admin.
 
 ### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets,sales}`)
 

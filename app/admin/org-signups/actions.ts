@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { siteUrl } from "@/lib/email";
+import { inviteOrFindAccount } from "@/lib/accounts";
 
 // Approving does three things (best-effort, same trade-off as
 // approveAuthorSubmission): creates the real organizations row, invites
@@ -45,38 +46,27 @@ export async function approveOrgSignup(signupId: string) {
   }
 
   // Invite the contact by email (Supabase's own invite flow, same as
-  // approveAuthorSubmission) — a returning contact whose email is already
-  // registered makes this error instead of creating a duplicate account;
-  // fall back to finding their existing user id rather than failing the
-  // approval.
+  // approveAuthorSubmission).
   let contactUserId: string;
-  const invite = await service.auth.admin.inviteUserByEmail(signup!.contact_email, {
-    redirectTo: `${siteUrl()}/org`,
-  });
-
-  if (invite.error) {
-    const { data: existing, error: listError } = await service.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    const match = existing?.users.find(
-      (u) => u.email?.toLowerCase() === signup!.contact_email.toLowerCase(),
+  try {
+    contactUserId = await inviteOrFindAccount(service, signup!.contact_email, `${siteUrl()}/org`);
+  } catch (err) {
+    redirect(
+      `/admin/org-signups?error=${encodeURIComponent(
+        err instanceof Error ? err.message : "Could not create or find an account",
+      )}`,
     );
-    if (listError || !match) {
-      redirect(
-        `/admin/org-signups?error=${encodeURIComponent(
-          `Could not create or find an account for ${signup!.contact_email}: ${invite.error.message}`,
-        )}`,
-      );
-    }
-    contactUserId = match!.id;
-  } else {
-    contactUserId = invite.data.user.id;
   }
 
+  // org_admin, not the default org_staff — this is the org's founding
+  // contact, who should be able to invite their own staff immediately
+  // (see /org/staff) rather than needing another admin to promote them.
   const { error: memberError } = await service
     .from("org_members")
-    .upsert({ org_id: org!.id, user_id: contactUserId }, { onConflict: "org_id,user_id" });
+    .upsert(
+      { org_id: org!.id, user_id: contactUserId, role: "org_admin" },
+      { onConflict: "org_id,user_id" },
+    );
   if (memberError) {
     redirect(`/admin/org-signups?error=${encodeURIComponent(memberError.message)}`);
   }

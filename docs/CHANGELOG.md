@@ -9,6 +9,22 @@ which point versioning starts.
 
 ### Added
 
+- **Self-serve admin and org-staff invites**: `platform_admins` gets a
+  role column (`super_admin`/`admin`, migration `0053`) — every existing
+  admin was promoted to `super_admin` so nobody lost access. A super
+  admin can now invite another admin (or promote/demote one) from
+  `/admin/platform-admins`, a screen regular admins can't see or reach.
+  `org_members`'s `role` column (`org_admin`/`org_staff`, unused until
+  now despite existing since migration `0001`) is finally wired up: an
+  org admin can invite their own staff, picking their role, from
+  `/org/staff`. Fixed a related bug along the way — `approveOrgSignup`
+  was adding the org's founding contact as `org_staff` instead of
+  `org_admin`, so they couldn't have used the new staff screen at all
+  once it shipped. Both invite flows reuse the same invite-or-find-
+  existing-account helper (now generalized from author-specific
+  `lib/authors.ts` into `lib/accounts.ts`, replacing a third inline copy
+  that had crept into `approveOrgSignup`) — no new account-creation logic
+  was written, just wired up a fourth and fifth time.
 - **Edit an author** (`/admin/authors/<id>/edit`): name/email/phone,
   matching the same simple edit-page pattern as organizations and carton
   specs. Deliberately doesn't touch the underlying Supabase Auth login —

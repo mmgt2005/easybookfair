@@ -237,24 +237,31 @@ code (everything that needs to be unit-tested).
    - `0050_event_requests_catalog_item_fk.sql`
    - `0051_catalog_author_contact.sql`
    - `0052_catalog_author_sales_rls.sql`
-4. Make yourself a platform admin: sign in once at `/login` (magic link)
-   so a row exists in Supabase's `auth.users`, then insert your user id
-   into `platform_admins` directly (SQL Editor — there's no self-serve
-   admin invite flow yet):
+   - `0053_platform_admin_roles.sql`
+4. Make yourself the **first** platform admin — this one bootstrap step
+   still has to be a manual SQL insert, since `/admin/platform-admins`
+   (the self-serve invite screen, migration `0053`) only lets an
+   *existing* super admin add anyone else. Sign in once at `/login`
+   (magic link) so a row exists in Supabase's `auth.users`, then:
    ```sql
-   insert into public.platform_admins (user_id)
-   values ('<your auth.users id>');
+   insert into public.platform_admins (user_id, role)
+   values ('<your auth.users id>', 'super_admin');
    ```
+   Every admin after that can be added from `/admin/platform-admins`
+   itself (email + role, no manual insert, no need for them to have
+   signed in first — inviting them creates the account).
 5. To try the org portal (`/org`), either add someone to `org_members`
    directly:
    ```sql
    insert into public.org_members (org_id, user_id, role)
-   values ('<organizations.id>', '<their auth.users id>', 'org_staff');
+   values ('<organizations.id>', '<their auth.users id>', 'org_admin');
    ```
    or go through the real flow: submit `/join` (no login), then approve it
    from `/admin/org-signups` — this creates the organization, invites the
-   contact by email, and adds them as org staff in one step (migration
-   `0045`).
+   contact by email, and adds them as that org's `org_admin` in one step
+   (migration `0045`, role fix in `0053`'s follow-up batch). From there,
+   that org admin can invite their own staff from `/org/staff` — no
+   platform admin involvement needed for ordinary staff additions.
 6. Set up Stripe (see "Stripe setup" below) if you want to exercise org
    onboarding or the payment webhook — everything else works without it.
 7. The demo/training fair (`/admin/demo`) and its five `[Demo]`-prefixed
@@ -430,11 +437,15 @@ inventing new colors per page.
   Stripe's native iOS/Android Terminal SDK, unreachable from a browser.
   Would need a separate native (or React Native) companion app talking to
   the same backend.
-- No self-serve invite flow for `platform_admins` or `org_members` —
-  both are manual `insert` statements run directly against the database
-  (see "Local setup" above). An org admin can't add their own staff from
-  the UI yet. (`authors` is different — it's populated automatically when
-  an admin approves a submission, no manual insert needed.)
+- `platform_admins` and `org_members` now have self-serve invite screens
+  (`/admin/platform-admins` for a super admin adding another admin,
+  `/org/staff` for an org admin adding their own staff — migration
+  `0053`), but there's still no *removal* flow for either — demoting is
+  self-serve (re-invite or the per-row promote/demote button), fully
+  taking away someone's access is still a manual `delete` against the
+  database. The very first platform admin ever still needs one manual
+  `insert` too (see "Local setup" above) — there's no bootstrap-free path
+  for the account that doesn't exist yet to invite itself.
 - `close_fair()` (migration `0036`) is deliberately scoped down from the
   full settlement spec: it nets the equipment rental fee and whatever the
   ledger already shows for card/online margin and cash-sale wholesale

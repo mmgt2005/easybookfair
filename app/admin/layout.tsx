@@ -76,6 +76,11 @@ const adminTourSteps = [
       "A permanent, resettable sandbox fair for training — click through catalog, allocation, checkout, the storefront, and student wallets without touching real data.",
   },
   {
+    title: "Admins",
+    description:
+      "Invite another platform admin, or promote/demote an existing one. Only visible here if you're a super admin — everyone else can't see or use it.",
+  },
+  {
     title: "Manual",
     description: "Full usage docs and the changelog live here any time you need them.",
   },
@@ -86,7 +91,11 @@ export default async function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await requireAdmin();
+  const { role } = await requireAdmin();
+  const links = [...navLinks];
+  if (role === "super_admin") {
+    links.splice(links.length - 1, 0, { href: "/admin/platform-admins", label: "Admins" });
+  }
 
   // A view-as cookie can still be set even while browsing /admin itself
   // (an admin who wandered back without clicking "Stop viewing as") —
@@ -137,7 +146,7 @@ export default async function AdminLayout({
         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-500">
           v{packageJson.version}
         </span>
-        {navLinks.map((link) => (
+        {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
