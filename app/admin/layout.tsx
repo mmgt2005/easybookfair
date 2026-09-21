@@ -133,7 +133,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen">
       {viewingAsLabel && (
-        <div className="flex items-center justify-between gap-3 bg-amber-100 px-6 py-2 text-sm text-amber-900">
+        <div className="flex items-center justify-between gap-3 bg-amber-100 px-6 py-2 text-sm text-amber-900 print:hidden">
           <span>
             👁️ Still viewing as {viewingAsLabel} — visit <code>/org</code> or <code>/author</code>{" "}
             to continue, or stop here.
@@ -145,7 +145,7 @@ export default async function AdminLayout({
           </form>
         </div>
       )}
-      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm">
+      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm print:hidden">
         <Link href="/admin" className="font-heading text-lg font-bold text-primary-600">
           📚 EasyBookFair Admin
         </Link>
@@ -163,8 +163,10 @@ export default async function AdminLayout({
         ))}
         <TourLauncherButton storageKey="admin_v1" />
       </nav>
-      <div className="px-6 py-6">{children}</div>
-      <Tour storageKey="admin_v1" steps={adminTourSteps} />
+      <div className="px-6 py-6 print:p-0">{children}</div>
+      <div className="print:hidden">
+        <Tour storageKey="admin_v1" steps={adminTourSteps} />
+      </div>
     </div>
   );
 }

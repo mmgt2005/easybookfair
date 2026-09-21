@@ -29,6 +29,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   `@page` rule sizing the print output to the chosen template's actual
   sheet dimensions.
 
+### Fixed
+
+- **Admin pages printed the admin nav bar/view-as banner/tour** — the
+  earlier fix for this on the org side (`app/org/layout.tsx`, "flyer
+  printing the org nav bar") never touched `app/admin/layout.tsx`, so
+  the new labels page inherited the same bug: printing showed the whole
+  admin chrome above the label sheets, not just the sheets. Added the
+  same `print:hidden`/`print:p-0` treatment to the admin layout's nav,
+  view-as banner, content padding, and tour — fixes every printable page
+  under `/admin`, not just labels (the admin marketing toolkit route had
+  the same latent bug, just never reported).
+
 ## [0.1.0] - 2026-09-21
 
 ### Added
