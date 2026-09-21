@@ -10,6 +10,25 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A fair could be silently "closed" by accident, bypassing settlement
+  entirely**: the fair edit page's plain status dropdown included
+  "Closed" as an option alongside Scheduled/Active/Return window — but
+  selecting it and saving just did a raw `status` column update, never
+  calling `close_fair()`. That meant no settlement row, no journal
+  entries, no missing-inventory billing, while every screen that gates
+  on `fairs.status` (the returns screen, `receive_allocation_return()`
+  itself, the admin dashboard's active-fairs list) would immediately
+  start treating the fair as closed anyway — with no way back short of a
+  manual database fix. "Closed" is no longer a selectable option in that
+  dropdown at all (server-side guard too, not just hidden UI); the only
+  way to close a fair is now the dedicated **"Close this fair"** button,
+  which now also asks for confirmation first since it's irreversible.
+  Added a **"Move to return window"** button for that one safe,
+  in-between transition, separate from the general-purpose save form, so
+  it doesn't require touching (or risking) anything else on the page.
+
 ### Added
 
 - **Receiving returns from a closed-out fair** (`/admin/fairs/<id>/returns`,

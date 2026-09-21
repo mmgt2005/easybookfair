@@ -557,12 +557,22 @@ every remaining balance into that fair's org payout as additional
 revenue, and is irreversible. Do this once the fair's pickup window has
 ended.
 
+### Fair status (`/admin/fairs/<id>/edit`)
+
+Scheduled → Active → Return window → Closed. The first three are a plain
+dropdown next to a **Move to return window** button for that specific
+transition (with a confirmation prompt) — closing isn't a dropdown
+option at all, only the dedicated button below, so a routine edit can't
+accidentally skip the whole settlement computation. Once a fair is
+closed, its status is shown read-only; nothing on this page can change
+it back.
+
 ### Closing a fair (`/admin/fairs/<id>/edit`, "Settlement" card)
 
 A real settlement is computed here — not just spec — but deliberately
 scoped down from the full design below; read "Not yet supported" for
-exactly what's missing. **"Close this fair"** computes and locks it in
-one irreversible step:
+exactly what's missing. **"Close this fair"** (with a confirmation
+prompt, since it's irreversible) computes and locks it in one step:
 
 - **Payout due**: the card/online (and wallet) margin the org has earned
   so far, read straight off the ledger.

@@ -4,12 +4,12 @@ import {
   updateFair,
   createTerminalLocation,
   registerTerminalReader,
-  closeFair,
   sendSettlementPayout,
   createSettlementPaymentLink,
 } from "../../actions";
+import { MoveToReturnWindowButton, CloseFairButton } from "./FairLifecycleButtons";
 import { getStripe } from "@/lib/stripe";
-import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Select, statusTone } from "@/components/ui";
 
 export default async function EditFairPage({
   params,
@@ -53,7 +53,6 @@ export default async function EditFairPage({
   const updateFairForFair = updateFair.bind(null, fairId);
   const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
   const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
-  const closeFairForFair = closeFair.bind(null, fairId);
   const sendSettlementPayoutForFair = sendSettlementPayout.bind(null, fairId);
   const createSettlementPaymentLinkForFair = createSettlementPaymentLink.bind(null, fairId);
 
@@ -126,14 +125,23 @@ export default async function EditFairPage({
           <Field label="Return deadline">
             <Input name="return_deadline" type="date" required defaultValue={fair.return_deadline} />
           </Field>
-          <Field label="Status">
-            <Select name="status" defaultValue={fair.status}>
-              <option value="scheduled">Scheduled</option>
-              <option value="active">Active</option>
-              <option value="return_window">Return window</option>
-              <option value="closed">Closed</option>
-            </Select>
-          </Field>
+          {fair.status === "closed" ? (
+            <Field label="Status">
+              <input type="hidden" name="status" value="closed" />
+              <Badge tone={statusTone(fair.status)}>closed</Badge>
+            </Field>
+          ) : (
+            <>
+              <Field label="Status">
+                <Select name="status" defaultValue={fair.status}>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="active">Active</option>
+                  <option value="return_window">Return window</option>
+                </Select>
+              </Field>
+              {fair.status !== "return_window" && <MoveToReturnWindowButton fairId={fair.id} />}
+            </>
+          )}
           <Field label="Cash sales assumption % (0–1, blank = platform default)">
             <Input
               name="cash_sales_assumption_pct"
@@ -338,16 +346,10 @@ export default async function EditFairPage({
         ) : (
           <div className="mt-2 flex flex-col gap-2">
             <p className="text-xs text-neutral-500">
-              Computes the payout (or amount owed) from every sale recorded against this fair —
-              netting the equipment rental fee above — and locks it. Missing-inventory cost isn&apos;t
-              computed yet (no returns-recording feature exists), so it&apos;s always $0 for now.
-              Irreversible.
+              Computes the payout (or amount owed) from every sale, return, and the equipment
+              rental fee above, and locks it. Irreversible.
             </p>
-            <form action={closeFairForFair}>
-              <Button type="submit" variant="outline" size="sm">
-                Close this fair
-              </Button>
-            </form>
+            <CloseFairButton fairId={fair.id} />
           </div>
         )}
       </Card>

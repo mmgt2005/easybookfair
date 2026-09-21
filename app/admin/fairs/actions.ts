@@ -60,6 +60,29 @@ export async function updateFair(fairId: string, formData: FormData) {
     throw new Error("All fields are required");
   }
 
+  // "Closed" is deliberately not a choice here — it must only ever happen
+  // through close_fair() (the "Close this fair" button below), which
+  // computes and locks the actual settlement. Setting status='closed'
+  // through this plain update would silently skip that entirely: no
+  // settlement row, no journal entries, no missing-inventory billing —
+  // and everything elsewhere that gates on fair.status (the returns
+  // screen, receive_allocation_return() itself, the admin dashboard's
+  // active-fairs list) would immediately start treating the fair as
+  // closed anyway, with no way to undo it short of a manual DB fix.
+  // Only rejects an actual transition into 'closed' — a closed fair's own
+  // page resubmits its already-closed status unchanged via a hidden
+  // field so its other read-only-adjacent fields stay editable.
+  const { data: currentFair } = await supabase
+    .from("fairs")
+    .select("status")
+    .eq("id", fairId)
+    .single();
+  if (status === "closed" && currentFair?.status !== "closed") {
+    throw new Error(
+      'Use the "Close this fair" button in the Settlement section to close a fair, not this form',
+    );
+  }
+
   const { error } = await supabase
     .from("fairs")
     .update({
@@ -84,6 +107,30 @@ export async function updateFair(fairId: string, formData: FormData) {
   revalidatePath("/admin/fairs");
   revalidatePath(`/admin/fairs/${fairId}/allocations`);
   redirect("/admin/fairs");
+}
+
+// One-click transition into the return window, separate from the big
+// save-everything form above — the fair lifecycle's one truly safe,
+// reversible-in-spirit status change (unlike closing), so it gets its
+// own obvious, hard-to-miss-for-the-wrong-reason button instead of
+// living as one option in a dropdown next to unrelated fields.
+export async function moveFairToReturnWindow(fairId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("fairs")
+    .update({ status: "return_window" })
+    .eq("id", fairId)
+    .neq("status", "closed");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/admin/fairs/${fairId}/edit`);
+  revalidatePath("/admin/fairs");
+  revalidatePath("/admin");
 }
 
 // Computes and locks the fair's settlement (migration 0036) — irreversible
