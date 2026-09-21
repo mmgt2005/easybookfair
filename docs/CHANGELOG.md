@@ -1,11 +1,17 @@
 # Changelog
 
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-This project doesn't use semantic versioning yet — entries are grouped
-under `[Unreleased]` until Phase 1 produces a first working release, at
-which point versioning starts.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and [Semantic Versioning](https://semver.org/). Versioning starts here at
+`0.1.0` — the build plan's Phases 1-5 (foundation, admin catalog/
+allocation, Stripe Connect and all four payment channels, the org portal/
+storefront, settlement/close-out) are done and working end-to-end. The
+`0.x` prefix reflects that Phase 6 (QR labels, restock timing) and Phase
+7 (multi-tenant SaaS, deliberately last) are still open — see
+`docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-21
 
 ### Added
 

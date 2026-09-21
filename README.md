@@ -4,19 +4,23 @@ Book fair consignment platform. See [`docs/spec.md`](./docs/spec.md) for the
 full design, [`docs/MANUAL.md`](./docs/MANUAL.md) for intended usage, and
 [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) for what's shipped so far.
 
-**Status**: Phase 3 (Stripe Connect and webhooks) done, and most of Phase 4
-(buyer payment options) pulled forward alongside it — four working ways to
-buy: a physical Stripe Terminal reader at the table
+**Status**: `v0.1.0` — Phases 1-5 of the build plan are done and working
+end-to-end: foundation (schema/ledger), admin catalog and allocation,
+Stripe Connect, and the org portal/storefront with four working ways to
+buy (a physical Stripe Terminal reader at the table
 (`/admin/fairs/<id>/checkout`), a public online storefront with same-day
 pickup at the fair (`/fairs/<id>`), a parent-funded student wallet a kid
 spends down independently (`/fairs/<id>/wallet`, schools only), and a
-"Charge $X in cash" button right on the checkout screen (migration
-`0043`, `record_cash_sale()`). All four write through the same
-channel-agnostic `record_sale()`/ledger core. Phase 2 (admin catalog + allocation) is done.
-Buyer-facing polish since then: cover-image storefront browsing with
-search/category/sort, order recovery by email, item titles carried through
-to the pickup/confirmation screens, and confirmation emails via Resend for
-both online orders and wallet fundings.
+"Charge $X in cash" button right on the checkout screen), all writing
+through the same channel-agnostic `record_sale()`/ledger core — plus
+settlement/close-out (payout statements, Stripe Transfer/Payment Link,
+reconciliation). Self-serve org and author onboarding, event requests,
+a marketing toolkit, and self-serve admin/org-staff invites have all
+shipped since, ahead of where the original build plan put them. Phase 6
+(QR labels, restock-timing-aware allocation checks) is next; Phase 7
+(multi-tenant SaaS) is deliberately last. See `docs/spec.md`'s "Build
+plan" for the full phase list and `docs/CHANGELOG.md` for the complete
+history.
 
 An **org staff portal** (`/org`) now exists too: an org requests a fair
 (with each buyer payment option explained before they choose it) instead
