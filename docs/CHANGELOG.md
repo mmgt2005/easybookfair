@@ -12,6 +12,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **"Reset demo data" crashed with a server error** (migration `0056`):
+  `reset_demo_fair()` predates `event_requests` (added later in migration
+  `0049`), whose FK to `allocations (fair_id, catalog_item_id)` has no
+  `on delete cascade`. The moment anyone had ever created an event
+  request against the demo fair (e.g. testing "Request an event" from
+  the demo org), `delete from allocations` inside the reset hit a
+  foreign-key violation and aborted the whole function with an unhandled
+  Postgres error — surfacing to the user as a generic "Application
+  error: a server-side exception has occurred." `reset_demo_fair()` now
+  clears `event_requests` for the demo fair first, same as every other
+  table it already resets.
+
 - **A fair could be silently "closed" by accident, bypassing settlement
   entirely**: the fair edit page's plain status dropdown included
   "Closed" as an option alongside Scheduled/Active/Return window — but

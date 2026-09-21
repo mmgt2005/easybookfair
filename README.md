@@ -246,6 +246,7 @@ code (everything that needs to be unit-tested).
    - `0053_platform_admin_roles.sql`
    - `0054_label_templates.sql`
    - `0055_receive_allocation_returns.sql`
+   - `0056_fix_reset_demo_fair_event_requests.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an
