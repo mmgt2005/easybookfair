@@ -29,6 +29,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   in-between transition, separate from the general-purpose save form, so
   it doesn't require touching (or risking) anything else on the page.
 
+### Removed
+
+- **The admin dashboard's four shortcut cards** (Catalog, Organizations,
+  Fairs, Carton specs): pure duplication now that the grouped nav bar
+  (added in the same batch as checkout scanning, below) reaches all four
+  in one or two clicks — the Organizations card's description was also
+  stale, still claiming "real review + Stripe onboarding is Phase 3"
+  long after both were built.
+
 ### Added
 
 - **Checkout scanning, mobile-friendly nav, and back links on secondary

@@ -89,8 +89,10 @@ it (no click-through needed):
   it's the same running estimate, not a snapshot, so it moves as more
   sales land and only becomes final once the fair is actually closed out.
 
-Below both reports are the same navigation shortcuts as before (Catalog,
-Organizations, Fairs, Carton specs).
+The shortcut cards that used to sit below both reports (Catalog,
+Organizations, Fairs, Carton specs) were removed — the grouped nav bar
+already reaches all four in one or two clicks, so they were pure
+duplication.
 
 ### Manual & version (`/admin/manual`)
 
