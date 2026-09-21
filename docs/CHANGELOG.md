@@ -12,6 +12,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Live preview on the label template screens** (`/admin/label-templates`,
+  new and edit): a scaled diagram of the sheet outline with the label
+  grid drawn inside it, updating as the sheet/label/margin/gap/grid
+  fields are typed — spot a wrong margin or an off grid before saving
+  instead of after printing a sheet. Both forms are now a shared client
+  component (`LabelTemplateFormFields.tsx`) instead of separate plain
+  server-action forms, needed so the preview can react to typing.
+
 - **"Wallet donations" card on the sales feed** (`/admin|org/fairs/<id>/sales`):
   shows the total of unspent student wallet balances swept into the
   payout when wallets are closed out (`student_wallets.donated_amount`,

@@ -151,6 +151,12 @@ with an Avery 5160 (3×10 US-Letter address labels) default; add your own
 if you use different sheets. Every field is inches, matching how carton
 specs and catalog item dimensions are already entered elsewhere.
 
+Both the "New label template" form and its edit screen show a live
+**preview** next to the fields — a scaled diagram of the sheet outline
+with the label grid drawn inside it, updating as you type so you can spot
+a wrong margin or an off grid before saving (a real label sheet held up
+to a window works the same way — this is that, on screen).
+
 ### Printing labels for a fair (`/admin/fairs/<id>/labels`)
 
 One label per unit allocated to the fair — 50 copies allocated prints 50
