@@ -38,8 +38,11 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   Checkout now has a scan-to-add field (`ScanInput.tsx`) that works with
   a physical USB/Bluetooth barcode scanner (keyboard-wedge: it types the
   code and hits Enter) or a phone/tablet camera (new `html5-qrcode`
-  dependency); scanning a known item's code adds one unit to the cart.
-  The label's QR now encodes the bare `catalog_item_id` instead of a URL
+  dependency); scanning a known item's code adds one unit to the cart. A
+  small "Added ... [Undo]" strip under the scan field corrects the most
+  recent scan without hunting for its row, and each line in the Cart
+  panel has its own −/+ buttons to adjust or remove it directly. The
+  label's QR now encodes the bare `catalog_item_id` instead of a URL
   so the same printed label works for both scanning and its existing
   packer-reference role (title/price/SKU stay printed as text). The
   admin (13 links) and org (4 links) nav bars — previously flat, hand-

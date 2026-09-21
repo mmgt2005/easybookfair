@@ -495,8 +495,11 @@ second-class:
    code** — a physical USB/Bluetooth scanner works with no setup (it
    types the code into the always-focused scan field and hits Enter, the
    same as a keyboard), or click "📷 Scan with camera" to use a phone/
-   tablet's camera. Each scan adds one unit of that item to the cart.
-   Then click "Connect reader" once, then "Charge $X with reader" — creates the
+   tablet's camera. Each scan adds one unit of that item to the cart; a
+   small "Added ... [Undo]" strip appears right under the scan field for
+   fixing the most recent scan without hunting for its row, and every
+   line in the Cart panel has its own **−**/**+** buttons to adjust or
+   remove it directly. Then click "Connect reader" once, then "Charge $X with reader" — creates the
    `checkout_sessions` row and PaymentIntent, collects payment on the
    physical reader, and the webhook finalizes the sale asynchronously
    once Stripe confirms it (the screen polls briefly and shows "Sale

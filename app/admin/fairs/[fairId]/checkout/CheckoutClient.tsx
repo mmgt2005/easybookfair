@@ -42,6 +42,7 @@ export function CheckoutClient({
   const [walletMatches, setWalletMatches] = useState<WalletMatch[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletMatch | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [lastScan, setLastScan] = useState<{ catalogItemId: string; title: string } | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
 
   // Cost is irrelevant to a price preview (only price_charged is displayed
@@ -150,6 +151,7 @@ export function CheckoutClient({
     const item = itemsById.get(code);
     if (!item) {
       setScanError(`No available item matches "${code}"`);
+      setLastScan(null);
       return;
     }
     const currentQty = cart[item.catalog_item_id] ?? 0;
@@ -159,6 +161,23 @@ export function CheckoutClient({
     }
     setScanError(null);
     updateQty(item.catalog_item_id, currentQty + 1);
+    setLastScan({ catalogItemId: item.catalog_item_id, title: item.title });
+  }
+
+  // Shared by the cart panel's +/- buttons and the scan handler above so a
+  // mis-scan or a plain typo can be corrected without hunting for the row
+  // in the (potentially long) item table.
+  function adjustQty(catalogItemId: string, delta: number) {
+    const item = itemsById.get(catalogItemId);
+    const current = cart[catalogItemId] ?? 0;
+    const max = item?.available ?? Infinity;
+    updateQty(catalogItemId, Math.min(Math.max(current + delta, 0), max));
+  }
+
+  function undoLastScan() {
+    if (!lastScan) return;
+    adjustQty(lastScan.catalogItemId, -1);
+    setLastScan(null);
   }
 
   function updateQty(catalogItemId: string, qty: number) {
@@ -296,6 +315,20 @@ export function CheckoutClient({
         <div className="border-b border-neutral-100 p-4">
           <ScanInput onScan={handleScan} />
           {scanError && <p className="mt-1 text-xs text-red-600">{scanError}</p>}
+          {lastScan && !scanError && (
+            <div className="mt-1 flex items-center justify-between gap-2 text-xs text-neutral-600">
+              <span>
+                ✅ Added {lastScan.title} — qty {cart[lastScan.catalogItemId] ?? 0} in cart
+              </span>
+              <button
+                type="button"
+                onClick={undoLastScan}
+                className="font-semibold text-accent-600 hover:underline"
+              >
+                Undo
+              </button>
+            </div>
+          )}
         </div>
         <table className="w-full text-sm">
           <thead>
@@ -343,12 +376,34 @@ export function CheckoutClient({
             if (!item) return null;
             const discounted = line.promotion_id !== null;
             return (
-              <li key={`${line.catalog_item_id}-${i}`} className="flex justify-between">
-                <span>
-                  {line.quantity}× {item.title}
-                  {discounted && (
-                    <span className="ml-1 text-xs font-semibold text-accent-600">🏷️ discount</span>
-                  )}
+              <li key={`${line.catalog_item_id}-${i}`} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => adjustQty(item.catalog_item_id, -1)}
+                      aria-label={`Remove one ${item.title}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-600 hover:bg-neutral-200"
+                    >
+                      −
+                    </button>
+                    <span className="w-4 text-center">{line.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => adjustQty(item.catalog_item_id, 1)}
+                      disabled={line.quantity >= item.available}
+                      aria-label={`Add one ${item.title}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-600 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      +
+                    </button>
+                  </span>
+                  <span>
+                    {item.title}
+                    {discounted && (
+                      <span className="ml-1 text-xs font-semibold text-accent-600">🏷️ discount</span>
+                    )}
+                  </span>
                 </span>
                 <span>${(line.quantity * line.price_charged).toFixed(2)}</span>
               </li>
