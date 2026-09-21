@@ -21,6 +21,8 @@ export function SalesFeedClient({
   initialTotalRevenue,
   initialPayout,
   initialPayoutIsFinal,
+  initialMissingInventoryCost,
+  initialMissingInventoryUnits,
 }: {
   fairId: string;
   initialSales: SaleRow[];
@@ -28,12 +30,16 @@ export function SalesFeedClient({
   initialTotalRevenue: number;
   initialPayout: number;
   initialPayoutIsFinal: boolean;
+  initialMissingInventoryCost: number;
+  initialMissingInventoryUnits: number;
 }) {
   const [sales, setSales] = useState(initialSales);
   const [totalUnits, setTotalUnits] = useState(initialTotalUnits);
   const [totalRevenue, setTotalRevenue] = useState(initialTotalRevenue);
   const [payout, setPayout] = useState(initialPayout);
   const [payoutIsFinal, setPayoutIsFinal] = useState(initialPayoutIsFinal);
+  const [missingInventoryCost, setMissingInventoryCost] = useState(initialMissingInventoryCost);
+  const [missingInventoryUnits, setMissingInventoryUnits] = useState(initialMissingInventoryUnits);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const seenIds = useRef(new Set(initialSales.map((s) => s.id)));
 
@@ -58,6 +64,8 @@ export function SalesFeedClient({
         setTotalRevenue(result.totalRevenue);
         setPayout(result.payout);
         setPayoutIsFinal(result.payoutIsFinal);
+        setMissingInventoryCost(result.missingInventoryCost);
+        setMissingInventoryUnits(result.missingInventoryUnits);
 
         if (freshIds.size > 0) {
           setNewIds(freshIds);
@@ -111,6 +119,21 @@ export function SalesFeedClient({
               Estimate — updates as sales come in, not locked in until closed
             </p>
           )}
+        </Card>
+        <Card className="flex-1">
+          <p className="text-xs font-semibold text-neutral-500">
+            {payoutIsFinal ? "Missing inventory charged" : "If not returned by close"}
+          </p>
+          <p className="font-heading text-2xl font-bold text-neutral-700">
+            ${missingInventoryCost.toFixed(2)}
+          </p>
+          <p className="mt-0.5 text-xs text-neutral-400">
+            {payoutIsFinal
+              ? "Already deducted from the payout above."
+              : missingInventoryUnits > 0
+                ? `${missingInventoryUnits} unit${missingInventoryUnits === 1 ? "" : "s"} not yet sold or returned — only charged if still missing when this fair closes.`
+                : "Nothing unaccounted for right now."}
+          </p>
         </Card>
       </div>
 

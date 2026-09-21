@@ -17,32 +17,47 @@ export type RecentSales = {
   totalRevenue: number;
   payout: number;
   payoutIsFinal: boolean;
+  missingInventoryCost: number;
+  missingInventoryUnits: number;
 };
 
-// Mirrors close_fair()'s own math exactly (migration 0036, extended by
-// 0055) — payout_due is the credit balance of Org Payable (2000),
-// cash_wholesale_owed is the debit balance of A/R (1300), both scoped to
-// this fair; missing_inventory_cost is computed the same way
-// close_fair() computes it (allocated - returned - sold, clamped at 0,
-// times each item's current cost); net payout is payout_due minus
-// (cash_wholesale_owed + missing_inventory_cost + equipment_rental_fee).
-// This is a live read, not a write: nothing is inserted, so it stays
-// accurate as more sales/returns land and reads the exact number closing
-// the fair would lock in today. Once the fair has actually closed, the
-// real settlements row (which can differ slightly if, say, wallets were
-// closed out between this read and that one) is authoritative instead.
+type PayoutEstimate = {
+  payout: number;
+  payoutIsFinal: boolean;
+  missingInventoryCost: number;
+  missingInventoryUnits: number;
+};
+
+// The headline "payout" is deliberately sales-only — it never deducts for
+// inventory that isn't back yet. Reason: allocated - returned - sold
+// treats every unit still legitimately out for sale as "missing," which
+// during a scheduled/active fair is most of the allocation (nothing's
+// wrong, the fair just isn't over). Folding that into the one payout
+// number made it look artificially low or negative before the fair even
+// ended. missing_inventory_cost is still computed and returned
+// separately, so the UI can show it as its own "if not returned" risk
+// note rather than silently baked into the payout — exactly what
+// close_fair() (migration 0036, extended by 0055) will actually charge
+// if the fair closes with that inventory still unreturned. Once actually
+// closed, the real settlements row is authoritative for both figures
+// (payout and missing-inventory are both real then, not a risk anymore).
 async function getPayoutEstimate(
   fairId: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ payout: number; payoutIsFinal: boolean }> {
+): Promise<PayoutEstimate> {
   const { data: settlement } = await supabase
     .from("settlements")
-    .select("net_payout")
+    .select("net_payout, missing_inventory_cost")
     .eq("fair_id", fairId)
     .maybeSingle();
 
   if (settlement) {
-    return { payout: settlement.net_payout, payoutIsFinal: true };
+    return {
+      payout: settlement.net_payout,
+      payoutIsFinal: true,
+      missingInventoryCost: settlement.missing_inventory_cost,
+      missingInventoryUnits: 0,
+    };
   }
 
   const [{ data: fair }, { data: lines }, { data: allocations }, { data: soldRows }] =
@@ -81,17 +96,19 @@ async function getPayoutEstimate(
     soldByItem.set(sale.catalog_item_id, (soldByItem.get(sale.catalog_item_id) ?? 0) + 1);
   }
   let missingInventoryCost = 0;
+  let missingInventoryUnits = 0;
   for (const a of allocations ?? []) {
     const cost = (a.catalog_items as unknown as { cost: number } | null)?.cost ?? 0;
     const sold = soldByItem.get(a.catalog_item_id) ?? 0;
     const missingUnits = Math.max(a.quantity_allocated - a.quantity_returned - sold, 0);
     missingInventoryCost += missingUnits * cost;
+    missingInventoryUnits += missingUnits;
   }
 
   const rentalFee = fair?.equipment_rental_fee ?? 0;
-  const payout = payoutDue - (cashWholesaleOwed + missingInventoryCost + rentalFee);
+  const payout = payoutDue - (cashWholesaleOwed + rentalFee);
 
-  return { payout, payoutIsFinal: false };
+  return { payout, payoutIsFinal: false, missingInventoryCost, missingInventoryUnits };
 }
 
 // Polled by SalesFeedClient every few seconds — a "live" feed built on
@@ -113,7 +130,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
   const [
     { data: rows, error: rowsError },
     { data: totals, error: totalsError },
-    { payout, payoutIsFinal },
+    { payout, payoutIsFinal, missingInventoryCost, missingInventoryUnits },
   ] = await Promise.all([
     supabase
       .from("sales")
@@ -144,5 +161,13 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
   const totalUnits = (totals ?? []).length;
   const totalRevenue = (totals ?? []).reduce((sum, t) => sum + t.price_charged, 0);
 
-  return { sales, totalUnits, totalRevenue, payout, payoutIsFinal };
+  return {
+    sales,
+    totalUnits,
+    totalRevenue,
+    payout,
+    payoutIsFinal,
+    missingInventoryCost,
+    missingInventoryUnits,
+  };
 }

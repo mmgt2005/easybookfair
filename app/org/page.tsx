@@ -47,6 +47,48 @@ export default async function OrgDashboard() {
 
   const settlementByFair = new Map((settlements ?? []).map((s) => [s.fair_id, s]));
 
+  // Live "what would be owed for missing inventory if closed today" —
+  // only meaningful for fairs not settled yet (a closed fair's real
+  // number, if any, is already inside its settlement's net_payout).
+  // Mirrors the same allocated-minus-sold-minus-returned math close_fair()
+  // uses (migration 0036, extended by 0055), computed here rather than
+  // reused from app/admin/fairs/[fairId]/sales/actions.ts since that
+  // helper is admin/org-fair-staff-gated per fair, not "all of this org's
+  // fairs at once" like this dashboard needs.
+  const unsettledFairIds = (fairs ?? [])
+    .filter((f) => !settlementByFair.has(f.id))
+    .map((f) => f.id);
+
+  const missingInventoryCostByFair = new Map<string, number>();
+  if (unsettledFairIds.length > 0) {
+    const [{ data: sales }, { data: allocations }] = await Promise.all([
+      supabase
+        .from("sales")
+        .select("fair_id, catalog_item_id")
+        .eq("status", "completed")
+        .in("fair_id", unsettledFairIds),
+      supabase
+        .from("allocations")
+        .select("fair_id, catalog_item_id, quantity_allocated, quantity_returned, catalog_items(cost)")
+        .in("fair_id", unsettledFairIds),
+    ]);
+
+    const soldByFairAndItem = new Map<string, number>();
+    for (const sale of sales ?? []) {
+      const key = `${sale.fair_id}:${sale.catalog_item_id}`;
+      soldByFairAndItem.set(key, (soldByFairAndItem.get(key) ?? 0) + 1);
+    }
+    for (const a of allocations ?? []) {
+      const cost = (a.catalog_items as unknown as { cost: number } | null)?.cost ?? 0;
+      const sold = soldByFairAndItem.get(`${a.fair_id}:${a.catalog_item_id}`) ?? 0;
+      const missingUnits = Math.max(a.quantity_allocated - a.quantity_returned - sold, 0);
+      missingInventoryCostByFair.set(
+        a.fair_id,
+        (missingInventoryCostByFair.get(a.fair_id) ?? 0) + missingUnits * cost,
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -71,6 +113,7 @@ export default async function OrgDashboard() {
               const org = fair.organizations as unknown as { is_school: boolean } | null;
               const settlement = settlementByFair.get(fair.id);
               const netPayout = settlement?.net_payout;
+              const missingInventoryCost = missingInventoryCostByFair.get(fair.id) ?? 0;
               return (
                 <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4 font-semibold text-neutral-800">{fair.name}</td>
@@ -82,7 +125,15 @@ export default async function OrgDashboard() {
                   </td>
                   <td className="py-2 pr-4 text-neutral-600">
                     {netPayout === undefined ? (
-                      "—"
+                      <div className="flex flex-col">
+                        <span>—</span>
+                        {missingInventoryCost > 0 && (
+                          <span className="text-xs text-amber-700">
+                            ⚠️ ${missingInventoryCost.toFixed(2)} at risk if unsold stock isn&apos;t
+                            returned
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex flex-col">
                         {netPayout >= 0 ? (

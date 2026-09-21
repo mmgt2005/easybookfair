@@ -10,6 +10,24 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Changed
+
+- **The live "payout" estimate no longer deducts missing-inventory
+  cost.** `allocated - sold - returned` counts every unit still
+  legitimately out for sale as "missing," which for a scheduled/active
+  fair is most of the allocation — folding that into the one payout
+  number (sales feed, admin dashboard) made it look artificially low or
+  negative well before the fair was over. The payout figure is now
+  sales-only (card/online margin minus cash-wholesale-owed minus
+  equipment rental fee) until the fair actually closes; `close_fair()`
+  itself is unchanged and still charges the real cost for real if
+  inventory is never returned. The missing-inventory number is now shown
+  on its own instead of hidden inside the payout: a new card on the
+  sales feed ("If not returned by close" pre-close, "Missing inventory
+  charged" once final), a new column on the admin dashboard's Active
+  fairs table, and a "⚠️ $X at risk if unsold stock isn't returned" note
+  under the org dashboard's Payout column.
+
 ## [0.2.0] - 2026-09-21
 
 ### Added

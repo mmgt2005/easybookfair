@@ -83,11 +83,17 @@ it (no click-through needed):
   when it has at least one pending item; "No pending applications" shows
   when all four are clear.
 - **Active fairs**: every fair that isn't closed yet (scheduled, active,
-  or in its return window), with units sold, revenue, and an estimated
-  payout so far, plus a totals row. The payout column matches what that
-  fair's own live sales feed (`/admin/fairs/<id>/sales`) shows for it —
-  it's the same running estimate, not a snapshot, so it moves as more
-  sales land and only becomes final once the fair is actually closed out.
+  or in its return window), with units sold, revenue, an estimated
+  payout so far, and a **"Missing inventory if not returned"** column,
+  plus a totals row. The payout column matches what that fair's own live
+  sales feed (`/admin/fairs/<id>/sales`) shows for it — it's the same
+  running estimate, not a snapshot, so it moves as more sales land and
+  only becomes final once the fair is actually closed out. It's
+  sales-only, though — it deliberately never nets out the missing-
+  inventory column, since during a still-running fair most of the
+  allocation legitimately hasn't sold or been returned yet and isn't
+  really "missing." That risk is broken out in its own column instead so
+  it's visible without dragging the payout number down prematurely.
 
 The shortcut cards that used to sit below both reports (Catalog,
 Organizations, Fairs, Carton specs) were removed — the grouped nav bar
@@ -548,14 +554,27 @@ transaction volumes without taking on Realtime infrastructure. A row that
 just arrived is briefly highlighted so you can see it land. Also
 available to that fair's own org staff (`/org/fairs/<id>/sales`).
 
-A third card shows **the payout as of right now** — the same math
-`close_fair()` uses (card/online margin owed, minus cash-sale wholesale
-cost owed, minus the equipment rental fee), computed live from the
-ledger rather than waiting for the fair to close. Labeled "Payout if
-closed now" and updates every poll, right up until the fair actually
-closes — at that point it switches to "Final payout" and shows the real,
-locked-in `settlements` figure instead (which can differ slightly if,
-say, wallets get closed out between an earlier live read and closing).
+A third card shows **the payout as of right now** — card/online margin
+owed, minus cash-sale wholesale cost owed, minus the equipment rental
+fee, computed live from the ledger rather than waiting for the fair to
+close. Labeled "Payout if closed now" and updates every poll, right up
+until the fair actually closes — at that point it switches to "Final
+payout" and shows the real, locked-in `settlements` figure instead
+(which can differ slightly if, say, wallets get closed out between an
+earlier live read and closing).
+
+This live payout figure deliberately **never subtracts missing-inventory
+cost** — allocated-minus-sold-minus-returned counts every unit still out
+for sale as "missing," which for a fair that's still scheduled or active
+is most of the allocation (nothing's wrong, it just hasn't sold or been
+returned yet). A fourth card, **"If not returned by close,"** shows that
+risk on its own instead: the dollar amount and unit count that *would* be
+billed as missing inventory if the fair closed today with nothing more
+returned. It's informational, not a deduction — receiving the inventory
+back (see "Receiving returns" above) is what actually brings it to $0.
+Once the fair is closed, this card relabels to **"Missing inventory
+charged"** and shows the real, final amount already netted into the
+payout above.
 
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
@@ -640,11 +659,12 @@ on the Stripe webhook being subscribed to `checkout.session.completed`
 (see "Stripe setup" in the README) — without it, a link that's actually
 been paid will keep showing as awaiting payment.
 
-**Missing-inventory cost is always $0** — there's no returns-recording
-feature yet to compute it from, so nothing is billed for stock that
-never comes back. A refund requested after a fair has closed does not
-reopen the settlement — that part of the full design also isn't built
-yet (see "Not yet supported").
+**Missing-inventory cost** is computed from whatever's still allocated
+but neither sold nor returned at the moment of closing (see "Receiving
+returns" above) — receive whatever's coming back before closing so it
+isn't billed as missing. A refund requested after a fair has closed does
+not reopen the settlement — that part of the full design isn't built yet
+(see "Not yet supported").
 
 ## Org staff guide
 
@@ -728,6 +748,13 @@ account (once Stripe Connect onboarding is finished), shown as "✅ Sent"
 once it does; if you owe money, you'll get an email with a link to pay
 it directly, and the column shows "⏳ Awaiting payment" until you do,
 then "✅ Paid" (with another email confirming it) once you have.
+
+Before a fair is closed, the Payout column just shows "—" — but if any
+allocated stock hasn't sold or come back yet, a small **"⚠️ $X at risk if
+unsold stock isn't returned"** note appears underneath. That's not
+something you already owe — it only becomes real if that stock is still
+missing when the admin closes the fair, so returning unsold inventory
+before then is what keeps it at $0.
 
 ### Marketing toolkit (`/org/fairs/<id>/marketing`)
 
@@ -825,10 +852,7 @@ anything you've actually submitted yourself.
 - Self-serve invites for platform admins or org staff — both are added
   directly in the database by an existing admin. (Author accounts are
   different — created automatically on approval, no manual step.)
-- Missing-inventory cost as part of closing a fair (needs a
-  returns-recording feature this app doesn't have yet — see "Closing a
-  fair").
-- A returns/manifest workflow at all — `allocations.quantity_returned`
-  exists in the schema but nothing in the app writes to it yet.
+- A full manifest/reconciliation workflow beyond simple per-item returns
+  (e.g. bulk receive-by-carton, discrepancy reporting).
 
 These are called out as deferred, not silently missing.

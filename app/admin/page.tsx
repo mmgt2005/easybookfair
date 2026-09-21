@@ -112,7 +112,16 @@ export default async function AdminHome() {
 
   let totalUnits = 0;
   let totalRevenue = 0;
+  let totalMissingInventoryCost = 0;
 
+  // Payout here is sales-only, deliberately not netting missing-inventory
+  // cost — allocated-minus-sold-minus-returned counts every unit still out
+  // for sale as "missing," which for a scheduled/active fair is most of
+  // the allocation (nothing's wrong, it just hasn't sold or come back
+  // yet). That risk is shown in its own column instead of silently
+  // dragging the headline payout number down before the fair is even
+  // over. close_fair() (migration 0036, extended by 0055) is unaffected —
+  // it still charges the real missing-inventory cost for real.
   const rows = fairRows.map((fair) => {
     const units = unitsByFair.get(fair.id) ?? 0;
     const revenue = revenueByFair.get(fair.id) ?? 0;
@@ -122,9 +131,10 @@ export default async function AdminHome() {
     const payoutDue = Math.max(payoutDueByFair.get(fair.id) ?? 0, 0);
     const cashWholesaleOwed = Math.max(cashWholesaleOwedByFair.get(fair.id) ?? 0, 0);
     const missingInventoryCost = missingInventoryCostByFair.get(fair.id) ?? 0;
-    const payout = payoutDue - (cashWholesaleOwed + missingInventoryCost + fair.equipment_rental_fee);
+    totalMissingInventoryCost += missingInventoryCost;
+    const payout = payoutDue - (cashWholesaleOwed + fair.equipment_rental_fee);
 
-    return { fair, units, revenue, payout };
+    return { fair, units, revenue, payout, missingInventoryCost };
   });
 
   return (
@@ -170,10 +180,11 @@ export default async function AdminHome() {
                 <th className="py-2 pr-4">Units</th>
                 <th className="py-2 pr-4">Revenue</th>
                 <th className="py-2 pr-4">Payout</th>
+                <th className="py-2 pr-4">Missing inventory if not returned</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ fair, units, revenue, payout }) => (
+              {rows.map(({ fair, units, revenue, payout, missingInventoryCost }) => (
                 <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4">
                     <Link
@@ -201,6 +212,9 @@ export default async function AdminHome() {
                       </span>
                     )}
                   </td>
+                  <td className="py-2 pr-4 text-neutral-600">
+                    {missingInventoryCost > 0 ? `$${missingInventoryCost.toFixed(2)}` : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -212,6 +226,9 @@ export default async function AdminHome() {
                 <td className="py-2 pr-4">{totalUnits}</td>
                 <td className="py-2 pr-4">${totalRevenue.toFixed(2)}</td>
                 <td className="py-2 pr-4" />
+                <td className="py-2 pr-4">
+                  {totalMissingInventoryCost > 0 ? `$${totalMissingInventoryCost.toFixed(2)}` : "—"}
+                </td>
               </tr>
             </tfoot>
           </table>
