@@ -563,7 +563,17 @@ wholesale cost (what's owed back to the platform), not the cash revenue
 itself. This card exists so it's clear that portion of revenue isn't
 something to wait on a transfer for.
 
-A fourth card shows **the payout as of right now** — card/online margin
+A fourth card, **"Wallet donations,"** shows the total of unspent student
+wallet balances swept in when wallets are closed out (see "Student
+wallets" below and "donated" in "Your payout" in the org guide) —
+`donated_amount` summed across every wallet for this fair, $0 until any
+wallet is actually closed. Unlike cash, this money *is* already inside
+the payout figure below (closing a wallet posts a journal entry crediting
+Org Payable directly), so this card is purely informational — it exists
+so it's clear part of the payout came from donated wallet balances, not
+book sales.
+
+A fifth card shows **the payout as of right now** — card/online margin
 owed, minus cash-sale wholesale cost owed, minus the equipment rental
 fee, computed live from the ledger rather than waiting for the fair to
 close. Labeled "Payout if closed now" and updates every poll, right up
@@ -576,7 +586,7 @@ This live payout figure deliberately **never subtracts missing-inventory
 cost** — allocated-minus-sold-minus-returned counts every unit still out
 for sale as "missing," which for a fair that's still scheduled or active
 is most of the allocation (nothing's wrong, it just hasn't sold or been
-returned yet). A fifth card, **"If not returned by close,"** shows that
+returned yet). A sixth card, **"If not returned by close,"** shows that
 risk on its own instead: the dollar amount and unit count that *would* be
 billed as missing inventory if the fair closed today with nothing more
 returned. It's informational, not a deduction — receiving the inventory

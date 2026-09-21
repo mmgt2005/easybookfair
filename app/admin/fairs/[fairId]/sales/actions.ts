@@ -16,6 +16,7 @@ export type RecentSales = {
   totalUnits: number;
   totalRevenue: number;
   cashRevenue: number;
+  walletDonations: number;
   payout: number;
   payoutIsFinal: boolean;
   missingInventoryCost: number;
@@ -131,6 +132,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
   const [
     { data: rows, error: rowsError },
     { data: totals, error: totalsError },
+    { data: wallets, error: walletsError },
     { payout, payoutIsFinal, missingInventoryCost, missingInventoryUnits },
   ] = await Promise.all([
     supabase
@@ -145,11 +147,13 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
       .select("channel, price_charged")
       .eq("fair_id", fairId)
       .eq("status", "completed"),
+    supabase.from("student_wallets").select("donated_amount").eq("fair_id", fairId),
     getPayoutEstimate(fairId, supabase),
   ]);
 
   if (rowsError) throw new Error(rowsError.message);
   if (totalsError) throw new Error(totalsError.message);
+  if (walletsError) throw new Error(walletsError.message);
 
   const sales: SaleRow[] = (rows ?? []).map((r) => ({
     id: r.id,
@@ -169,11 +173,20 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     .filter((t) => t.channel === "cash")
     .reduce((sum, t) => sum + t.price_charged, 0);
 
+  // Set once by close_wallets_for_fair() (migration 0022, extended by
+  // 0037/0046) when a wallet with unspent balance is closed out — it also
+  // posts a 1400-debit/2000-credit journal entry at that moment, so this
+  // money is already inside payoutDue/the payout above, unlike cash
+  // revenue. Broken out here just so it's visible where part of the
+  // payout actually came from.
+  const walletDonations = (wallets ?? []).reduce((sum, w) => sum + w.donated_amount, 0);
+
   return {
     sales,
     totalUnits,
     totalRevenue,
     cashRevenue,
+    walletDonations,
     payout,
     payoutIsFinal,
     missingInventoryCost,

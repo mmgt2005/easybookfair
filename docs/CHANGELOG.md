@@ -12,6 +12,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **"Wallet donations" card on the sales feed** (`/admin|org/fairs/<id>/sales`):
+  shows the total of unspent student wallet balances swept into the
+  payout when wallets are closed out (`student_wallets.donated_amount`,
+  summed for the fair) — unlike cash, this money *is* already inside the
+  payout figure (closing a wallet posts straight to Org Payable), so the
+  card is purely informational: it's now visible where part of the
+  payout actually came from, not folded invisibly into it.
+
 - **"Cash collected" card on the sales feed** (`/admin|org/fairs/<id>/sales`):
   shows total revenue from cash sales on its own, with a note explaining
   it's already in the org's hands and not part of the Stripe payout —
