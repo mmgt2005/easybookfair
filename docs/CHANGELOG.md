@@ -12,6 +12,23 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Receiving returns from a closed-out fair** (`/admin/fairs/<id>/returns`,
+  migration `0055`): `allocations.quantity_returned` existed since the
+  very first schema migration but nothing ever wrote it, so there was no
+  way to get inventory back into stock after a fair, and `close_fair()`
+  hardcoded `missing_inventory_cost` to `0` because of it. A new RPC,
+  `receive_allocation_return()`, mirrors `deallocate_inventory()`
+  exactly — validates against what's actually still unsold, adds the
+  quantity back to `stock_on_hand`, and posts the same Unallocated/
+  Consigned journal entry a deallocation posts. `close_fair()` now
+  computes a real `missing_inventory_cost` from whatever was allocated
+  but neither sold nor returned, billed through the same ledger accounts
+  `cash_wholesale_owed` already uses — the settlement display
+  (`/admin/fairs/<id>/edit`) already handled a non-zero value here, so no
+  UI changes were needed there. The two places that replicate this "live,
+  before-close" math (`getPayoutEstimate()` and the admin dashboard's
+  aggregate table) got the same fix, so they never silently disagree
+  with what `close_fair()` actually charges.
 - **Phase 6: QR labels**. Restock timing (lead-time-aware allocation
   checks, the `restock_orders` "reorder now" flow) turned out to already
   be built from earlier allocation work — this batch is the other half.

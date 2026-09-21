@@ -302,6 +302,27 @@ native mobile SDKs, which a browser can't invoke).
    at the end rather than silently mixed in or dropped from the list.
 4. **Cash drawer setup**: not built yet.
 
+### Receiving returns (`/admin/fairs/<id>/returns`)
+
+After a fair ends, use this screen to record physical inventory coming
+back before closing it out. Each row shows Allocated / Sold / Returned
+so far / Returnable (allocated minus sold minus already returned) for
+every item allocated to the fair. Enter a quantity up to what's
+returnable and click **Receive** — this calls
+`receive_allocation_return()`, which adds the quantity back to
+`stock_on_hand` (so it's available to allocate to a future fair again)
+and posts the same Unallocated/Consigned ledger entry a deallocation
+posts, since it's the same real event either way: a book comes back into
+the warehouse.
+
+Whatever's still unaccounted for when you actually close the fair — not
+sold, not returned — gets billed to the org at that item's current cost,
+as part of the single settlement `close_fair()` computes (not a separate
+billing pass). This screen shows a live, non-final preview of that
+number as you go, so you know what to expect before closing. Once the
+fair is closed, this screen becomes read-only and shows the real,
+final number from the settlement instead.
+
 ### Promotions (`/admin/fairs/<id>/promotions`)
 
 Bundle deals and percent-off discounts, scoped to one fair and applied

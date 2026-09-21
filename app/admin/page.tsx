@@ -85,12 +85,13 @@ export default async function AdminHome() {
   const revenueByFair = new Map<string, number>();
   const payoutDueByFair = new Map<string, number>();
   const cashWholesaleOwedByFair = new Map<string, number>();
+  const missingInventoryCostByFair = new Map<string, number>();
 
   if (fairIds.length > 0) {
-    const [{ data: sales }, { data: lines }] = await Promise.all([
+    const [{ data: sales }, { data: lines }, { data: allocations }] = await Promise.all([
       supabase
         .from("sales")
-        .select("fair_id, price_charged")
+        .select("fair_id, catalog_item_id, price_charged")
         .eq("status", "completed")
         .in("fair_id", fairIds),
       supabase
@@ -98,11 +99,18 @@ export default async function AdminHome() {
         .select("account_code, debit, credit, journal_entries!inner(fair_id)")
         .in("journal_entries.fair_id", fairIds)
         .in("account_code", ["2000", "1300"]),
+      supabase
+        .from("allocations")
+        .select("fair_id, catalog_item_id, quantity_allocated, quantity_returned, catalog_items(cost)")
+        .in("fair_id", fairIds),
     ]);
 
+    const soldByFairAndItem = new Map<string, number>();
     for (const sale of sales ?? []) {
       unitsByFair.set(sale.fair_id, (unitsByFair.get(sale.fair_id) ?? 0) + 1);
       revenueByFair.set(sale.fair_id, (revenueByFair.get(sale.fair_id) ?? 0) + sale.price_charged);
+      const key = `${sale.fair_id}:${sale.catalog_item_id}`;
+      soldByFairAndItem.set(key, (soldByFairAndItem.get(key) ?? 0) + 1);
     }
 
     for (const line of lines ?? []) {
@@ -117,6 +125,16 @@ export default async function AdminHome() {
         );
       }
     }
+
+    for (const a of allocations ?? []) {
+      const cost = (a.catalog_items as unknown as { cost: number } | null)?.cost ?? 0;
+      const sold = soldByFairAndItem.get(`${a.fair_id}:${a.catalog_item_id}`) ?? 0;
+      const missingUnits = Math.max(a.quantity_allocated - a.quantity_returned - sold, 0);
+      missingInventoryCostByFair.set(
+        a.fair_id,
+        (missingInventoryCostByFair.get(a.fair_id) ?? 0) + missingUnits * cost,
+      );
+    }
   }
 
   let totalUnits = 0;
@@ -130,7 +148,8 @@ export default async function AdminHome() {
 
     const payoutDue = Math.max(payoutDueByFair.get(fair.id) ?? 0, 0);
     const cashWholesaleOwed = Math.max(cashWholesaleOwedByFair.get(fair.id) ?? 0, 0);
-    const payout = payoutDue - (cashWholesaleOwed + fair.equipment_rental_fee);
+    const missingInventoryCost = missingInventoryCostByFair.get(fair.id) ?? 0;
+    const payout = payoutDue - (cashWholesaleOwed + missingInventoryCost + fair.equipment_rental_fee);
 
     return { fair, units, revenue, payout };
   });

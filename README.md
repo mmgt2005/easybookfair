@@ -245,6 +245,7 @@ code (everything that needs to be unit-tested).
    - `0052_catalog_author_sales_rls.sql`
    - `0053_platform_admin_roles.sql`
    - `0054_label_templates.sql`
+   - `0055_receive_allocation_returns.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an
@@ -453,12 +454,11 @@ inventing new colors per page.
   database. The very first platform admin ever still needs one manual
   `insert` too (see "Local setup" above) — there's no bootstrap-free path
   for the account that doesn't exist yet to invite itself.
-- `close_fair()` (migration `0036`) is deliberately scoped down from the
-  full settlement spec: it nets the equipment rental fee and whatever the
-  ledger already shows for card/online margin and cash-sale wholesale
-  owed, but `missing_inventory_cost` is hardcoded `0` (no
-  returns-recording feature exists to drive it — `allocations.
-  quantity_returned` exists in the schema but nothing ever writes it).
+- `close_fair()` (migration `0036`, extended by `0055`) nets the
+  equipment rental fee, cash-sale wholesale owed, and — now that
+  `/admin/fairs/<id>/returns` exists to record `quantity_returned` —
+  missing-inventory cost too: whatever was allocated but neither sold
+  nor physically received back, billed at the item's current cost.
   Moving the money is a real button now (`sendSettlementPayout`/
   `createSettlementPaymentLink`, `app/admin/fairs/actions.ts`), and both
   are reconciled: a Transfer is marked confirmed synchronously (it has no
