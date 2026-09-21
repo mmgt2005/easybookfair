@@ -587,6 +587,11 @@ accidentally skip the whole settlement computation. Once a fair is
 closed, its status is shown read-only; nothing on this page can change
 it back.
 
+The **"Close this fair"** button also appears on the returns screen
+(`/admin/fairs/<id>/returns`) itself, right below the live missing-
+inventory estimate — receive whatever's coming back, then close from the
+same screen instead of switching to the edit page.
+
 ### Closing a fair (`/admin/fairs/<id>/edit`, "Settlement" card)
 
 A real settlement is computed here — not just spec — but deliberately

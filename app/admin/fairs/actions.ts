@@ -148,6 +148,7 @@ export async function closeFair(fairId: string) {
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
+  revalidatePath(`/admin/fairs/${fairId}/returns`);
   revalidatePath("/admin/fairs");
 }
 

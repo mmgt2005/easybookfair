@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { receiveReturn } from "./actions";
+import { CloseFairButton } from "../edit/FairLifecycleButtons";
 import { Button, Card, Input, PageHeader } from "@/components/ui";
 
 export default async function FairReturnsPage({
@@ -141,14 +142,23 @@ export default async function FairReturnsPage({
             inventory. These numbers are historical, not editable.
           </p>
         ) : (
-          <p className="text-sm text-neutral-700">
-            If closed today, estimated missing-inventory charge:{" "}
-            <strong>
-              {liveMissingUnits} unit{liveMissingUnits === 1 ? "" : "s"} / $
-              {liveMissingCost.toFixed(2)}
-            </strong>
-            . Live estimate, not final until the fair is actually closed.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-neutral-700">
+              If closed today, estimated missing-inventory charge:{" "}
+              <strong>
+                {liveMissingUnits} unit{liveMissingUnits === 1 ? "" : "s"} / $
+                {liveMissingCost.toFixed(2)}
+              </strong>
+              . Live estimate, not final until the fair is actually closed.
+            </p>
+            <div className="border-t border-neutral-100 pt-3">
+              <p className="mb-2 text-xs text-neutral-500">
+                Receive whatever&apos;s coming back first — closing locks the missing-inventory
+                charge using whatever&apos;s still outstanding at that moment.
+              </p>
+              <CloseFairButton fairId={fairId} />
+            </div>
+          </div>
         )}
       </Card>
     </div>

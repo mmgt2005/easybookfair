@@ -29,6 +29,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   in-between transition, separate from the general-purpose save form, so
   it doesn't require touching (or risking) anything else on the page.
 
+### Added
+
+- **"Close this fair" button on the returns screen** (`/admin/fairs/<id>/returns`):
+  previously only on the edit page's Settlement card, requiring a
+  detour after receiving returns. Reuses the same `CloseFairButton`
+  component (confirm prompt included); `closeFair()` now also
+  revalidates the returns page so it reflects the closed state
+  immediately.
+
 ### Removed
 
 - **The admin dashboard's four shortcut cards** (Catalog, Organizations,
