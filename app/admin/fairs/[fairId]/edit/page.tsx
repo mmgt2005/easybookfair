@@ -7,7 +7,7 @@ import {
   sendSettlementPayout,
   createSettlementPaymentLink,
 } from "../../actions";
-import { MoveToReturnWindowButton, CloseFairButton } from "./FairLifecycleButtons";
+import { MoveToReturnWindowButton } from "./FairLifecycleButtons";
 import { getStripe } from "@/lib/stripe";
 import { Badge, Button, Card, Field, Input, Select, statusTone } from "@/components/ui";
 
@@ -152,9 +152,9 @@ export default async function EditFairPage({
               defaultValue={fair.cash_sales_assumption_pct ?? ""}
             />
           </Field>
-          <p className="text-xs text-amber-700">
-            Status doesn&apos;t transition automatically yet (that&apos;s a later
-            phase) — this is a manual override for now.
+          <p className="text-xs text-neutral-500">
+            Moves from active to return window automatically the morning after the fair&apos;s
+            end date — the button above jumps there early if you need to.
           </p>
           <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
             <p className="text-xs font-semibold text-neutral-600">
@@ -349,7 +349,12 @@ export default async function EditFairPage({
               Computes the payout (or amount owed) from every sale, return, and the equipment
               rental fee above, and locks it. Irreversible.
             </p>
-            <CloseFairButton fairId={fair.id} />
+            <Link
+              href={`/admin/fairs/${fair.id}/returns`}
+              className="text-sm font-semibold text-accent-600 hover:underline"
+            >
+              Receive returns and close this fair →
+            </Link>
           </div>
         )}
       </Card>

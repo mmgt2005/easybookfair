@@ -582,22 +582,26 @@ ended.
 Scheduled → Active → Return window → Closed. The first three are a plain
 dropdown next to a **Move to return window** button for that specific
 transition (with a confirmation prompt) — closing isn't a dropdown
-option at all, only the dedicated button below, so a routine edit can't
-accidentally skip the whole settlement computation. Once a fair is
-closed, its status is shown read-only; nothing on this page can change
-it back.
+option at all, only the dedicated button on the returns screen (below),
+so a routine edit can't accidentally skip the whole settlement
+computation. Once a fair is closed, its status is shown read-only;
+nothing on this page can change it back.
 
-The **"Close this fair"** button also appears on the returns screen
-(`/admin/fairs/<id>/returns`) itself, right below the live missing-
-inventory estimate — receive whatever's coming back, then close from the
-same screen instead of switching to the edit page.
+**Active fairs also transition to return window automatically** — a
+daily job (Vercel Cron, `/api/cron/transition-fairs`) moves any fair
+still `active` the morning after its own end date. This just automates
+the same transition **Move to return window** does manually; use that
+button if you need it to happen sooner than the day after end date.
 
-### Closing a fair (`/admin/fairs/<id>/edit`, "Settlement" card)
+### Closing a fair (`/admin/fairs/<id>/returns`, below the returns table)
 
 A real settlement is computed here — not just spec — but deliberately
 scoped down from the full design below; read "Not yet supported" for
 exactly what's missing. **"Close this fair"** (with a confirmation
-prompt, since it's irreversible) computes and locks it in one step:
+prompt, since it's irreversible) computes and locks it in one step —
+receive whatever's coming back on this same screen first, since closing
+locks the missing-inventory charge using whatever's still outstanding at
+that moment:
 
 - **Payout due**: the card/online (and wallet) margin the org has earned
   so far, read straight off the ledger.

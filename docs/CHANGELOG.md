@@ -10,7 +10,22 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Added
+
+- **Fairs automatically move to "return window"** the morning after
+  their end date, via a new daily Vercel Cron job
+  (`/api/cron/transition-fairs`, configured in `vercel.json`, requires a
+  new `CRON_SECRET` env var to authenticate) — this was previously a
+  fully manual step ("Move to return window" on the edit page still
+  exists for jumping there early). Only `active` fairs are affected; a
+  `scheduled` fair whose end date has passed is left alone.
+
 ### Fixed
+
+- **"Close this fair" was still on the edit page after also being added
+  to the returns screen** — it's now only on the returns screen, since
+  receiving returns and then closing is the natural order; the edit
+  page's Settlement card links there instead of duplicating the button.
 
 - **"Reset demo data" crashed with a server error** (migration `0056`):
   `reset_demo_fair()` predates `event_requests` (added later in migration

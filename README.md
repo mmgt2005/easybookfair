@@ -376,6 +376,15 @@ Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones (including
 `RESEND_API_KEY` should stay "Secret". Every push to that branch triggers a
 new deployment automatically.
 
+Set `CRON_SECRET` (any random string, e.g. `openssl rand -hex 32`) too —
+`vercel.json` registers a daily cron job (`/api/cron/transition-fairs`,
+moves an `active` fair to `return_window` the day after its end date;
+see "Fair status" in `docs/MANUAL.md`) that Vercel authenticates with
+this value.
+Vercel picks up `vercel.json` automatically on deploy; nothing else to
+configure. Without `CRON_SECRET` set, the job runs every day and gets a
+401 every time — fairs just never auto-transition.
+
 Set `NEXT_PUBLIC_SITE_URL` once you have a real domain (custom or
 Vercel's own) — `siteUrl()` (`lib/email.ts`) falls back sensibly without
 it, but an explicit value is the most reliable option. Without it, on a
