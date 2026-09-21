@@ -6,6 +6,7 @@ export default function BulkUploadPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Bulk upload catalog items 📦"
+        backHref="/admin/catalog"
         description={
           <>
             CSV with a header row. Required columns: <code>title</code>,{" "}

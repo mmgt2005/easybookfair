@@ -22,6 +22,7 @@ export default async function RequestFairPage({
       <PageHeader
         title="Request a fair 🎪"
         description="Submitted requests are reviewed by a platform admin before becoming a real, scheduled fair."
+        backHref="/org"
       />
 
       {errorMessage && (

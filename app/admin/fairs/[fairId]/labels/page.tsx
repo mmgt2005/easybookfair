@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { siteUrl } from "@/lib/email";
 import { qrCodeDataUrl } from "@/lib/qr";
 import { TemplatePicker } from "./TemplatePicker";
 import { Card, PageHeader, PrintButton } from "@/components/ui";
@@ -66,10 +65,17 @@ export default async function FairLabelsPage({
   // One QR per distinct catalog item, not per label instance — the same
   // encoded string would otherwise be generated once per unit allocated,
   // which is wasted work for an identical result at fair-sized quantities.
+  //
+  // The QR encodes the bare catalog_item_id (not a URL) so it can be
+  // scanned directly at checkout (CheckoutClient's scan-to-add input
+  // matches the scanned text against this exact id) — that's this label's
+  // primary job now. The printed title/price/SKU text below the QR still
+  // covers the secondary "packer reference" use without needing the QR
+  // itself to carry that information.
   const qrByItem = new Map(
     await Promise.all(
       allocatedRows.map(async (row) => {
-        const qr = await qrCodeDataUrl(`${siteUrl()}/admin/catalog/${row.catalog_item_id}/edit`);
+        const qr = await qrCodeDataUrl(row.catalog_item_id);
         return [row.catalog_item_id, qr] as const;
       }),
     ),

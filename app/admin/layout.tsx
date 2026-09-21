@@ -1,24 +1,50 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getViewAsOrgId, getViewAsAuthorId } from "@/lib/viewAs";
 import { stopViewAs } from "./view-as/actions";
 import { Tour, TourLauncherButton } from "@/components/Tour";
+import { SiteNav, type NavGroup } from "@/components/nav/SiteNav";
 import packageJson from "@/package.json";
 
-const navLinks = [
-  { href: "/admin/catalog", label: "Catalog" },
-  { href: "/admin/organizations", label: "Organizations" },
-  { href: "/admin/authors", label: "Authors" },
-  { href: "/admin/fairs", label: "Fairs" },
-  { href: "/admin/fair-requests", label: "Fair requests" },
-  { href: "/admin/event-requests", label: "Event requests" },
-  { href: "/admin/org-signups", label: "Org signups" },
-  { href: "/admin/author-submissions", label: "Author submissions" },
-  { href: "/admin/carton-specs", label: "Carton specs" },
-  { href: "/admin/label-templates", label: "Label templates" },
-  { href: "/admin/demo", label: "Demo fair" },
-  { href: "/admin/manual", label: "Manual" },
+// Grouped so the nav can render dropdowns instead of ~13 links in a flat
+// row — a group with a single link (e.g. Settings for a non-super-admin,
+// see below) renders as a plain link instead of a one-item dropdown.
+const navGroups: NavGroup[] = [
+  {
+    label: "Fairs",
+    links: [
+      { href: "/admin/fairs", label: "Fairs" },
+      { href: "/admin/fair-requests", label: "Fair requests" },
+      { href: "/admin/event-requests", label: "Event requests" },
+      { href: "/admin/demo", label: "Demo fair" },
+    ],
+  },
+  {
+    label: "Catalog & authors",
+    links: [
+      { href: "/admin/catalog", label: "Catalog" },
+      { href: "/admin/authors", label: "Authors" },
+      { href: "/admin/author-submissions", label: "Author submissions" },
+    ],
+  },
+  {
+    label: "Organizations",
+    links: [
+      { href: "/admin/organizations", label: "Organizations" },
+      { href: "/admin/org-signups", label: "Org signups" },
+    ],
+  },
+  {
+    label: "Setup",
+    links: [
+      { href: "/admin/carton-specs", label: "Carton specs" },
+      { href: "/admin/label-templates", label: "Label templates" },
+    ],
+  },
+  {
+    label: "Settings",
+    links: [{ href: "/admin/manual", label: "Manual" }],
+  },
 ];
 
 const adminTourSteps = [
@@ -98,9 +124,10 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }>) {
   const { role } = await requireAdmin();
-  const links = [...navLinks];
+  const groups = navGroups.map((group) => ({ ...group, links: [...group.links] }));
   if (role === "super_admin") {
-    links.splice(links.length - 1, 0, { href: "/admin/platform-admins", label: "Admins" });
+    const settings = groups.find((g) => g.label === "Settings")!;
+    settings.links.unshift({ href: "/admin/platform-admins", label: "Admins" });
   }
 
   // A view-as cookie can still be set even while browsing /admin itself
@@ -145,24 +172,12 @@ export default async function AdminLayout({
           </form>
         </div>
       )}
-      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm print:hidden">
-        <Link href="/admin" className="font-heading text-lg font-bold text-primary-600">
-          📚 EasyBookFair Admin
-        </Link>
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-500">
-          v{packageJson.version}
-        </span>
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="font-semibold text-neutral-600 hover:text-accent-600"
-          >
-            {link.label}
-          </Link>
-        ))}
-        <TourLauncherButton storageKey="admin_v1" />
-      </nav>
+      <SiteNav
+        brand={{ href: "/admin", label: "📚 EasyBookFair Admin" }}
+        versionBadge={`v${packageJson.version}`}
+        items={groups}
+        trailing={<TourLauncherButton storageKey="admin_v1" />}
+      />
       <div className="px-6 py-6 print:p-0">{children}</div>
       <div className="print:hidden">
         <Tour storageKey="admin_v1" steps={adminTourSteps} />

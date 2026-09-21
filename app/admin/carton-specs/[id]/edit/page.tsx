@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateCartonSpec } from "../../actions";
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input, PageHeader } from "@/components/ui";
 
 export default async function EditCartonSpecPage({
   params,
@@ -24,7 +24,7 @@ export default async function EditCartonSpecPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit carton spec 📦</h1>
+      <PageHeader title="Edit carton spec 📦" backHref="/admin/carton-specs" />
       <Card className="max-w-sm">
         <form action={updateCartonSpecForSpec} className="flex flex-col gap-3">
           <Input name="name" required defaultValue={spec.name} placeholder="Name (e.g. X-Large)" />

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateAuthor } from "../../actions";
-import { Button, Card, Field, Input } from "@/components/ui";
+import { Button, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export default async function EditAuthorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,7 +20,7 @@ export default async function EditAuthorPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit author 🖋️</h1>
+      <PageHeader title="Edit author 🖋️" backHref="/admin/authors" />
 
       <Card className="max-w-sm">
         <form action={updateAuthorForAuthor} className="flex flex-col gap-3">

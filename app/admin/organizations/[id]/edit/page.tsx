@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateOrganization, startStripeOnboarding } from "../../actions";
-import { Badge, Button, Card, Field, Input, Select } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 
 export default async function EditOrganizationPage({
   params,
@@ -31,7 +31,7 @@ export default async function EditOrganizationPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit organization 🏫</h1>
+      <PageHeader title="Edit organization 🏫" backHref="/admin/organizations" />
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>

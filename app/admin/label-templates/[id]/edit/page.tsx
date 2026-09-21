@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateLabelTemplate } from "../../actions";
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input, PageHeader } from "@/components/ui";
 
 export default async function EditLabelTemplatePage({
   params,
@@ -26,7 +26,7 @@ export default async function EditLabelTemplatePage({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold text-neutral-900">Edit label template 🏷️</h1>
+      <PageHeader title="Edit label template 🏷️" backHref="/admin/label-templates" />
       <Card className="max-w-sm">
         <form action={updateForTemplate} className="flex flex-col gap-3">
           <Input name="name" required defaultValue={t.name} placeholder="Name" />

@@ -44,6 +44,15 @@ automatically the first time you visit (per browser, not per account),
 but the nav link relaunches it any time after that too, first visit or
 not.
 
+The admin and org nav bars group related links under a dropdown (e.g.
+admin's "Fairs" dropdown holds Fairs, Fair requests, Event requests, and
+Demo fair) — click a category to open it, click elsewhere to close it. On
+a narrow/mobile screen the whole nav collapses to a ☰ button that opens
+the same links as a full-width menu. Edit screens and fair-scoped pages
+(allocations, checkout, labels, marketing, pickup, promotions, returns,
+sales, wallets) show a "← Back" link so you're never stuck using the
+browser's own back button to get back to a list.
+
 ## Roles
 
 - **Platform admin** — manages the catalog, reviews org applications,
@@ -141,8 +150,9 @@ labels, laid out across as many physical sheets as the chosen template
 fits. Pick a label template from the dropdown (defaults to whichever
 template sorts first alphabetically); the label count and sheet count
 update to match. Each label shows the item's title, price, SKU/ISBN, and
-a QR code that opens that item's own admin edit page when scanned — handy
-for a volunteer or packer to double-check details on the spot. Print with
+a QR code — its primary job is scan-to-add at checkout (see "Selling in
+person" above), and the printed title/price/SKU alongside it still work
+for a volunteer or packer double-checking details on the spot. Print with
 the same "Print / save as PDF" button used elsewhere in the app (the
 wallet receipt, the marketing flyer) — it isolates just the label sheets,
 not the rest of the page. Preview in your browser's print dialog before
@@ -480,8 +490,13 @@ second-class:
 
 1. **Card, in person** — `/admin/fairs/<id>/checkout` (admin) or
    `/org/fairs/<id>/checkout` (that fair's own org staff, migration
-   `0046`). Build a cart from that fair's available-to-sell stock, click
-   "Connect reader" once, then "Charge $X with reader" — creates the
+   `0046`). Build a cart from that fair's available-to-sell stock either
+   by typing a quantity next to an item, or by **scanning its label's QR
+   code** — a physical USB/Bluetooth scanner works with no setup (it
+   types the code into the always-focused scan field and hits Enter, the
+   same as a keyboard), or click "📷 Scan with camera" to use a phone/
+   tablet's camera. Each scan adds one unit of that item to the cart.
+   Then click "Connect reader" once, then "Charge $X with reader" — creates the
    `checkout_sessions` row and PaymentIntent, collects payment on the
    physical reader, and the webhook finalizes the sale asynchronously
    once Stripe confirms it (the screen polls briefly and shows "Sale

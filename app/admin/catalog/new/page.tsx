@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCatalogItem } from "../actions";
 import { compressImage } from "@/lib/compressImage";
-import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
+import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 
 export default function NewCatalogItemPage() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function NewCatalogItemPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold text-neutral-900">Add catalog item 📖</h1>
+      <PageHeader title="Add catalog item 📖" backHref="/admin/catalog" />
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <Card className="max-w-md">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">

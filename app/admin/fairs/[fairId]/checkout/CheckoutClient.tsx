@@ -12,6 +12,7 @@ import {
 } from "./actions";
 import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
 import { Button, Card, Input } from "@/components/ui";
+import { ScanInput } from "./ScanInput";
 
 type Item = { catalog_item_id: string; title: string; price: number; available: number };
 
@@ -40,6 +41,7 @@ export function CheckoutClient({
   const [walletQuery, setWalletQuery] = useState("");
   const [walletMatches, setWalletMatches] = useState<WalletMatch[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletMatch | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
 
   // Cost is irrelevant to a price preview (only price_charged is displayed
@@ -50,6 +52,12 @@ export function CheckoutClient({
     for (const item of items) {
       map.set(item.catalog_item_id, { price: item.price, cost: 0 });
     }
+    return map;
+  }, [items]);
+
+  const itemsById = useMemo(() => {
+    const map = new Map<string, Item>();
+    for (const item of items) map.set(item.catalog_item_id, item);
     return map;
   }, [items]);
 
@@ -136,6 +144,21 @@ export function CheckoutClient({
       setTerminalStatus("error");
       setMessage(err instanceof Error ? err.message : "Failed to discover readers");
     }
+  }
+
+  function handleScan(code: string) {
+    const item = itemsById.get(code);
+    if (!item) {
+      setScanError(`No available item matches "${code}"`);
+      return;
+    }
+    const currentQty = cart[item.catalog_item_id] ?? 0;
+    if (currentQty >= item.available) {
+      setScanError(`No more "${item.title}" available to add`);
+      return;
+    }
+    setScanError(null);
+    updateQty(item.catalog_item_id, currentQty + 1);
   }
 
   function updateQty(catalogItemId: string, qty: number) {
@@ -270,6 +293,10 @@ export function CheckoutClient({
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <Card className="flex-1 overflow-x-auto p-0">
+        <div className="border-b border-neutral-100 p-4">
+          <ScanInput onScan={handleScan} />
+          {scanError && <p className="mt-1 text-xs text-red-600">{scanError}</p>}
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50 text-left">

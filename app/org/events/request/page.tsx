@@ -38,6 +38,7 @@ export default async function RequestEventPage({
       <PageHeader
         title="Request an author reading or book signing 🖋️"
         description="Pick a book from one of your upcoming fairs — a platform admin reviews the request and coordinates the details."
+        backHref="/org"
       />
 
       {errorMessage && (

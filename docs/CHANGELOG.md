@@ -31,6 +31,29 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Checkout scanning, mobile-friendly nav, and back links on secondary
+  screens**: checkout previously had no way to add an item except a
+  static list with per-row quantity fields — the label QR code linked to
+  the admin catalog edit page and wasn't scannable for checkout at all.
+  Checkout now has a scan-to-add field (`ScanInput.tsx`) that works with
+  a physical USB/Bluetooth barcode scanner (keyboard-wedge: it types the
+  code and hits Enter) or a phone/tablet camera (new `html5-qrcode`
+  dependency); scanning a known item's code adds one unit to the cart.
+  The label's QR now encodes the bare `catalog_item_id` instead of a URL
+  so the same printed label works for both scanning and its existing
+  packer-reference role (title/price/SKU stay printed as text). The
+  admin (13 links) and org (4 links) nav bars — previously flat, hand-
+  rolled, and just wrapping onto extra lines on narrow screens — are now
+  a shared `SiteNav` component with category-grouped desktop dropdowns
+  (Fairs, Catalog & authors, Organizations, Setup, Settings) and a
+  mobile hamburger menu. `PageHeader` gained an optional `backHref`/
+  `backLabel` for a "← Back" link; every fair-scoped admin/org screen
+  (edit, allocations, checkout, labels, marketing, pickup, promotions,
+  returns, sales, wallets — 15 screens total) now sits under a shared
+  layout with a "← Back to Fairs"/"← Back to Dashboard" link, and the
+  flat catalog/author/organization/label-template/carton-spec edit and
+  creation screens each link back to their own list.
+
 - **Receiving returns from a closed-out fair** (`/admin/fairs/<id>/returns`,
   migration `0055`): `allocations.quantity_returned` existed since the
   very first schema migration but nothing ever wrote it, so there was no

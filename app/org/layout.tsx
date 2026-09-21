@@ -1,14 +1,22 @@
-import Link from "next/link";
 import { requireOrgStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Tour, TourLauncherButton } from "@/components/Tour";
 import { ViewAsBanner } from "@/components/ViewAsBanner";
+import { SiteNav, type NavItem } from "@/components/nav/SiteNav";
 import packageJson from "@/package.json";
 
-const navLinks = [
+// "Dashboard" and "Staff" are single links (rendered as plain links, not
+// one-item dropdowns); "Requests" groups the two request forms since
+// they're the same kind of action.
+const navItems: NavItem[] = [
   { href: "/org", label: "Dashboard" },
-  { href: "/org/fairs/request", label: "Request a fair" },
-  { href: "/org/events/request", label: "Request an event" },
+  {
+    label: "Requests",
+    links: [
+      { href: "/org/fairs/request", label: "Request a fair" },
+      { href: "/org/events/request", label: "Request an event" },
+    ],
+  },
   { href: "/org/staff", label: "Staff" },
 ];
 
@@ -70,24 +78,12 @@ export default async function OrgLayout({
           <ViewAsBanner label={orgName} />
         </div>
       )}
-      <nav className="flex flex-wrap items-center gap-5 border-b-2 border-primary-100 bg-white px-6 py-3 text-sm print:hidden">
-        <Link href="/org" className="font-heading text-lg font-bold text-primary-600">
-          📚 EasyBookFair — Org Portal
-        </Link>
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-500">
-          v{packageJson.version}
-        </span>
-        {navLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="font-semibold text-neutral-600 hover:text-accent-600"
-          >
-            {link.label}
-          </Link>
-        ))}
-        <TourLauncherButton storageKey="org_v1" />
-      </nav>
+      <SiteNav
+        brand={{ href: "/org", label: "📚 EasyBookFair — Org Portal" }}
+        versionBadge={`v${packageJson.version}`}
+        items={navItems}
+        trailing={<TourLauncherButton storageKey="org_v1" />}
+      />
       <div className="px-6 py-6 print:p-0">{children}</div>
       <div className="print:hidden">
         <Tour storageKey="org_v1" steps={orgTourSteps} />
