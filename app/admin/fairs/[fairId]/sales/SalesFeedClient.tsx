@@ -19,6 +19,7 @@ export function SalesFeedClient({
   initialSales,
   initialTotalUnits,
   initialTotalRevenue,
+  initialCashRevenue,
   initialPayout,
   initialPayoutIsFinal,
   initialMissingInventoryCost,
@@ -28,6 +29,7 @@ export function SalesFeedClient({
   initialSales: SaleRow[];
   initialTotalUnits: number;
   initialTotalRevenue: number;
+  initialCashRevenue: number;
   initialPayout: number;
   initialPayoutIsFinal: boolean;
   initialMissingInventoryCost: number;
@@ -36,6 +38,7 @@ export function SalesFeedClient({
   const [sales, setSales] = useState(initialSales);
   const [totalUnits, setTotalUnits] = useState(initialTotalUnits);
   const [totalRevenue, setTotalRevenue] = useState(initialTotalRevenue);
+  const [cashRevenue, setCashRevenue] = useState(initialCashRevenue);
   const [payout, setPayout] = useState(initialPayout);
   const [payoutIsFinal, setPayoutIsFinal] = useState(initialPayoutIsFinal);
   const [missingInventoryCost, setMissingInventoryCost] = useState(initialMissingInventoryCost);
@@ -62,6 +65,7 @@ export function SalesFeedClient({
         setSales(result.sales);
         setTotalUnits(result.totalUnits);
         setTotalRevenue(result.totalRevenue);
+        setCashRevenue(result.cashRevenue);
         setPayout(result.payout);
         setPayoutIsFinal(result.payoutIsFinal);
         setMissingInventoryCost(result.missingInventoryCost);
@@ -101,6 +105,17 @@ export function SalesFeedClient({
           <p className="text-xs font-semibold text-neutral-500">Revenue</p>
           <p className="font-heading text-2xl font-bold text-neutral-900">
             ${totalRevenue.toFixed(2)}
+          </p>
+        </Card>
+        <Card className="flex-1">
+          <p className="text-xs font-semibold text-neutral-500">Cash collected</p>
+          <p className="font-heading text-2xl font-bold text-neutral-900">
+            ${cashRevenue.toFixed(2)}
+          </p>
+          <p className="mt-0.5 text-xs text-neutral-400">
+            {payoutIsFinal
+              ? "Already in hand from cash sales — you don't need to receive this separately, only its wholesale cost was netted out of the payout above."
+              : "Already in hand from cash sales — not something you're waiting to receive, only its wholesale cost is netted out of the Stripe payout."}
           </p>
         </Card>
         <Card className="flex-1">

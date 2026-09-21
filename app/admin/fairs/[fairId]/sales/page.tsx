@@ -29,6 +29,7 @@ export default async function SalesFeedPage({
         initialSales={initial.sales}
         initialTotalUnits={initial.totalUnits}
         initialTotalRevenue={initial.totalRevenue}
+        initialCashRevenue={initial.cashRevenue}
         initialPayout={initial.payout}
         initialPayoutIsFinal={initial.payoutIsFinal}
         initialMissingInventoryCost={initial.missingInventoryCost}

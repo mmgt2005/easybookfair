@@ -554,7 +554,16 @@ transaction volumes without taking on Realtime infrastructure. A row that
 just arrived is briefly highlighted so you can see it land. Also
 available to that fair's own org staff (`/org/fairs/<id>/sales`).
 
-A third card shows **the payout as of right now** — card/online margin
+A third card, **"Cash collected,"** shows total revenue from cash sales
+only — money the org already has in hand from the checkout table. It's a
+subset of the Revenue card, called out on its own because cash doesn't
+flow through the Stripe payout the way card/online/wallet sales do: the
+org keeps the cash itself, and the payout below only nets out its
+wholesale cost (what's owed back to the platform), not the cash revenue
+itself. This card exists so it's clear that portion of revenue isn't
+something to wait on a transfer for.
+
+A fourth card shows **the payout as of right now** — card/online margin
 owed, minus cash-sale wholesale cost owed, minus the equipment rental
 fee, computed live from the ledger rather than waiting for the fair to
 close. Labeled "Payout if closed now" and updates every poll, right up
@@ -567,7 +576,7 @@ This live payout figure deliberately **never subtracts missing-inventory
 cost** — allocated-minus-sold-minus-returned counts every unit still out
 for sale as "missing," which for a fair that's still scheduled or active
 is most of the allocation (nothing's wrong, it just hasn't sold or been
-returned yet). A fourth card, **"If not returned by close,"** shows that
+returned yet). A fifth card, **"If not returned by close,"** shows that
 risk on its own instead: the dollar amount and unit count that *would* be
 billed as missing inventory if the fair closed today with nothing more
 returned. It's informational, not a deduction — receiving the inventory

@@ -15,6 +15,7 @@ export type RecentSales = {
   sales: SaleRow[];
   totalUnits: number;
   totalRevenue: number;
+  cashRevenue: number;
   payout: number;
   payoutIsFinal: boolean;
   missingInventoryCost: number;
@@ -141,7 +142,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
       .limit(30),
     supabase
       .from("sales")
-      .select("price_charged")
+      .select("channel, price_charged")
       .eq("fair_id", fairId)
       .eq("status", "completed"),
     getPayoutEstimate(fairId, supabase),
@@ -160,11 +161,19 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
 
   const totalUnits = (totals ?? []).length;
   const totalRevenue = (totals ?? []).reduce((sum, t) => sum + t.price_charged, 0);
+  // Cash sales are the only channel the org physically holds the money for
+  // right away — card/online/wallet all settle through Stripe into the
+  // payout above instead. Broken out here so it's clear this portion of
+  // revenue isn't something the org is still waiting to receive.
+  const cashRevenue = (totals ?? [])
+    .filter((t) => t.channel === "cash")
+    .reduce((sum, t) => sum + t.price_charged, 0);
 
   return {
     sales,
     totalUnits,
     totalRevenue,
+    cashRevenue,
     payout,
     payoutIsFinal,
     missingInventoryCost,

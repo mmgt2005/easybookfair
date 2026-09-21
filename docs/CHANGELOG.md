@@ -10,6 +10,16 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Added
+
+- **"Cash collected" card on the sales feed** (`/admin|org/fairs/<id>/sales`):
+  shows total revenue from cash sales on its own, with a note explaining
+  it's already in the org's hands and not part of the Stripe payout —
+  only its wholesale cost is netted out of that number. Previously cash
+  revenue was only visible folded into the overall Revenue total, with no
+  explanation of why it doesn't show up as something to wait on a
+  transfer for.
+
 ### Changed
 
 - **The live "payout" estimate no longer deducts missing-inventory
