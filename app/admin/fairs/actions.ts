@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
@@ -109,12 +110,21 @@ export async function updateFair(fairId: string, formData: FormData) {
   redirect("/admin/fairs");
 }
 
+// Next.js redacts the message of any error thrown from a Server Action in
+// production builds, replacing it with a generic "Server Components
+// render" message + digest — even when the caller wraps the call in its
+// own try/catch client-side. Returning the failure as ordinary data
+// instead of throwing is the only way a real, useful message reaches the
+// UI in production, so every action below returns { error } rather than
+// throwing (see the four *Button components in ./edit/FairLifecycleButtons.tsx).
+export type ActionResult = { error?: string };
+
 // One-click transition into the return window, separate from the big
 // save-everything form above — the fair lifecycle's one truly safe,
 // reversible-in-spirit status change (unlike closing), so it gets its
 // own obvious, hard-to-miss-for-the-wrong-reason button instead of
 // living as one option in a dropdown next to unrelated fields.
-export async function moveFairToReturnWindow(fairId: string) {
+export async function moveFairToReturnWindow(fairId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -131,17 +141,19 @@ export async function moveFairToReturnWindow(fairId: string) {
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    return { error: error.message };
   }
   if (!data) {
-    throw new Error(
-      "No update applied — this fair may already be closed, or your session may need refreshing (try reloading the page).",
-    );
+    return {
+      error:
+        "No update applied — this fair may already be closed, or your session may need refreshing (try reloading the page).",
+    };
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
   revalidatePath("/admin/fairs");
   revalidatePath("/admin");
+  return {};
 }
 
 // Computes and locks the fair's settlement (migration 0036) — irreversible
@@ -149,18 +161,19 @@ export async function moveFairToReturnWindow(fairId: string) {
 // settlements' unique fair_id). requireAdmin() here is just the UX gate;
 // close_fair() re-checks app.is_platform_admin() itself since it's
 // SECURITY DEFINER and bypasses RLS.
-export async function closeFair(fairId: string) {
+export async function closeFair(fairId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("close_fair", { p_fair_id: fairId });
   if (error) {
-    throw new Error(error.message);
+    return { error: error.message };
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
   revalidatePath(`/admin/fairs/${fairId}/returns`);
   revalidatePath("/admin/fairs");
+  return {};
 }
 
 // Sends the org their net settlement payout via a Stripe Transfer to
@@ -170,7 +183,7 @@ export async function closeFair(fairId: string) {
 // scale, but a double-click before the first response lands could in
 // principle send twice — the disabled-once-sent button is the real guard
 // here, not a network-level safeguard.
-export async function sendSettlementPayout(fairId: string) {
+export async function sendSettlementPayout(fairId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -181,13 +194,13 @@ export async function sendSettlementPayout(fairId: string) {
     .single();
 
   if (settlementError || !settlement) {
-    throw new Error("Settlement not found — close the fair first");
+    return { error: "Settlement not found — close the fair first" };
   }
   if (settlement.stripe_transfer_id) {
-    throw new Error("A payout has already been sent for this settlement");
+    return { error: "A payout has already been sent for this settlement" };
   }
   if (settlement.net_payout <= 0) {
-    throw new Error("Nothing to pay out — this org isn't owed money on this settlement");
+    return { error: "Nothing to pay out — this org isn't owed money on this settlement" };
   }
 
   const { data: org, error: orgError } = await supabase
@@ -197,22 +210,29 @@ export async function sendSettlementPayout(fairId: string) {
     .single();
 
   if (orgError || !org) {
-    throw new Error("Organization not found");
+    return { error: "Organization not found" };
   }
   if (!org.stripe_connect_account_id) {
-    throw new Error("This org hasn't started Stripe Connect onboarding yet");
+    return { error: "This org hasn't started Stripe Connect onboarding yet" };
   }
   if (!org.stripe_payouts_enabled) {
-    throw new Error("This org's Stripe payouts aren't enabled yet — finish their Connect onboarding first");
+    return {
+      error: "This org's Stripe payouts aren't enabled yet — finish their Connect onboarding first",
+    };
   }
 
-  const transfer = await getStripe().transfers.create({
-    amount: Math.round(settlement.net_payout * 100),
-    currency: "usd",
-    destination: org.stripe_connect_account_id,
-    description: `EasyBookFair settlement payout (fair ${fairId})`,
-    metadata: { settlement_id: settlement.id, fair_id: fairId },
-  });
+  let transfer: Stripe.Transfer;
+  try {
+    transfer = await getStripe().transfers.create({
+      amount: Math.round(settlement.net_payout * 100),
+      currency: "usd",
+      destination: org.stripe_connect_account_id,
+      description: `EasyBookFair settlement payout (fair ${fairId})`,
+      metadata: { settlement_id: settlement.id, fair_id: fairId },
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Stripe transfer failed" };
+  }
 
   // transfer_confirmed_at is set here, not by a webhook — a Stripe
   // Transfer moves funds between the platform's and the connected
@@ -225,7 +245,7 @@ export async function sendSettlementPayout(fairId: string) {
     .update({ stripe_transfer_id: transfer.id, transfer_confirmed_at: new Date().toISOString() })
     .eq("id", settlement.id);
   if (updateError) {
-    throw new Error(updateError.message);
+    return { error: updateError.message };
   }
 
   if (org.contact_email) {
@@ -242,6 +262,7 @@ export async function sendSettlementPayout(fairId: string) {
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
+  return {};
 }
 
 // Creates a one-time Stripe Payment Link for the amount the org owes the
@@ -253,7 +274,7 @@ export async function sendSettlementPayout(fairId: string) {
 // Links API needs an actual Price object, not an inline amount (unlike
 // Checkout Sessions) — prices.create() with product_data makes one on
 // the fly since the amount is different for every settlement.
-export async function createSettlementPaymentLink(fairId: string) {
+export async function createSettlementPaymentLink(fairId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
@@ -264,13 +285,13 @@ export async function createSettlementPaymentLink(fairId: string) {
     .single();
 
   if (settlementError || !settlement) {
-    throw new Error("Settlement not found — close the fair first");
+    return { error: "Settlement not found — close the fair first" };
   }
   if (settlement.stripe_payment_link_id) {
-    throw new Error("A payment link already exists for this settlement");
+    return { error: "A payment link already exists for this settlement" };
   }
   if (settlement.net_payout >= 0) {
-    throw new Error("This org doesn't owe anything on this settlement");
+    return { error: "This org doesn't owe anything on this settlement" };
   }
 
   const { data: org, error: orgError } = await supabase
@@ -279,30 +300,35 @@ export async function createSettlementPaymentLink(fairId: string) {
     .eq("id", settlement.org_id)
     .single();
   if (orgError || !org) {
-    throw new Error("Organization not found");
+    return { error: "Organization not found" };
   }
 
   const { data: fair } = await supabase.from("fairs").select("name").eq("id", fairId).single();
   const amountOwed = -settlement.net_payout;
 
-  const stripe = getStripe();
-  const price = await stripe.prices.create({
-    currency: "usd",
-    unit_amount: Math.round(amountOwed * 100),
-    product_data: { name: `${fair?.name ?? "Book fair"} settlement` },
-  });
+  let paymentLink: Stripe.PaymentLink;
+  try {
+    const stripe = getStripe();
+    const price = await stripe.prices.create({
+      currency: "usd",
+      unit_amount: Math.round(amountOwed * 100),
+      product_data: { name: `${fair?.name ?? "Book fair"} settlement` },
+    });
 
-  const paymentLink = await stripe.paymentLinks.create({
-    line_items: [{ price: price.id, quantity: 1 }],
-    metadata: { settlement_id: settlement.id, fair_id: fairId },
-  });
+    paymentLink = await stripe.paymentLinks.create({
+      line_items: [{ price: price.id, quantity: 1 }],
+      metadata: { settlement_id: settlement.id, fair_id: fairId },
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to create Stripe payment link" };
+  }
 
   const { error: updateError } = await supabase
     .from("settlements")
     .update({ stripe_payment_link_id: paymentLink.id })
     .eq("id", settlement.id);
   if (updateError) {
-    throw new Error(updateError.message);
+    return { error: updateError.message };
   }
 
   if (org.contact_email) {
@@ -319,6 +345,7 @@ export async function createSettlementPaymentLink(fairId: string) {
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
+  return {};
 }
 
 // Creates a Stripe Terminal Location for this fair's venue — required

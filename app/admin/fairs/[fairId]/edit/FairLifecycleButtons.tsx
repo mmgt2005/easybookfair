@@ -9,6 +9,14 @@ import {
 } from "../../actions";
 import { Button } from "@/components/ui";
 
+// Next.js redacts the message of any error *thrown* from a Server Action
+// in production builds, replacing it with a generic "Server Components
+// render" message + digest — even when the caller wraps the call in its
+// own try/catch. The four actions these buttons call return { error }
+// instead of throwing specifically so a real, useful message reaches the
+// UI here; every handler below checks result.error, not a caught
+// exception.
+
 // window.confirm needs client-side JS, same reasoning as
 // app/admin/demo/DemoToggleButton.tsx — a plain <form action={...}>
 // can't intercept the click first.
@@ -26,11 +34,8 @@ export function MoveToReturnWindowButton({ fairId }: { fairId: string }) {
       return;
     }
     startTransition(async () => {
-      try {
-        await moveFairToReturnWindow(fairId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update fair");
-      }
+      const result = await moveFairToReturnWindow(fairId);
+      if (result.error) setError(result.error);
     });
   }
 
@@ -58,11 +63,8 @@ export function CloseFairButton({ fairId }: { fairId: string }) {
       return;
     }
     startTransition(async () => {
-      try {
-        await closeFair(fairId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to close fair");
-      }
+      const result = await closeFair(fairId);
+      if (result.error) setError(result.error);
     });
   }
 
@@ -76,12 +78,6 @@ export function CloseFairButton({ fairId }: { fairId: string }) {
   );
 }
 
-// A plain <form action={sendSettlementPayout}> would let any thrown error
-// (Stripe declining the transfer, insufficient platform balance, etc.)
-// propagate all the way up to Next.js's generic "Application error"
-// screen with no useful message — this catches it the same way the two
-// buttons above do, so a real failure shows inline instead of crashing
-// the whole page.
 export function SendPayoutButton({
   fairId,
   amount,
@@ -97,11 +93,8 @@ export function SendPayoutButton({
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      try {
-        await sendSettlementPayout(fairId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to send payout");
-      }
+      const result = await sendSettlementPayout(fairId);
+      if (result.error) setError(result.error);
     });
   }
 
@@ -115,7 +108,6 @@ export function SendPayoutButton({
   );
 }
 
-// Same reasoning as SendPayoutButton above.
 export function CreatePaymentLinkButton({ fairId, amount }: { fairId: string; amount: number }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -123,11 +115,8 @@ export function CreatePaymentLinkButton({ fairId, amount }: { fairId: string; am
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      try {
-        await createSettlementPaymentLink(fairId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create payment link");
-      }
+      const result = await createSettlementPaymentLink(fairId);
+      if (result.error) setError(result.error);
     });
   }
 

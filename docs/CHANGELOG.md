@@ -23,6 +23,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Fair-lifecycle buttons still showed a generic redacted error instead
+  of the real message**: catching a thrown Server Action error client-side
+  (the previous fix, below) turned out not to be enough — Next.js redacts
+  the *message* of any error thrown from a Server Action in production
+  builds regardless of where it's caught, replacing it with the same
+  generic "Server Components render"/digest text. `moveFairToReturnWindow`,
+  `closeFair`, `sendSettlementPayout`, and `createSettlementPaymentLink`
+  now return `{ error }` as ordinary data instead of throwing — Next.js
+  only redacts thrown errors, not return values, so the real message
+  (a Stripe decline, a validation failure, whatever it actually is)
+  reaches the button now.
+
 - **Fair edit page could crash entirely on a stale Stripe resource**: the
   settlement's payment-link lookup and the terminal readers list both
   called Stripe's API directly in the page's Server Component with no
