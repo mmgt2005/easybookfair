@@ -12,6 +12,16 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Cash drawer setup** (`/admin/fairs/<id>/allocations`): a "Cash drawer
+  setup" card suggests a starting petty-cash float and a quarters/$1/$5/
+  $10 denomination breakdown, computed from the fair's allocation
+  (`docs/spec.md`'s "Petty cash suggestion" formula — expected cash
+  revenue times a change buffer, with the quarters share scaled by how
+  much of the catalog is priced off a whole dollar). One click
+  recomputes it; every count is freely editable and saved independently,
+  since this is a suggestion, never enforced. Migration `0057` adds
+  `cash_drawer_setups` (one row per fair, admin-only).
+
 - **Live preview on the label template screens** (`/admin/label-templates`,
   new and edit): a scaled diagram of the sheet outline with the label
   grid drawn inside it, updating as the sheet/label/margin/gap/grid

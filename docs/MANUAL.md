@@ -324,7 +324,16 @@ native mobile SDKs, which a browser can't invoke).
    the two measurements is packed by whichever one it has; an item with
    neither gets grouped into its own carton
    at the end rather than silently mixed in or dropped from the list.
-4. **Cash drawer setup**: not built yet.
+4. **Cash drawer setup**: click Recompute to get a suggested starting
+   petty-cash float and a quarters/$1/$5/$10 denomination breakdown,
+   computed from the fair's allocation (`Σ allocated item price ×
+   cash_sales_assumption_pct`, then ×1.2 for a change buffer — see
+   `docs/spec.md`'s "Petty cash suggestion"). A catalog priced mostly at
+   whole dollars suggests few quarters; one full of `.99`-style prices
+   suggests more. This is a suggestion only — it's never enforced, and
+   every count is a plain editable field you can override and save at
+   any time; clicking Recompute again overwrites whatever was there
+   (suggested or edited) rather than keeping a history.
 
 ### Receiving returns (`/admin/fairs/<id>/returns`)
 

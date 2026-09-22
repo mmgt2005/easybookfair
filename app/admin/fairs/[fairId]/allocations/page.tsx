@@ -5,6 +5,8 @@ import {
   computePackingSuggestion,
   reserveRestock,
   updateRestockOrder,
+  computeCashDrawerSetup,
+  updateCashDrawerSetup,
 } from "./actions";
 import { Button, Card, Input, Select } from "@/components/ui";
 
@@ -31,15 +33,15 @@ export default async function AllocationsPage({
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, start_date, organizations(name)")
+    .select("id, name, start_date, cash_sales_assumption_pct, organizations(name)")
     .eq("id", fairId)
     .single();
 
-  const [{ data: catalogItems }, { data: allocations }, { data: latestSuggestion }] =
+  const [{ data: catalogItems }, { data: allocations }, { data: latestSuggestion }, { data: cashDrawerSetup }] =
     await Promise.all([
       supabase
         .from("catalog_items")
-        .select("id, title, stock_on_hand, lead_time_days")
+        .select("id, title, price, stock_on_hand, lead_time_days")
         .order("title"),
       supabase
         .from("allocations")
@@ -51,6 +53,11 @@ export default async function AllocationsPage({
         .eq("fair_id", fairId)
         .order("created_at", { ascending: false })
         .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("cash_drawer_setups")
+        .select("suggested_float_total, quarters_count, ones_count, fives_count, tens_count")
+        .eq("fair_id", fairId)
         .maybeSingle(),
     ]);
 
@@ -83,10 +90,18 @@ export default async function AllocationsPage({
   const reserveRestockForFair = reserveRestock.bind(null, fairId);
   const updateRestockOrderForFair = updateRestockOrder.bind(null, fairId);
   const computeSuggestionForFair = computePackingSuggestion.bind(null, fairId);
+  const computeCashDrawerSetupForFair = computeCashDrawerSetup.bind(null, fairId);
+  const updateCashDrawerSetupForFair = updateCashDrawerSetup.bind(null, fairId);
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
   const recommendedCarton = suggestion?.options.find(
     (opt) => opt.carton_spec_id === latestSuggestion?.carton_spec_id,
   );
+  const denominationTotal = cashDrawerSetup
+    ? cashDrawerSetup.quarters_count * 0.25 +
+      cashDrawerSetup.ones_count +
+      cashDrawerSetup.fives_count * 5 +
+      cashDrawerSetup.tens_count * 10
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -281,6 +296,77 @@ export default async function AllocationsPage({
         <form action={computeSuggestionForFair} className="mt-2">
           <Button type="submit" size="sm" variant="outline">
             Recompute
+          </Button>
+        </form>
+      </Card>
+
+      <Card className="max-w-lg">
+        <h2 className="font-heading font-bold text-neutral-900">Cash drawer setup 💵</h2>
+        <p className="mb-2 text-xs text-neutral-500">
+          A suggested starting petty-cash float, sized to make change for expected cash sales.
+          Not enforced — edit any count below any time.
+        </p>
+        {cashDrawerSetup ? (
+          <div className="flex flex-col gap-2 text-sm">
+            <p>
+              Target float: <strong>${cashDrawerSetup.suggested_float_total.toFixed(2)}</strong>{" "}
+              · Denominations below total{" "}
+              <strong>${denominationTotal.toFixed(2)}</strong>
+            </p>
+            <form action={updateCashDrawerSetupForFair} className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <label className="flex flex-col gap-1 text-xs text-neutral-600">
+                  Quarters
+                  <Input
+                    name="quarters_count"
+                    type="number"
+                    min={0}
+                    required
+                    defaultValue={cashDrawerSetup.quarters_count}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-neutral-600">
+                  $1 bills
+                  <Input
+                    name="ones_count"
+                    type="number"
+                    min={0}
+                    required
+                    defaultValue={cashDrawerSetup.ones_count}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-neutral-600">
+                  $5 bills
+                  <Input
+                    name="fives_count"
+                    type="number"
+                    min={0}
+                    required
+                    defaultValue={cashDrawerSetup.fives_count}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-neutral-600">
+                  $10 bills
+                  <Input
+                    name="tens_count"
+                    type="number"
+                    min={0}
+                    required
+                    defaultValue={cashDrawerSetup.tens_count}
+                  />
+                </label>
+              </div>
+              <Button type="submit" size="sm">
+                Save
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-600">No suggestion computed yet.</p>
+        )}
+        <form action={computeCashDrawerSetupForFair} className="mt-2">
+          <Button type="submit" size="sm" variant="outline">
+            Recompute suggestion
           </Button>
         </form>
       </Card>

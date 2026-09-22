@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { packCartons, type PackableItem } from "@/lib/packCartons";
+import { computePettyCashSuggestion, type AllocatedPriceLine } from "@/lib/pettyCash";
 
 function pagePath(fairId: string) {
   return `/admin/fairs/${fairId}/allocations`;
@@ -235,5 +236,82 @@ export async function computePackingSuggestion(fairId: string) {
 
   revalidatePath(pagePath(fairId));
   if (insertError) withError(fairId, insertError.message);
+  redirect(pagePath(fairId));
+}
+
+// Computes (via lib/pettyCash.ts) and upserts a suggested cash-drawer
+// float/denomination breakdown — a single current row per fair (unlike
+// packing_suggestions' history log), since recomputing is meant to
+// overwrite whatever was there, suggestion or prior manual edit alike.
+export async function computeCashDrawerSetup(fairId: string) {
+  const supabase = await createClient();
+
+  const [{ data: fair, error: fairError }, { data: allocations, error: allocError }] =
+    await Promise.all([
+      supabase.from("fairs").select("cash_sales_assumption_pct").eq("id", fairId).single(),
+      supabase
+        .from("allocations")
+        .select("quantity_allocated, catalog_items(price)")
+        .eq("fair_id", fairId),
+    ]);
+
+  if (fairError) withError(fairId, fairError.message);
+  if (allocError) withError(fairId, allocError.message);
+
+  const lines: AllocatedPriceLine[] = (allocations ?? [])
+    .map((row) => {
+      const item = row.catalog_items as unknown as { price: number } | null;
+      if (!item || row.quantity_allocated <= 0) return null;
+      return { price: item.price, quantity: row.quantity_allocated };
+    })
+    .filter((x): x is AllocatedPriceLine => x !== null);
+
+  const suggestion = computePettyCashSuggestion(lines, fair?.cash_sales_assumption_pct ?? null);
+
+  const { error: upsertError } = await supabase.from("cash_drawer_setups").upsert(
+    {
+      fair_id: fairId,
+      suggested_float_total: suggestion.suggestedFloatTotal,
+      quarters_count: suggestion.quartersCount,
+      ones_count: suggestion.onesCount,
+      fives_count: suggestion.fivesCount,
+      tens_count: suggestion.tensCount,
+    },
+    { onConflict: "fair_id" },
+  );
+
+  revalidatePath(pagePath(fairId));
+  if (upsertError) withError(fairId, upsertError.message);
+  redirect(pagePath(fairId));
+}
+
+// Freely overrides a previously computed cash-drawer suggestion — this is
+// always a suggestion, never enforced (docs/spec.md, "Petty cash
+// suggestion"), so an admin can adjust any count without needing to
+// re-derive it from the allocation.
+export async function updateCashDrawerSetup(fairId: string, formData: FormData) {
+  const quartersCount = Number(formData.get("quarters_count"));
+  const onesCount = Number(formData.get("ones_count"));
+  const fivesCount = Number(formData.get("fives_count"));
+  const tensCount = Number(formData.get("tens_count"));
+  const supabase = await createClient();
+
+  const counts = [quartersCount, onesCount, fivesCount, tensCount];
+  if (counts.some((n) => !Number.isFinite(n) || n < 0)) {
+    withError(fairId, "All denomination counts must be zero or a positive whole number");
+  }
+
+  const { error } = await supabase
+    .from("cash_drawer_setups")
+    .update({
+      quarters_count: quartersCount,
+      ones_count: onesCount,
+      fives_count: fivesCount,
+      tens_count: tensCount,
+    })
+    .eq("fair_id", fairId);
+
+  revalidatePath(pagePath(fairId));
+  if (error) withError(fairId, error.message);
   redirect(pagePath(fairId));
 }
