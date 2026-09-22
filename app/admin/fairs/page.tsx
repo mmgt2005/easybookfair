@@ -23,7 +23,7 @@ export default async function FairsPage() {
       {fairsError && <p className="text-sm text-red-600">{fairsError.message}</p>}
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full max-w-2xl text-sm">
+        <table className="w-full max-w-4xl text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
               <th className="py-2 pl-4 pr-4">Fair</th>
@@ -70,80 +70,97 @@ export default async function FairsPage() {
                 <td className="py-2 pr-4">
                   <Badge tone={statusTone(fair.status)}>{fair.status}</Badge>
                 </td>
-                <td className="flex gap-3 py-2 pr-4">
-                  <Link
-                    href={`/admin/fairs/${fair.id}/allocations`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Allocate
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/returns`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Returns
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/checkout`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Checkout
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/pickup`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Pickup
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/sales`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Sales
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/payout-report`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Payout report
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/promotions`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Promotions
-                  </Link>
-                  <Link
-                    href={`/admin/fairs/${fair.id}/labels`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Labels
-                  </Link>
-                  {(fair.organizations as unknown as { is_school: boolean } | null)?.is_school && (
-                    <Link
-                      href={`/admin/fairs/${fair.id}/wallets`}
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      Wallets
-                    </Link>
-                  )}
-                  {(fair.allow_online ||
-                    (fair.allow_wallet &&
-                      (fair.organizations as unknown as { is_school: boolean } | null)
-                        ?.is_school)) && (
-                    <Link
-                      href={`/admin/fairs/${fair.id}/marketing`}
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      Marketing
-                    </Link>
-                  )}
-                  <Link
-                    href={`/admin/fairs/${fair.id}/edit`}
-                    className="font-semibold text-accent-600 hover:underline"
-                  >
-                    Edit
-                  </Link>
+                <td className="py-2 pr-4">
+                  <div className="flex flex-col gap-1.5">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                        Admin only
+                      </span>
+                      <div className="mt-0.5 flex flex-wrap gap-3">
+                        <Link
+                          href={`/admin/fairs/${fair.id}/allocations`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Allocate
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/returns`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Returns
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/promotions`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Promotions
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/labels`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Labels
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/edit`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                        Org can also see
+                      </span>
+                      <div className="mt-0.5 flex flex-wrap gap-3">
+                        <Link
+                          href={`/admin/fairs/${fair.id}/checkout`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Checkout
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/pickup`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Pickup
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/sales`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Sales
+                        </Link>
+                        <Link
+                          href={`/admin/fairs/${fair.id}/payout-report`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Payout report
+                        </Link>
+                        {(fair.organizations as unknown as { is_school: boolean } | null)
+                          ?.is_school && (
+                          <Link
+                            href={`/admin/fairs/${fair.id}/wallets`}
+                            className="font-semibold text-accent-600 hover:underline"
+                          >
+                            Wallets
+                          </Link>
+                        )}
+                        {(fair.allow_online ||
+                          (fair.allow_wallet &&
+                            (fair.organizations as unknown as { is_school: boolean } | null)
+                              ?.is_school)) && (
+                          <Link
+                            href={`/admin/fairs/${fair.id}/marketing`}
+                            className="font-semibold text-accent-600 hover:underline"
+                          >
+                            Marketing
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </td>
               </tr>
             ))}

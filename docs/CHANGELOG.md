@@ -62,6 +62,13 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Changed
 
+- **Admin fairs list per-fair links now split into "Admin only" and
+  "Org can also see"** (`/admin/fairs`): Allocate, Returns, Promotions,
+  Labels, and Edit have no org-side equivalent, while Checkout, Pickup,
+  Sales, Payout report, Wallets, and Marketing are the same screens an
+  org's own staff can reach from their dashboard — grouping them makes
+  that distinction visible instead of one flat list of links.
+
 - **The live "payout" estimate no longer deducts missing-inventory
   cost.** `allocated - sold - returned` counts every unit still
   legitimately out for sale as "missing," which for a scheduled/active
