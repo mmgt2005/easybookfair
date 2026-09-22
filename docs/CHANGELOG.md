@@ -23,6 +23,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Fair edit page could crash entirely on a stale Stripe resource**: the
+  settlement's payment-link lookup and the terminal readers list both
+  called Stripe's API directly in the page's Server Component with no
+  error handling — a deleted/invalid payment link or terminal location,
+  or a transient Stripe API error, crashed the whole page render (a
+  generic "Server Components render" error, distinct from and unfixable
+  by the Server Action error handling below, since this happens outside
+  any action). Both now fall back to null/empty on failure instead.
+
 - **"Send payout"/"Create payment link" crashed the whole page on
   failure**: both buttons were plain `<form action={...}>` submits with
   no client-side error handling, so any thrown error (Stripe declining

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { updateFair, createTerminalLocation, registerTerminalReader } from "../../actions";
 import {
@@ -44,21 +45,38 @@ export default async function EditFairPage({
     .eq("fair_id", fairId)
     .maybeSingle();
 
-  const paymentLinkUrl = settlement?.stripe_payment_link_id
-    ? (await getStripe().paymentLinks.retrieve(settlement.stripe_payment_link_id)).url
-    : null;
+  // Both of these hit Stripe's API unguarded on every load of this page —
+  // a stale/deleted resource on Stripe's side (or a transient API error)
+  // would otherwise crash the whole Server Component render with a
+  // generic, undebuggable "Application error", not just this one card.
+  // Falling back to null/empty here degrades this one section gracefully
+  // instead.
+  let paymentLinkUrl: string | null = null;
+  if (settlement?.stripe_payment_link_id) {
+    try {
+      paymentLinkUrl = (await getStripe().paymentLinks.retrieve(settlement.stripe_payment_link_id))
+        .url;
+    } catch (err) {
+      console.error("Failed to retrieve Stripe payment link", err);
+    }
+  }
 
   const updateFairForFair = updateFair.bind(null, fairId);
   const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
   const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
 
-  const readers = fair.stripe_terminal_location_id
-    ? (
+  let readers: Stripe.Terminal.Reader[] = [];
+  if (fair.stripe_terminal_location_id) {
+    try {
+      readers = (
         await getStripe().terminal.readers.list({
           location: fair.stripe_terminal_location_id,
         })
-      ).data
-    : [];
+      ).data;
+    } catch (err) {
+      console.error("Failed to list Stripe terminal readers", err);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
