@@ -160,86 +160,90 @@ export default async function OrgDashboard() {
                       </div>
                     )}
                   </td>
-                  <td className="flex flex-col gap-1 py-2 pr-4">
-                    <Link
-                      href={`/org/fairs/${fair.id}/inventory`}
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      Inventory →
-                    </Link>
-                    {(fair.allow_in_person || fair.allow_cash) && (
+                  <td className="py-2 pr-4">
+                    <div className="flex flex-col gap-1">
                       <Link
-                        href={`/org/fairs/${fair.id}/checkout`}
+                        href={`/org/fairs/${fair.id}/inventory`}
                         className="font-semibold text-accent-600 hover:underline"
                       >
-                        Checkout →
+                        Inventory →
                       </Link>
-                    )}
-                    {fair.allow_online && (
-                      <Link
-                        href={`/org/fairs/${fair.id}/pickup`}
-                        className="font-semibold text-accent-600 hover:underline"
-                      >
-                        Pickup →
-                      </Link>
-                    )}
-                    {fair.allow_wallet && org?.is_school && (
-                      <Link
-                        href={`/org/fairs/${fair.id}/wallets`}
-                        className="font-semibold text-accent-600 hover:underline"
-                      >
-                        Wallets →
-                      </Link>
-                    )}
-                    <Link
-                      href={`/org/fairs/${fair.id}/sales`}
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      Sales feed →
-                    </Link>
-                    <Link
-                      href={`/org/fairs/${fair.id}/payout-report`}
-                      className="font-semibold text-accent-600 hover:underline"
-                    >
-                      Payout report →
-                    </Link>
-                    {!fair.allow_in_person &&
-                      !fair.allow_cash &&
-                      !fair.allow_online &&
-                      !(fair.allow_wallet && org?.is_school) && (
-                        <span className="text-xs text-neutral-400">No payment options on</span>
+                      {(fair.allow_in_person || fair.allow_cash) && (
+                        <Link
+                          href={`/org/fairs/${fair.id}/checkout`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Checkout →
+                        </Link>
                       )}
+                      {fair.allow_online && (
+                        <Link
+                          href={`/org/fairs/${fair.id}/pickup`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Pickup →
+                        </Link>
+                      )}
+                      {fair.allow_wallet && org?.is_school && (
+                        <Link
+                          href={`/org/fairs/${fair.id}/wallets`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Wallets →
+                        </Link>
+                      )}
+                      <Link
+                        href={`/org/fairs/${fair.id}/sales`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Sales feed →
+                      </Link>
+                      <Link
+                        href={`/org/fairs/${fair.id}/payout-report`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Payout report →
+                      </Link>
+                      {!fair.allow_in_person &&
+                        !fair.allow_cash &&
+                        !fair.allow_online &&
+                        !(fair.allow_wallet && org?.is_school) && (
+                          <span className="text-xs text-neutral-400">No payment options on</span>
+                        )}
+                    </div>
                   </td>
-                  <td className="flex flex-col gap-1 py-2 pr-4">
-                    {fair.allow_online && (
-                      <Link
-                        href={`/fairs/${fair.id}`}
-                        target="_blank"
-                        className="font-semibold text-accent-600 hover:underline"
-                      >
-                        Storefront →
-                      </Link>
-                    )}
-                    {fair.allow_wallet && org?.is_school && (
-                      <Link
-                        href={`/fairs/${fair.id}/wallet`}
-                        target="_blank"
-                        className="font-semibold text-accent-600 hover:underline"
-                      >
-                        Student wallet →
-                      </Link>
-                    )}
-                    {!fair.allow_online && !(fair.allow_wallet && org?.is_school) && (
-                      <span className="text-xs text-neutral-400">No public links enabled</span>
-                    )}
-                    {(fair.allow_online || (fair.allow_wallet && org?.is_school)) && (
-                      <Link
-                        href={`/org/fairs/${fair.id}/marketing`}
-                        className="font-semibold text-accent-600 hover:underline"
-                      >
-                        Marketing toolkit →
-                      </Link>
-                    )}
+                  <td className="py-2 pr-4">
+                    <div className="flex flex-col gap-1">
+                      {fair.allow_online && (
+                        <Link
+                          href={`/fairs/${fair.id}`}
+                          target="_blank"
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Storefront →
+                        </Link>
+                      )}
+                      {fair.allow_wallet && org?.is_school && (
+                        <Link
+                          href={`/fairs/${fair.id}/wallet`}
+                          target="_blank"
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Student wallet →
+                        </Link>
+                      )}
+                      {!fair.allow_online && !(fair.allow_wallet && org?.is_school) && (
+                        <span className="text-xs text-neutral-400">No public links enabled</span>
+                      )}
+                      {(fair.allow_online || (fair.allow_wallet && org?.is_school)) && (
+                        <Link
+                          href={`/org/fairs/${fair.id}/marketing`}
+                          className="font-semibold text-accent-600 hover:underline"
+                        >
+                          Marketing toolkit →
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
