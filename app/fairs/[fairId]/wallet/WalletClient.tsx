@@ -6,8 +6,14 @@ import { getStripeClient } from "@/lib/stripeClient";
 import { createWalletFunding, createPoolFunding } from "./actions";
 import { Button, Field, Input } from "@/components/ui";
 
-export function WalletClient({ fairId }: { fairId: string }) {
-  const [mode, setMode] = useState<"student" | "pool">("student");
+export function WalletClient({
+  fairId,
+  initialMode,
+}: {
+  fairId: string;
+  initialMode?: "student" | "pool";
+}) {
+  const [mode, setMode] = useState<"student" | "pool">(initialMode ?? "student");
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
   const [teacher, setTeacher] = useState("");

@@ -1,4 +1,18 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+
+type FundraiserFair = {
+  fair_id: string;
+  fair_name: string;
+  org_name: string;
+  status: "scheduled" | "active" | "closed";
+  fundraiser_goal_amount: number;
+  fundraiser_description: string | null;
+  total_donated: number;
+  payout_estimate: number;
+  progress_amount: number;
+  is_final: boolean;
+};
 
 const STEPS = [
   {
@@ -94,7 +108,21 @@ const FAQS = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // app/page.tsx's first-ever data fetch — fundraiser_fairs_public()
+  // (migration 0063) is a security-definer RPC and the only public read
+  // path onto fairs (fairs_select itself is org/admin only), same
+  // reasoning as fair_public_info/fair_storefront_items being the only
+  // public read paths onto their own tables.
+  const supabase = await createClient();
+  const { data: fundraisers } = await supabase.rpc("fundraiser_fairs_public");
+  const activeFundraisers = ((fundraisers ?? []) as FundraiserFair[]).filter(
+    (f) => f.status !== "closed",
+  );
+  const closedFundraisers = ((fundraisers ?? []) as FundraiserFair[]).filter(
+    (f) => f.status === "closed",
+  );
+
   return (
     <main className="flex flex-col">
       {/* Nav */}
@@ -136,6 +164,79 @@ export default function Home() {
           sale.
         </p>
       </div>
+
+      {/* Support a fundraiser */}
+      {activeFundraisers.length > 0 && (
+        <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-12">
+          <h2 className="font-heading text-2xl font-extrabold text-neutral-900">
+            Support a fundraiser
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Click a fundraiser below to donate straight to its student assistance pool.
+          </p>
+          <div className="mt-6 flex snap-x gap-4 overflow-x-auto pb-2">
+            {activeFundraisers.map((f) => {
+              const pct = Math.min(
+                100,
+                Math.round((f.progress_amount / f.fundraiser_goal_amount) * 100),
+              );
+              return (
+                <Link
+                  key={f.fair_id}
+                  href={`/fairs/${f.fair_id}/wallet?mode=pool`}
+                  className="flex w-72 shrink-0 snap-start flex-col gap-2 rounded-xl2 border border-neutral-100 bg-white p-5 shadow-sm hover:border-primary-300"
+                >
+                  <p className="text-xs font-semibold text-neutral-500">{f.org_name}</p>
+                  <h3 className="font-heading text-base font-bold text-neutral-900">
+                    {f.fair_name}
+                  </h3>
+                  {f.fundraiser_description && (
+                    <p className="line-clamp-3 text-sm text-neutral-600">
+                      {f.fundraiser_description}
+                    </p>
+                  )}
+                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
+                    <div
+                      className="h-full rounded-full bg-primary-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-xs font-semibold text-neutral-600">
+                    ${f.progress_amount.toFixed(2)} of ${f.fundraiser_goal_amount.toFixed(2)}{" "}
+                    raised
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent fundraiser results */}
+      {closedFundraisers.length > 0 && (
+        <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-12">
+          <h2 className="font-heading text-2xl font-extrabold text-neutral-900">
+            Recent fundraiser results
+          </h2>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {closedFundraisers.map((f) => (
+              <div
+                key={f.fair_id}
+                className="flex flex-col gap-2 rounded-xl2 border border-neutral-100 bg-white p-5 shadow-sm"
+              >
+                <p className="text-xs font-semibold text-neutral-500">{f.org_name}</p>
+                <h3 className="font-heading text-base font-bold text-neutral-900">
+                  {f.fair_name}
+                </h3>
+                <p className="text-sm text-neutral-600">
+                  ${f.progress_amount.toFixed(2)} raised toward a $
+                  {f.fundraiser_goal_amount.toFixed(2)} goal
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* How it works */}
       <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-12">

@@ -120,6 +120,43 @@ export async function updateFair(fairId: string, formData: FormData) {
 // throwing (see the four *Button components in ./edit/FairLifecycleButtons.tsx).
 export type ActionResult = { error?: string };
 
+// Called from the shared MarketingToolkitContent component (imported by
+// both app/admin/fairs/[fairId]/marketing/page.tsx and its org
+// counterpart), so this needs to work for org staff, not just admins.
+// fairs has no org-staff UPDATE policy at all (only fairs_admin_write,
+// migration 0005) — set_fundraiser_goal() (migration 0063) is a security
+// definer RPC gated by app.can_operate_fair() instead, so the regular
+// RLS-scoped client is fine here; there's no RLS-no-op risk the way
+// there was for settlements' raw .update() earlier this session.
+export async function updateFundraiserGoal(
+  fairId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const goalRaw = String(formData.get("fundraiser_goal_amount") ?? "").trim();
+  let goalAmount: number | null = null;
+  if (goalRaw !== "") {
+    goalAmount = Number(goalRaw);
+    if (Number.isNaN(goalAmount) || goalAmount <= 0) {
+      return { error: "Goal amount must be a positive number, or left blank to turn it off" };
+    }
+  }
+  const description = String(formData.get("fundraiser_description") ?? "").trim() || null;
+
+  const { error } = await supabase.rpc("set_fundraiser_goal", {
+    p_fair_id: fairId,
+    p_goal_amount: goalAmount,
+    p_description: description,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/fairs/${fairId}/marketing`);
+  revalidatePath(`/org/fairs/${fairId}/marketing`);
+  revalidatePath("/");
+  return {};
+}
+
 // One-click transition into the return window, separate from the big
 // save-everything form above — the fair lifecycle's one truly safe,
 // reversible-in-spirit status change (unlike closing), so it gets its

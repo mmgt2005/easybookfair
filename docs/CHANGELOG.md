@@ -12,6 +12,21 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Fundraiser goal + homepage carousel**: org staff (or an admin) can
+  now set a fundraiser goal amount and description for a fair from its
+  Marketing toolkit. Once set — and as long as wallet funding is turned
+  on for the fair — it appears on the public homepage in a "Support a
+  fundraiser" carousel with a progress bar, linking straight to the
+  fair's wallet page with "Donate to the assistance pool" pre-selected.
+  Progress counts every dollar ever donated to the fair's assistance
+  pool plus its live (or, once closed, final) payout — a fair is
+  automatically dropped from the carousel once it enters its return
+  window, and closed fairs with a goal instead show under a "Recent
+  fundraiser results" section. New migration `0063` adds
+  `fairs.fundraiser_goal_amount`/`fundraiser_description`, a
+  `set_fundraiser_goal()` RPC (gated by `app.can_operate_fair()`, since
+  `fairs` has no org-staff UPDATE policy), and a `fundraiser_fairs_public()`
+  RPC for the anon-readable homepage listing.
 - **"Refresh from Stripe" button** on `/admin/organizations/<id>/edit`:
   fetches a Connect account's live `charges_enabled`/`payouts_enabled`
   status directly from Stripe's API and writes it, as a fallback for

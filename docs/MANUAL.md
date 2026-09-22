@@ -920,6 +920,18 @@ social media post and a parent email, already filled in with your fair's
 real name, dates, and links. Reach it from the **Marketing toolkit** link
 next to your fair in the dashboard's fairs table.
 
+The same page has a **Fundraiser goal** card — set a target amount and a
+short description of what the fundraiser is for, and (once wallet
+funding is turned on for the fair) it appears on the public EasyBookFair
+homepage in a scrollable "Support a fundraiser" carousel, showing
+progress toward the goal. Clicking a card takes a visitor straight to
+the fair's wallet page with "Donate to the assistance pool" already
+selected. Progress counts every dollar ever donated to the fair's
+assistance pool plus the fair's live (or, once closed, final) payout —
+it only grows, and it's removed from the carousel automatically once the
+fair enters its return window. Leave the amount blank and save to remove
+a fair from the carousel at any time.
+
 ### Requesting an author reading or book signing (`/org/events/request`)
 
 Pick one of your upcoming fairs, then pick a book from the ones actually
@@ -961,7 +973,11 @@ fair closes out its wallets, you'll get an email with a link to a
 printable/downloadable receipt showing exactly what was donated.
 
 The same page also offers a second option — **"Donate to the assistance
-pool"** — if you'd rather give without naming a specific student. That
+pool"** — if you'd rather give without naming a specific student. The
+EasyBookFair homepage lists fairs that have opted into a public
+fundraiser goal in a "Support a fundraiser" carousel with a progress
+bar; clicking a fundraiser there takes you straight to its wallet page
+with this option already selected. That
 money isn't tied to anyone; it automatically helps cover part of a
 purchase for any student at the fair whose own wallet doesn't have
 enough, up to a per-student limit, so it doesn't all go to one person.

@@ -4,6 +4,7 @@ import { siteUrl } from "@/lib/email";
 import { qrCodeDataUrl } from "@/lib/qr";
 import { buildSocialPost, buildParentEmailBlurb, buildFlyerTagline } from "@/lib/marketingCopy";
 import { Card, CopyButton, PageHeader, PrintButton } from "@/components/ui";
+import { FundraiserGoalForm } from "./FundraiserGoalForm";
 
 // Shared by both app/admin/fairs/[fairId]/marketing/page.tsx and
 // app/org/fairs/[fairId]/marketing/page.tsx — requireFairStaff() is the
@@ -17,7 +18,9 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, start_date, end_date, allow_online, allow_wallet, organizations(is_school)")
+    .select(
+      "id, name, start_date, end_date, allow_online, allow_wallet, fundraiser_goal_amount, fundraiser_description, organizations(is_school)",
+    )
     .eq("id", fairId)
     .maybeSingle();
   if (!fair) {
@@ -30,6 +33,17 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
   const storefrontUrl = `${siteUrl()}/fairs/${fair.id}`;
   const walletUrl = showWallet ? `${siteUrl()}/fairs/${fair.id}/wallet` : null;
 
+  const fundraiserGoalCard = (
+    <Card className="flex flex-col gap-3">
+      <h2 className="font-heading font-bold text-neutral-900">Fundraiser goal 🎯</h2>
+      <FundraiserGoalForm
+        fairId={fair.id}
+        goalAmount={fair.fundraiser_goal_amount}
+        description={fair.fundraiser_description}
+      />
+    </Card>
+  );
+
   if (!fair.allow_online && !showWallet) {
     return (
       <div className="flex flex-col gap-6">
@@ -41,6 +55,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           This fair has no public online links enabled yet — turn on the storefront or student
           wallet to get shareable links here.
         </p>
+        {fundraiserGoalCard}
       </div>
     );
   }
@@ -98,6 +113,8 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
             </div>
           )}
         </Card>
+
+        {fundraiserGoalCard}
 
         <Card className="flex flex-col gap-3">
           <h2 className="font-heading font-bold text-neutral-900">QR codes</h2>

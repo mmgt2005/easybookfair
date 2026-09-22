@@ -24,10 +24,10 @@ export default async function WalletFundingPage({
   searchParams,
 }: {
   params: Promise<{ fairId: string }>;
-  searchParams: Promise<{ funded?: string }>;
+  searchParams: Promise<{ funded?: string; mode?: string }>;
 }) {
   const { fairId } = await params;
-  const { funded } = await searchParams;
+  const { funded, mode } = await searchParams;
   const supabase = await createClient();
 
   const { data: fairInfo } = await supabase
@@ -127,7 +127,7 @@ export default async function WalletFundingPage({
           without carrying cash. Any amount left unspent after the fair becomes an additional
           donation toward the school&apos;s payout — it doesn&apos;t roll over or refund.
         </p>
-        <WalletClient fairId={fairId} />
+        <WalletClient fairId={fairId} initialMode={mode === "pool" ? "pool" : undefined} />
       </Card>
     </div>
   );
