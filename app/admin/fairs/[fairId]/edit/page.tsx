@@ -133,7 +133,13 @@ export default async function EditFairPage({
           ) : (
             <>
               <Field label="Status">
-                <Select name="status" defaultValue={fair.status}>
+                {/* key forces a remount when fair.status changes via the
+                    Move to return window button below (or the cron) —
+                    without it, this uncontrolled <select>'s defaultValue
+                    is only applied on first mount, so after a server
+                    action revalidates the page it keeps showing the old
+                    status even though the database actually updated. */}
+                <Select key={fair.status} name="status" defaultValue={fair.status}>
                   <option value="scheduled">Scheduled</option>
                   <option value="active">Active</option>
                   <option value="return_window">Return window</option>

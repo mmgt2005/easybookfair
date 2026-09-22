@@ -118,14 +118,25 @@ export async function moveFairToReturnWindow(fairId: string) {
   await requireAdmin();
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // .update() only errors on a query failure, not on matching zero rows —
+  // without checking the returned row itself, an RLS denial (e.g. a stale
+  // session) or the fair already being closed would silently no-op here,
+  // leaving the button looking like it did nothing with no error shown.
+  const { data, error } = await supabase
     .from("fairs")
     .update({ status: "return_window" })
     .eq("id", fairId)
-    .neq("status", "closed");
+    .neq("status", "closed")
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error(
+      "No update applied — this fair may already be closed, or your session may need refreshing (try reloading the page).",
+    );
   }
 
   revalidatePath(`/admin/fairs/${fairId}/edit`);
