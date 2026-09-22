@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Baloo_2, Nunito_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const headingFont = Baloo_2({
@@ -25,7 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${headingFont.variable} ${bodyFont.variable}`}>
-      <body className="bg-cream font-sans text-neutral-800">{children}</body>
+      <body className="bg-cream font-sans text-neutral-800">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
