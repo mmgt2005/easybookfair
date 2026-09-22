@@ -640,14 +640,50 @@ confirmation email sent to the parent. The student then spends it down
 search the wallet section by the student's name, pick the matching
 student (grade/teacher shown to tell apart same-name students), and
 charge the cart to that balance — same identity approach as Scholastic's
-own eWallet (a name/grade/teacher lookup, not a PIN or account).
-Overdrawing a wallet is rejected outright.
+own eWallet (a name/grade/teacher lookup, not a PIN or account). If a
+search finds no match — a student whose parent never funded a wallet
+online — a volunteer can **create a wallet for them on the spot**, right
+from the checkout screen (name plus optional grade/teacher), starting at
+$0. Overdrawing a wallet the old-fashioned way is rejected outright, but
+see "Wallet assistance pool" below for the one case where a purchase can
+still go through despite an insufficient balance.
 
 Unspent balance does **not** refund to the parent or roll over to next
 year — from the wallets page, **"Close eWallets for this fair"** sweeps
-every remaining balance into that fair's org payout as additional
-revenue, and is irreversible. Do this once the fair's pickup window has
-ended.
+every remaining balance (plus any unused assistance pool balance) into
+that fair's org payout as additional revenue, and is irreversible. Do
+this once the fair's pickup window has ended.
+
+### Wallet assistance pool (`/admin/fairs/<id>/wallets`)
+
+A shared, fair-level fund that automatically covers part of a purchase
+for a student whose own wallet balance is below $10 (including a
+brand-new $0 wallet created on the spot) — up to $20 total per student
+across the whole fair, so no single student can drain a fund meant for
+many. It's applied transparently at checkout: if a student's balance
+can't cover their cart, the shortfall is pulled from the pool
+automatically (as long as pool funds and that student's remaining room
+under the $20 cap allow it) — no extra step for the volunteer running
+the register. If the pool can't fully cover it either, checkout fails
+the same way an ordinary insufficient-balance attempt always has.
+
+Two ways to fund it, both landing in the same shared balance shown on
+the wallets page:
+- **A donor, live** — on the public wallet page (`/fairs/<id>/wallet`),
+  "Donate to the assistance pool" is a second mode alongside funding one
+  named student; it's not tied to any student, just an amount and an
+  email, paid the same way via Stripe.
+- **Staff, after the fact** — "Record a pool donation" on the wallets
+  page logs a donation already collected outside the app (cash, a check,
+  a sponsor) directly into the pool, with an optional note for your own
+  records. No payment happens in the app for this path — it's the same
+  "money already in hand, just record it" posture as a cash sale.
+
+Each wallet's "Pool assist used" column on the wallets table shows how
+much of a given student's $20 cap has been drawn on, so it's clear after
+the fact which students needed help and how much. Any pool balance left
+unused when the fair closes is swept into the org's payout the same way
+unspent individual wallet balances are.
 
 ### Fair status (`/admin/fairs/<id>/edit`)
 
@@ -872,6 +908,12 @@ left unspent after the fair becomes an additional donation toward the
 school — **it isn't refunded or carried over to next time**. Once the
 fair closes out its wallets, you'll get an email with a link to a
 printable/downloadable receipt showing exactly what was donated.
+
+The same page also offers a second option — **"Donate to the assistance
+pool"** — if you'd rather give without naming a specific student. That
+money isn't tied to anyone; it automatically helps cover part of a
+purchase for any student at the fair whose own wallet doesn't have
+enough, up to a per-student limit, so it doesn't all go to one person.
 
 Promotions/bundle discounts, when the org running the fair has set any
 up, apply **automatically** at checkout — you don't enter a code or

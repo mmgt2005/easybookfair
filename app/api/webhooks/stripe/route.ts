@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   sendOrderConfirmationEmail,
   sendWalletFundingEmail,
+  sendPoolDonationEmail,
   sendSettlementCollectedEmail,
 } from "@/lib/email";
 
@@ -109,6 +110,32 @@ export async function POST(request: Request) {
             }
           } catch (emailErr) {
             console.error("Failed to send wallet funding email", emailErr);
+          }
+        } else if (kind === "wallet_pool_funding") {
+          const { error } = await supabase.rpc("record_pool_funding", {
+            p_payment_intent_id: paymentIntent.id,
+          });
+          if (error) throw new Error(error.message);
+
+          // Best-effort, same reasoning as the wallet_funding branch above —
+          // the RPC has already committed, so a failed send here must never
+          // fail the webhook.
+          try {
+            const { data: funding } = await supabase
+              .from("wallet_pool_fundings")
+              .select("amount, donor_email, fairs(name)")
+              .eq("payment_intent_id", paymentIntent.id)
+              .single();
+            const fair = funding?.fairs as unknown as { name: string } | null;
+            if (funding?.donor_email && fair) {
+              await sendPoolDonationEmail({
+                to: funding.donor_email,
+                fairName: fair.name,
+                amount: Number(funding.amount),
+              });
+            }
+          } catch (emailErr) {
+            console.error("Failed to send pool donation email", emailErr);
           }
         } else {
           const { error } = await supabase.rpc("record_checkout_sale", {

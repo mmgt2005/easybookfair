@@ -249,6 +249,7 @@ code (everything that needs to be unit-tested).
    - `0056_fix_reset_demo_fair_event_requests.sql`
    - `0057_cash_drawer_setup.sql`
    - `0058_cash_drawer_setups_org_select.sql`
+   - `0059_wallet_assistance_pool.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an

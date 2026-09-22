@@ -8,6 +8,7 @@ import {
   searchWallets,
   chargeWallet,
   chargeCash,
+  createWalletAtCheckout,
   type WalletMatch,
 } from "./actions";
 import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
@@ -41,6 +42,10 @@ export function CheckoutClient({
   const [walletQuery, setWalletQuery] = useState("");
   const [walletMatches, setWalletMatches] = useState<WalletMatch[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<WalletMatch | null>(null);
+  const [walletSearched, setWalletSearched] = useState(false);
+  const [newWalletGrade, setNewWalletGrade] = useState("");
+  const [newWalletTeacher, setNewWalletTeacher] = useState("");
+  const [creatingWallet, setCreatingWallet] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [lastScan, setLastScan] = useState<{ catalogItemId: string; title: string } | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -247,6 +252,7 @@ export function CheckoutClient({
   async function handleWalletSearch(q: string) {
     setWalletQuery(q);
     setSelectedWallet(null);
+    setWalletSearched(false);
     if (q.trim().length < 2) {
       setWalletMatches([]);
       return;
@@ -256,6 +262,31 @@ export function CheckoutClient({
       setWalletMatches(matches);
     } catch {
       setWalletMatches([]);
+    } finally {
+      setWalletSearched(true);
+    }
+  }
+
+  async function handleCreateWallet() {
+    if (!walletQuery.trim()) return;
+    setCreatingWallet(true);
+    setMessage(null);
+    try {
+      const wallet = await createWalletAtCheckout(
+        fairId,
+        walletQuery,
+        newWalletGrade,
+        newWalletTeacher,
+      );
+      setSelectedWallet(wallet);
+      setWalletMatches([]);
+      setWalletSearched(false);
+      setNewWalletGrade("");
+      setNewWalletTeacher("");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Couldn't create wallet");
+    } finally {
+      setCreatingWallet(false);
     }
   }
 
@@ -487,6 +518,40 @@ export function CheckoutClient({
                 ))}
               </ul>
             )}
+            {walletSearched &&
+              walletMatches.length === 0 &&
+              !selectedWallet &&
+              walletQuery.trim().length >= 2 && (
+                <div className="rounded-lg bg-neutral-50 p-2 text-sm">
+                  <p className="text-neutral-600">
+                    No match for &quot;{walletQuery}&quot; — create a wallet for this student?
+                  </p>
+                  <div className="mt-2 flex gap-1">
+                    <Input
+                      placeholder="Grade (optional)"
+                      value={newWalletGrade}
+                      onChange={(e) => setNewWalletGrade(e.target.value)}
+                      className="w-28"
+                    />
+                    <Input
+                      placeholder="Teacher (optional)"
+                      value={newWalletTeacher}
+                      onChange={(e) => setNewWalletTeacher(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2"
+                    disabled={creatingWallet}
+                    onClick={handleCreateWallet}
+                  >
+                    {creatingWallet ? "Creating…" : "Create & select"}
+                  </Button>
+                </div>
+              )}
             {selectedWallet && (
               <div className="rounded-lg bg-accent-50 p-2 text-sm">
                 <p>
@@ -497,14 +562,15 @@ export function CheckoutClient({
                   type="button"
                   size="sm"
                   className="mt-2"
-                  disabled={charging || total <= 0 || total > selectedWallet.balance}
+                  disabled={charging || total <= 0}
                   onClick={chargeSelectedWallet}
                 >
                   {charging ? "Charging…" : `Charge $${total.toFixed(2)} to wallet`}
                 </Button>
                 {total > selectedWallet.balance && (
-                  <p className="mt-1 text-xs text-red-600">
-                    Cart total exceeds this wallet&apos;s balance.
+                  <p className="mt-1 text-xs text-amber-700">
+                    Cart total exceeds this wallet&apos;s balance — will try to cover the
+                    difference from the assistance pool if this student qualifies.
                   </p>
                 )}
               </div>

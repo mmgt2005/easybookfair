@@ -12,6 +12,20 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Wallet assistance pool**: a shared, fair-level fund that
+  automatically covers part of a checkout when a student's own wallet
+  balance is below $10 (including a brand-new $0 wallet), up to $20 per
+  student across the whole fair. Funded either by a donor directly
+  (a new "Donate to the assistance pool" mode on `/fairs/<id>/wallet`,
+  alongside funding one named student) or by staff recording a donation
+  already collected offline (a "Record a pool donation" form on the
+  wallets pages). Applied transparently at checkout — no extra step for
+  whoever is running the register — and any balance left unused when the
+  fair closes is swept into the org's payout, same as unspent individual
+  wallet balances. Also adds **creating a wallet on the spot** at
+  checkout for a student who was never funded online, so an unbanked
+  student isn't turned away. Migration `0059`.
+
 - **Org "fair setup package"** (`/org/fairs/<id>/inventory`): a read-only
   page showing an org exactly what's been sent for their fair — an
   inventory manifest, the admin's carton packing suggestion, and the

@@ -220,6 +220,40 @@ export async function searchWallets(
   return data as WalletMatch[];
 }
 
+// Lets an in-person volunteer create a wallet on the spot for a student
+// who was never funded by a parent online — the clearest case of
+// qualifying for wallet assistance pool help (migration 0059): balance
+// starts at exactly $0. student_wallets has no authenticated-role insert
+// policy (every wallet mutation in this app goes through a security
+// definer RPC or the service-role client, never a raw authenticated
+// insert), so this calls create_wallet_at_checkout rather than inserting
+// directly — that RPC does the same "exact-tuple lookup, else insert"
+// logic as createWalletFunding above. No initial-balance field is
+// exposed here — a wallet only ever starts at $0 and grows via a real
+// parent payment or the pool at checkout, preserving the funding
+// model's integrity.
+export async function createWalletAtCheckout(
+  fairId: string,
+  studentName: string,
+  grade: string,
+  teacher: string,
+): Promise<WalletMatch> {
+  await requireFairStaff(fairId);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("create_wallet_at_checkout", {
+      p_fair_id: fairId,
+      p_student_name: studentName,
+      p_grade: grade,
+      p_teacher: teacher,
+    })
+    .single();
+  if (error) throw new Error(error.message);
+
+  return data as WalletMatch;
+}
+
 // Spends from a student wallet — a third tender alongside the reader and
 // cash, using the same cart the admin already built. Unlike the reader
 // path, this settles synchronously (no webhook involved — spend_from_wallet

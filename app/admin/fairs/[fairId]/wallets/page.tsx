@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { closeWalletsForFair } from "./actions";
-import { Badge, Button, Card, PageHeader, statusTone } from "@/components/ui";
+import { closeWalletsForFair, recordPoolDonation } from "./actions";
+import { Badge, Button, Card, Input, PageHeader, Textarea, statusTone } from "@/components/ui";
 
 export default async function WalletsPage({
   params,
@@ -18,13 +18,21 @@ export default async function WalletsPage({
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
 
-  const { data: wallets } = await supabase
-    .from("student_wallets")
-    .select("id, student_name, grade, teacher, balance, status")
-    .eq("fair_id", fairId)
-    .order("student_name");
+  const [{ data: wallets }, { data: pool }] = await Promise.all([
+    supabase
+      .from("student_wallets")
+      .select("id, student_name, grade, teacher, balance, status, pool_assistance_used")
+      .eq("fair_id", fairId)
+      .order("student_name"),
+    supabase
+      .from("wallet_pools")
+      .select("balance, status")
+      .eq("fair_id", fairId)
+      .maybeSingle(),
+  ]);
 
   const closeWalletsForFairBound = closeWalletsForFair.bind(null, fairId);
+  const recordPoolDonationBound = recordPoolDonation.bind(null, fairId);
   const activeCount = (wallets ?? []).filter((w) => w.status === "active").length;
 
   return (
@@ -43,6 +51,7 @@ export default async function WalletsPage({
               <th className="py-2 pr-4">Grade</th>
               <th className="py-2 pr-4">Teacher</th>
               <th className="py-2 pr-4">Balance</th>
+              <th className="py-2 pr-4">Pool assist used</th>
               <th className="py-2 pr-4">Status</th>
             </tr>
           </thead>
@@ -53,6 +62,11 @@ export default async function WalletsPage({
                 <td className="py-2 pr-4 text-neutral-600">{w.grade ?? "—"}</td>
                 <td className="py-2 pr-4 text-neutral-600">{w.teacher ?? "—"}</td>
                 <td className="py-2 pr-4">${Number(w.balance).toFixed(2)}</td>
+                <td className="py-2 pr-4 text-neutral-600">
+                  {Number(w.pool_assistance_used) > 0
+                    ? `$${Number(w.pool_assistance_used).toFixed(2)}`
+                    : "—"}
+                </td>
                 <td className="py-2 pr-4">
                   <Badge tone={statusTone(w.status)}>{w.status}</Badge>
                 </td>
@@ -60,7 +74,7 @@ export default async function WalletsPage({
             ))}
             {(wallets ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="py-4 pl-4 text-neutral-500">
+                <td colSpan={6} className="py-4 pl-4 text-neutral-500">
                   No wallets yet.
                 </td>
               </tr>
@@ -70,12 +84,32 @@ export default async function WalletsPage({
       </Card>
 
       <Card className="max-w-md">
+        <h2 className="font-heading font-bold text-neutral-900">Wallet assistance pool 🤝</h2>
+        <p className="mb-3 text-sm text-neutral-600">
+          Current balance:{" "}
+          <strong>${Number(pool?.balance ?? 0).toFixed(2)}</strong>
+          {pool?.status === "closed" && " (closed)"}. Automatically covers part of a purchase for
+          a student whose own balance is below $10, up to $20 total per student — funded by
+          donors online or recorded here from a donation already collected offline.
+        </p>
+        {pool?.status !== "closed" && (
+          <form action={recordPoolDonationBound} className="flex flex-col gap-2">
+            <Input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required />
+            <Textarea name="note" placeholder="Note (optional) — e.g. bake sale proceeds" rows={2} />
+            <Button type="submit" size="sm" variant="outline">
+              Record a pool donation
+            </Button>
+          </form>
+        )}
+      </Card>
+
+      <Card className="max-w-md">
         <h2 className="font-heading font-bold text-neutral-900">Close out wallets</h2>
         <p className="mb-3 text-sm text-neutral-600">
-          Sweeps every active wallet&apos;s remaining balance ({activeCount} active) into this
-          fair&apos;s org payout and marks them closed — unspent balance becomes additional org
-          revenue, not a refund. Do this once the fair&apos;s pickup window has ended; it can&apos;t
-          be undone.
+          Sweeps every active wallet&apos;s remaining balance ({activeCount} active) and any
+          unused assistance pool balance into this fair&apos;s org payout and marks them closed —
+          unspent balance becomes additional org revenue, not a refund. Do this once the
+          fair&apos;s pickup window has ended; it can&apos;t be undone.
         </p>
         <form action={closeWalletsForFairBound}>
           <Button type="submit" variant="outline" disabled={activeCount === 0}>

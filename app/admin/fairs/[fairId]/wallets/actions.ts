@@ -63,3 +63,28 @@ export async function closeWalletsForFair(fairId: string) {
 
   redirect(pagePath(fairId));
 }
+
+// Records a donation already collected outside the app (cash, check, a
+// sponsor) directly into this fair's shared wallet assistance pool
+// (record_pool_donation, migration 0059) — no Stripe payment involved,
+// same "money already in hand, just record it" posture as recording a
+// cash sale.
+export async function recordPoolDonation(fairId: string, formData: FormData) {
+  await requireFairStaff(fairId);
+  const supabase = await createClient();
+
+  const amount = Number(formData.get("amount"));
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  const { error } = await supabase.rpc("record_pool_donation", {
+    p_fair_id: fairId,
+    p_amount: amount,
+    p_note: note,
+  });
+
+  revalidatePath(pagePath(fairId));
+  if (error) {
+    redirect(`${pagePath(fairId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(pagePath(fairId));
+}

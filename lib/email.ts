@@ -239,3 +239,23 @@ export async function sendWalletFundingEmail(params: {
     `,
   });
 }
+
+export async function sendPoolDonationEmail(params: {
+  to: string;
+  fairName: string;
+  amount: number;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Thank you for your donation — ${params.fairName}`,
+    html: `
+      <p>Thank you for donating <strong>$${params.amount.toFixed(2)}</strong> to the
+      wallet assistance pool for <strong>${params.fairName}</strong>.</p>
+      <p>This isn't tied to one student — it automatically helps cover part of a purchase for
+      any student who doesn't have enough of their own wallet balance at checkout.</p>
+      <p>Any amount left unspent after the fair becomes an additional donation toward the
+      school — it does not roll over or refund.</p>
+    `,
+  });
+}
