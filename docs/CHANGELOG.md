@@ -12,6 +12,25 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Automatic fair status + storefront/wallet gating**: the daily cron
+  (`/api/cron/transition-fairs`) now also moves a `scheduled` fair to
+  `active` on its own start date, in addition to the already-existing
+  `active` → `return_window` step the morning after its end date — status
+  now advances end to end with no admin click required (the edit page's
+  dropdown/buttons still work for early manual overrides). The public
+  storefront (`/fairs/<id>`) and wallet-funding page
+  (`/fairs/<id>/wallet`) are now gated by that same status: the
+  storefront only accepts orders while `active`; wallet funding is open
+  during `scheduled` and `active` (so parents can pre-load a wallet
+  before the fair opens) and closes once `return_window` begins. A
+  platform admin or the fair's own org staff can still preview either
+  page at any status (a banner marks it preview-only); the underlying
+  checkout/wallet-funding actions independently re-check the same status
+  window with no staff exception, so a preview never lets a real order or
+  payment through. `fair_public_info()` now also returns `start_date`/
+  `end_date` so the gated pages can show "opens on \<date\>." Migration
+  `0062`.
+
 - **"Pool assistance given" visibility**: the sales feed and payout
   report now show how much of the wallet assistance pool has been drawn
   on to help students check out, and how many students it's helped —

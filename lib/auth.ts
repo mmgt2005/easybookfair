@@ -75,6 +75,32 @@ export async function isPlatformAdmin(): Promise<boolean> {
 }
 
 /**
+ * Non-redirecting "can this visitor preview a not-yet-public fair" check —
+ * for the storefront/wallet-funding pages, gated by fair status (see
+ * lib/fairAccess.ts), so a platform admin or the fair's own org staff can
+ * still look at the page before it's open to everyone else. Reuses the
+ * fairs_select RLS policy directly (app.is_platform_admin() or org_id in
+ * app.current_org_ids()) rather than re-deriving the same check here —
+ * if the current session can read this fairs row at all, it's allowed to
+ * preview it. Returns false for an anonymous visitor or an unrelated
+ * org's staff, same as everyone else. This only gates page *visibility* —
+ * the checkout/wallet-funding actions themselves always enforce the real
+ * status window (lib/fairAccess.ts) with no staff exception, so a preview
+ * never actually moves money against a fair that isn't really open.
+ */
+export async function canPreviewFair(fairId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  const { data } = await supabase.from("fairs").select("id").eq("id", fairId).maybeSingle();
+  return data !== null;
+}
+
+/**
  * Guard for org-staff Server Components/Actions — mirrors requireAdmin().
  * Redirects to /login if unauthenticated, or /unauthorized if
  * authenticated but not a member of any organization. RLS

@@ -252,6 +252,7 @@ code (everything that needs to be unit-tested).
    - `0059_wallet_assistance_pool.sql`
    - `0060_wallet_pool_closeout_summary.sql`
    - `0061_pool_donation_email.sql`
+   - `0062_fair_public_info_dates.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an
@@ -383,9 +384,9 @@ new deployment automatically.
 
 Set `CRON_SECRET` (any random string, e.g. `openssl rand -hex 32`) too —
 `vercel.json` registers a daily cron job (`/api/cron/transition-fairs`,
-moves an `active` fair to `return_window` the day after its end date;
-see "Fair status" in `docs/MANUAL.md`) that Vercel authenticates with
-this value.
+moves a `scheduled` fair to `active` on its start date, then to
+`return_window` the morning after its end date; see "Fair status" in
+`docs/MANUAL.md`) that Vercel authenticates with this value.
 Vercel picks up `vercel.json` automatically on deploy; nothing else to
 configure. Without `CRON_SECRET` set, the job runs every day and gets a
 401 every time — fairs just never auto-transition.

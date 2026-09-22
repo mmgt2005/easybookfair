@@ -153,8 +153,12 @@ export default async function EditFairPage({
             />
           </Field>
           <p className="text-xs text-neutral-500">
-            Moves from active to return window automatically the morning after the fair&apos;s
-            end date — the button above jumps there early if you need to.
+            Moves from scheduled to active automatically on the start date, and from active to
+            return window automatically the morning after the end date — the button above jumps
+            to return window early if you need to. The public storefront only accepts orders
+            while active; wallet funding works during scheduled and active, and stops once return
+            window begins. You (and this fair&apos;s org staff) can still preview either page at
+            any status.
           </p>
           <div className="flex flex-col gap-2 rounded-lg bg-neutral-50 p-3">
             <p className="text-xs font-semibold text-neutral-600">

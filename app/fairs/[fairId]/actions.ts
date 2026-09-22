@@ -8,6 +8,7 @@ import {
   type ActivePromotion,
 } from "@/lib/promotions";
 import { isPlatformAdmin } from "@/lib/auth";
+import { fairAllowsStorefront } from "@/lib/fairAccess";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -38,11 +39,17 @@ export async function createGuestCheckout(
 
   const { data: fair } = await service
     .from("fairs")
-    .select("allow_online, organizations(is_demo, is_demo_enabled)")
+    .select("status, allow_online, organizations(is_demo, is_demo_enabled)")
     .eq("id", fairId)
     .single();
   if (!fair?.allow_online) {
     throw new Error("Online ordering isn't available for this fair");
+  }
+  // Defense in depth — the storefront page itself hides checkout unless
+  // the fair is Active (or the visitor is previewing it, in which case
+  // this check is what actually stops a real order, see lib/fairAccess.ts).
+  if (!fairAllowsStorefront(fair.status)) {
+    throw new Error("This fair isn't open for online shopping right now");
   }
 
   const org = fair.organizations as unknown as {

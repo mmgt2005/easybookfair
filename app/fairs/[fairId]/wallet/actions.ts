@@ -3,6 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
 import { isPlatformAdmin } from "@/lib/auth";
+import { fairAllowsWalletFunding } from "@/lib/fairAccess";
 
 // Public, guest funding flow — no buyer login exists. Re-checks the
 // org.is_school gate server-side (not just hiding the UI), since a client
@@ -29,7 +30,7 @@ export async function createWalletFunding(
 
   const { data: fair } = await service
     .from("fairs")
-    .select("org_id, allow_wallet")
+    .select("org_id, status, allow_wallet")
     .eq("id", fairId)
     .single();
   if (!fair) {
@@ -37,6 +38,12 @@ export async function createWalletFunding(
   }
   if (!fair.allow_wallet) {
     throw new Error("Student wallets aren't available for this fair");
+  }
+  // Defense in depth — the wallet page itself hides this form once the
+  // window closes (or the visitor is previewing it, in which case this
+  // check is what actually stops real money moving, see lib/fairAccess.ts).
+  if (!fairAllowsWalletFunding(fair.status)) {
+    throw new Error("Wallet funding has closed for this fair");
   }
 
   const { data: org } = await service
@@ -126,7 +133,7 @@ export async function createPoolFunding(fairId: string, amount: number, donorEma
 
   const { data: fair } = await service
     .from("fairs")
-    .select("org_id, allow_wallet")
+    .select("org_id, status, allow_wallet")
     .eq("id", fairId)
     .single();
   if (!fair) {
@@ -134,6 +141,10 @@ export async function createPoolFunding(fairId: string, amount: number, donorEma
   }
   if (!fair.allow_wallet) {
     throw new Error("Student wallets aren't available for this fair");
+  }
+  // Defense in depth — same window as createWalletFunding above.
+  if (!fairAllowsWalletFunding(fair.status)) {
+    throw new Error("Wallet funding has closed for this fair");
   }
 
   const { data: org } = await service

@@ -727,11 +727,24 @@ so a routine edit can't accidentally skip the whole settlement
 computation. Once a fair is closed, its status is shown read-only;
 nothing on this page can change it back.
 
-**Active fairs also transition to return window automatically** — a
-daily job (Vercel Cron, `/api/cron/transition-fairs`) moves any fair
-still `active` the morning after its own end date. This just automates
-the same transition **Move to return window** does manually; use that
-button if you need it to happen sooner than the day after end date.
+**Status now advances automatically end to end** — a daily job (Vercel
+Cron, `/api/cron/transition-fairs`) moves a `scheduled` fair to `active`
+on its own start date, then to `return_window` the morning after its own
+end date. The button/dropdown above still let you move a fair to Active
+or Return window early if you need to; the job just automates the
+default timing so a fair doesn't sit `scheduled` forever waiting on a
+manual click.
+
+**Status also gates the public storefront and wallet-funding pages**
+(`/fairs/<id>` and `/fairs/<id>/wallet`): the storefront only accepts
+orders while `active` (nothing's been set out before that, and the
+on-site event is over once return window begins); wallet funding is open
+during both `scheduled` and `active` (so parents can pre-load a wallet
+before the fair opens) and closes once return window begins. You, and
+this fair's own org staff, can still open either link at any status to
+preview it — a small banner marks it as preview-only, and no real order
+or payment can go through until the fair is actually in the right
+window.
 
 ### Closing a fair (`/admin/fairs/<id>/returns`, below the returns table)
 
@@ -919,6 +932,12 @@ coordinates directly with the author) once approved — track its status
 in the **Event requests** table on your dashboard.
 
 ## Buyer guide
+
+The storefront (`/fairs/<id>`) only accepts orders once the fair has
+actually opened, and the wallet page (`/fairs/<id>/wallet`) is available
+from before the fair opens through the end of the sale — see "Fair
+status" in the admin guide. If you visit either link too early or too
+late, you'll see a short message instead of the shopping page.
 
 Browse a fair's storefront at `/fairs/<id>` (scoped to that specific
 fair — you won't see other orgs' inventory) — cover images, a search box,

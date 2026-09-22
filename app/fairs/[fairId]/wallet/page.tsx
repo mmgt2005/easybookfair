@@ -1,14 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
-import { isPlatformAdmin } from "@/lib/auth";
+import { isPlatformAdmin, canPreviewFair } from "@/lib/auth";
 import { WalletClient } from "./WalletClient";
 import { Card } from "@/components/ui";
+import { fairAllowsWalletFunding, type FairStatus } from "@/lib/fairAccess";
 
 type FairPublicInfo = {
   fair_id: string;
   fair_name: string;
   org_name: string;
   is_school: boolean;
-  status: string;
+  status: FairStatus;
+  start_date: string;
+  end_date: string;
   allow_online: boolean;
   allow_wallet: boolean;
   allow_in_person: boolean;
@@ -67,6 +70,28 @@ export default async function WalletFundingPage({
     );
   }
 
+  // Wallet funding stays open through Scheduled (pre-loading before the
+  // fair opens) and Active, and closes once Return window begins (see
+  // lib/fairAccess.ts) — a wider window than the storefront's Active-only
+  // gate. A platform admin or this fair's own org staff can still preview
+  // the page at any status; createWalletFunding()/createPoolFunding()
+  // (./actions.ts) independently re-check the same rule with no staff
+  // exception.
+  const walletOpen = fairAllowsWalletFunding(fairInfo.status);
+  const isPreview = !walletOpen && (await canPreviewFair(fairId));
+  if (!walletOpen && !isPreview) {
+    return (
+      <div className="mx-auto max-w-lg p-6">
+        <Card>
+          <p className="text-sm text-neutral-700">
+            Wallet funding for {fairInfo.fair_name} has closed — the fair&apos;s pickup/return
+            window has begun.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   if (funded) {
     return (
       <div className="mx-auto max-w-lg p-6">
@@ -85,6 +110,11 @@ export default async function WalletFundingPage({
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
+      {isPreview && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          👀 Preview only — wallet funding is closed for this fair (status: {fairInfo.status}).
+        </p>
+      )}
       <div>
         <h1 className="font-heading text-2xl font-bold text-neutral-900">
           Student wallet — {fairInfo.fair_name} 💳

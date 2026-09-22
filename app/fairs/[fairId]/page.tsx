@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { isPlatformAdmin } from "@/lib/auth";
+import { isPlatformAdmin, canPreviewFair } from "@/lib/auth";
 import { StorefrontClient } from "./StorefrontClient";
 import { isPromotionInWindow, type ActivePromotion } from "@/lib/promotions";
+import { fairAllowsStorefront, type FairStatus } from "@/lib/fairAccess";
 
 type StorefrontItem = {
   catalog_item_id: string;
@@ -19,7 +20,9 @@ type FairPublicInfo = {
   fair_name: string;
   org_name: string;
   is_school: boolean;
-  status: string;
+  status: FairStatus;
+  start_date: string;
+  end_date: string;
   allow_online: boolean;
   allow_wallet: boolean;
   allow_in_person: boolean;
@@ -77,8 +80,37 @@ export default async function FairStorefrontPage({
     }
   }
 
+  // Online ordering only opens once the fair is actually Active (see
+  // lib/fairAccess.ts) — before that, nothing's been set out yet; after,
+  // the on-site event is over. A platform admin or this fair's own org
+  // staff can still preview the page at any status (canPreviewFair,
+  // lib/auth.ts); createGuestCheckout() (./actions.ts) independently
+  // re-checks the same Active-only rule with no staff exception, so a
+  // preview never actually lets a real order go through.
+  const storefrontOpen = fairAllowsStorefront(fairInfo.status);
+  const isPreview = !storefrontOpen && (await canPreviewFair(fairId));
+  if (!storefrontOpen && !isPreview) {
+    return (
+      <div className="mx-auto max-w-lg p-6">
+        <p className="text-sm text-neutral-600">
+          {fairInfo.status === "scheduled"
+            ? `${fairInfo.fair_name} hasn't opened yet — online shopping starts ${new Date(
+                fairInfo.start_date,
+              ).toLocaleDateString()}.`
+            : `Online shopping for ${fairInfo.fair_name} has ended.`}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      {isPreview && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          👀 Preview only — this fair isn&apos;t open to the public yet (status: {fairInfo.status}
+          ). No order can actually go through until it&apos;s marked Active.
+        </p>
+      )}
       <div>
         <h1 className="font-heading text-2xl font-bold text-neutral-900">
           {fairInfo.fair_name} 🎪
