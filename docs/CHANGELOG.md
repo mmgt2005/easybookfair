@@ -12,6 +12,20 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Donor email for org-recorded pool donations**: "Record a pool
+  donation" (the offline/staff-recorded path on the wallets pages) now
+  accepts an optional donor email, so those donors can also receive the
+  close-out summary email at `closeWalletsForFair`, not just donors who
+  funded the pool live online. Migration `0061`.
+
+### Fixed
+
+- **"Wallet donations" card missed pool sweeps**: `getRecentSales()`
+  (sales feed and payout report) only summed unspent individual wallet
+  balances swept in at close-out, never the wallet assistance pool's own
+  swept balance — even though both post identically to the org's payout.
+  The card now includes both.
+
 - **Pool donor close-out summary**: once a fair closes, every donor who
   funded the wallet assistance pool online is emailed the fair's overall
   impact — how many students it helped, the total assistance given, and

@@ -581,12 +581,14 @@ something to wait on a transfer for.
 A fourth card, **"Wallet donations,"** shows the total of unspent student
 wallet balances swept in when wallets are closed out (see "Student
 wallets" below and "donated" in "Your payout" in the org guide) —
-`donated_amount` summed across every wallet for this fair, $0 until any
-wallet is actually closed. Unlike cash, this money *is* already inside
-the payout figure below (closing a wallet posts a journal entry crediting
-Org Payable directly), so this card is purely informational — it exists
-so it's clear part of the payout came from donated wallet balances, not
-book sales.
+`donated_amount` summed across every wallet for this fair, plus any
+unused wallet assistance pool balance swept in at the same time (see
+"Wallet assistance pool" below), $0 until wallets/the pool are actually
+closed. Unlike cash, this money *is* already inside the payout figure
+below (closing a wallet or the pool posts a journal entry crediting Org
+Payable directly), so this card is purely informational — it exists so
+it's clear part of the payout came from donated wallet/pool balances,
+not book sales.
 
 A fifth card shows **the payout as of right now** — card/online margin
 owed, minus cash-sale wholesale cost owed, minus the equipment rental
@@ -676,8 +678,11 @@ the wallets page:
 - **Staff, after the fact** — "Record a pool donation" on the wallets
   page logs a donation already collected outside the app (cash, a check,
   a sponsor) directly into the pool, with an optional note for your own
-  records. No payment happens in the app for this path — it's the same
-  "money already in hand, just record it" posture as a cash sale.
+  records and an optional donor email — capture one if you have it and
+  the donor will get the same close-out summary email as someone who
+  donated live online; leave it blank for a truly anonymous donation.
+  No payment happens in the app for this path — it's the same "money
+  already in hand, just record it" posture as a cash sale.
 
 Each wallet's "Pool assist used" column on the wallets table shows how
 much of a given student's $20 cap has been drawn on, so it's clear after
@@ -688,13 +693,14 @@ unspent individual wallet balances are.
 Once the fair closes, the wallets page's pool card switches from a
 balance/donation form to a permanent summary: how many students the
 pool helped, the total assistance given, and how much was added to the
-org's payout — the same numbers every donor who funded it live online
-gets emailed automatically, with a link to a printable summary page
-(`/fairs/<id>/wallet/pool-receipt`). Since the pool is shared, that
-summary is the fair's overall impact, not a breakdown of any one
-donor's specific contribution — donations recorded by staff (no email
-captured) aren't individually notified, same limitation as any other
-anonymous, in-person donation.
+org's payout — the same numbers every donor with an email on file gets
+emailed automatically (whether they donated live online or staff
+recorded their email alongside an offline donation), with a link to a
+printable summary page (`/fairs/<id>/wallet/pool-receipt`). Since the
+pool is shared, that summary is the fair's overall impact, not a
+breakdown of any one donor's specific contribution — a donation
+recorded with no email on file isn't individually notified, same
+limitation as any other anonymous, in-person donation.
 
 ### Fair status (`/admin/fairs/<id>/edit`)
 

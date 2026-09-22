@@ -133,6 +133,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     { data: rows, error: rowsError },
     { data: totals, error: totalsError },
     { data: wallets, error: walletsError },
+    { data: pool },
     { payout, payoutIsFinal, missingInventoryCost, missingInventoryUnits },
   ] = await Promise.all([
     supabase
@@ -148,6 +149,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
       .eq("fair_id", fairId)
       .eq("status", "completed"),
     supabase.from("student_wallets").select("donated_amount").eq("fair_id", fairId),
+    supabase.from("wallet_pools").select("swept_amount").eq("fair_id", fairId).maybeSingle(),
     getPayoutEstimate(fairId, supabase),
   ]);
 
@@ -174,12 +176,15 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     .reduce((sum, t) => sum + t.price_charged, 0);
 
   // Set once by close_wallets_for_fair() (migration 0022, extended by
-  // 0037/0046) when a wallet with unspent balance is closed out — it also
-  // posts a 1400-debit/2000-credit journal entry at that moment, so this
-  // money is already inside payoutDue/the payout above, unlike cash
-  // revenue. Broken out here just so it's visible where part of the
-  // payout actually came from.
-  const walletDonations = (wallets ?? []).reduce((sum, w) => sum + w.donated_amount, 0);
+  // 0037/0046/0059) when a wallet with unspent balance is closed out, or
+  // when the fair's wallet assistance pool has unused balance at close
+  // (migration 0059/0060) — both post a debit-liability/credit-2000
+  // journal entry at that moment, so this money is already inside
+  // payoutDue/the payout above, unlike cash revenue. Broken out here
+  // just so it's visible where part of the payout actually came from.
+  const walletDonations =
+    (wallets ?? []).reduce((sum, w) => sum + w.donated_amount, 0) +
+    Number(pool?.swept_amount ?? 0);
 
   return {
     sales,

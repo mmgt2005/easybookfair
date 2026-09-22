@@ -61,15 +61,15 @@ export async function closeWalletsForFair(fairId: string) {
     }
   }
 
-  // Notify every donor_stripe pool contributor with the fair's overall
-  // impact (migration 0060) — org_recorded donations have no captured
-  // email to notify. Best-effort, same posture as the loop above; skips
+  // Notify every pool contributor who left an email — either a
+  // donor_stripe funding or an org_recorded one where staff captured a
+  // donor email (migration 0061) — with the fair's overall impact
+  // (migration 0060). Best-effort, same posture as the loop above; skips
   // entirely if no donor left an email on file.
   const { data: poolDonors } = await supabase
     .from("wallet_pool_fundings")
     .select("donor_email")
     .eq("fair_id", fairId)
-    .eq("source", "donor_stripe")
     .not("donor_email", "is", null);
 
   const uniqueDonorEmails = [...new Set((poolDonors ?? []).map((d) => d.donor_email!))];
@@ -106,18 +106,22 @@ export async function closeWalletsForFair(fairId: string) {
 // sponsor) directly into this fair's shared wallet assistance pool
 // (record_pool_donation, migration 0059) — no Stripe payment involved,
 // same "money already in hand, just record it" posture as recording a
-// cash sale.
+// cash sale. Donor email is optional (migration 0061) — many in-person
+// donations really are anonymous — but capturing one when available lets
+// closeWalletsForFair notify this donor too, same as a live online one.
 export async function recordPoolDonation(fairId: string, formData: FormData) {
   await requireFairStaff(fairId);
   const supabase = await createClient();
 
   const amount = Number(formData.get("amount"));
   const note = String(formData.get("note") ?? "").trim() || null;
+  const donorEmail = String(formData.get("donor_email") ?? "").trim() || null;
 
   const { error } = await supabase.rpc("record_pool_donation", {
     p_fair_id: fairId,
     p_amount: amount,
     p_note: note,
+    p_donor_email: donorEmail,
   });
 
   revalidatePath(pagePath(fairId));

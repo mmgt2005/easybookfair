@@ -124,6 +124,7 @@ export default async function WalletsPage({
                 placeholder="Amount"
                 required
               />
+              <Input name="donor_email" type="email" placeholder="Donor email (optional)" />
               <Textarea name="note" placeholder="Note (optional) — e.g. bake sale proceeds" rows={2} />
               <Button type="submit" size="sm" variant="outline">
                 Record a pool donation
