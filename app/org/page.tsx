@@ -161,6 +161,12 @@ export default async function OrgDashboard() {
                     )}
                   </td>
                   <td className="flex flex-col gap-1 py-2 pr-4">
+                    <Link
+                      href={`/org/fairs/${fair.id}/inventory`}
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      Inventory →
+                    </Link>
                     {(fair.allow_in_person || fair.allow_cash) && (
                       <Link
                         href={`/org/fairs/${fair.id}/checkout`}
@@ -190,6 +196,12 @@ export default async function OrgDashboard() {
                       className="font-semibold text-accent-600 hover:underline"
                     >
                       Sales feed →
+                    </Link>
+                    <Link
+                      href={`/org/fairs/${fair.id}/payout-report`}
+                      className="font-semibold text-accent-600 hover:underline"
+                    >
+                      Payout report →
                     </Link>
                     {!fair.allow_in_person &&
                       !fair.allow_cash &&

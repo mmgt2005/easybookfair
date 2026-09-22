@@ -268,6 +268,12 @@ export default async function EditFairPage({
             <p className="text-xs text-neutral-500">
               Closed {new Date(settlement.closed_at).toLocaleString()}
             </p>
+            <Link
+              href={`/admin/fairs/${fair.id}/payout-report`}
+              className="text-sm font-semibold text-accent-600 hover:underline"
+            >
+              View full payout report →
+            </Link>
 
             <div className="mt-2 border-t border-neutral-100 pt-2">
               {settlement.net_payout > 0 &&

@@ -12,6 +12,20 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Org "fair setup package"** (`/org/fairs/<id>/inventory`): a read-only
+  page showing an org exactly what's been sent for their fair — an
+  inventory manifest, the admin's carton packing suggestion, and the
+  admin's suggested cash drawer float/denomination breakdown. Migration
+  `0058` adds an org-scoped read policy on `cash_drawer_setups` (the
+  manifest and packing suggestion were already org-readable).
+
+- **Payout report** (`/admin|org/fairs/<id>/payout-report`): a one-shot,
+  printable, fully itemized version of the sales feed's numbers — every
+  completed sale for the fair (not capped at the sales feed's 30 most
+  recent), plus the full revenue/cash/wallet-donations/payout breakdown,
+  live-estimated before a fair closes and final once it does. Meant for
+  actual payout record-keeping, unlike the live-polling sales feed.
+
 - **Cash drawer setup** (`/admin/fairs/<id>/allocations`): a "Cash drawer
   setup" card suggests a starting petty-cash float and a quarters/$1/$5/
   $10 denomination breakdown, computed from the fair's allocation

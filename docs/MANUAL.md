@@ -610,6 +610,25 @@ Once the fair is closed, this card relabels to **"Missing inventory
 charged"** and shows the real, final amount already netted into the
 payout above.
 
+### Payout report (`/admin/fairs/<id>/payout-report`)
+
+A one-shot, printable, fully itemized version of the sales feed's
+numbers — meant for actually keeping a payout record, not for watching
+sales land live. Unlike the sales feed (which polls and caps its
+itemized list at the 30 most recent sales), this page runs once and
+lists **every** completed sale for the fair, oldest first, alongside the
+same revenue/cash/wallet-donations/payout breakdown. Before the fair
+closes it's labeled "Live estimate — will finalize when the fair closes"
+(the same live numbers as the sales feed); once closed, it shows "Final
+settlement" and pulls in the complete locked-in breakdown (payout due,
+cash wholesale owed, equipment rental fee) from the settlement record.
+Click **Print / save as PDF** to keep a copy — same browser print
+pattern used elsewhere in the app (the wallet donation receipt, the
+marketing flyer). Also available to that fair's own org staff
+(`/org/fairs/<id>/payout-report`) for their own records. Reachable from
+the fair list's **Payout report** link, or from the Settlement card on
+the fair's edit page once it's closed.
+
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an
@@ -712,10 +731,23 @@ Lists your organization's fairs (with a shareable link to the public
 storefront and/or student-wallet page for each, if those options are
 enabled, plus a **Marketing toolkit** link) and your fair requests with
 their current status (pending, approved, declined — with the admin's note
-if declined). A **Run this fair** column links to whichever of
-Checkout/Pickup/Wallets apply to that fair's payment options, plus a
-**Sales feed** link that's always there. A separate **Event requests**
-table tracks any author reading/book signing requests you've submitted.
+if declined). A **Run this fair** column always starts with an
+**Inventory** link, then whichever of Checkout/Pickup/Wallets apply to
+that fair's payment options, plus **Sales feed** and **Payout report**
+links that are always there. A separate **Event requests** table tracks
+any author reading/book signing requests you've submitted.
+
+### Your fair setup package (`/org/fairs/<id>/inventory`)
+
+A read-only page showing exactly what an admin has sent for your fair:
+an inventory manifest (every allocated item, quantity, price, and
+SKU/ISBN, with a total-units/total-value line), the admin's carton
+packing suggestion (which box size, how many, what goes in each), and
+the admin's suggested starting cash drawer float and denomination
+breakdown. Nothing here is editable from your side — it's the same
+information the admin sees on their allocation screen, just framed as
+"what to expect and how to prep for it" rather than a place to change
+anything.
 
 ### Staff (`/org/staff`)
 
@@ -789,6 +821,12 @@ unsold stock isn't returned"** note appears underneath. That's not
 something you already owe — it only becomes real if that stock is still
 missing when the admin closes the fair, so returning unsold inventory
 before then is what keeps it at $0.
+
+For the full breakdown behind that number — every itemized sale, not
+just the last 30 shown on the live sales feed — see **Payout report**
+(`/org/fairs/<id>/payout-report`, next to your Sales feed link): a
+printable page you can save for your own records, live-estimated before
+close and final once the admin closes the fair.
 
 ### Marketing toolkit (`/org/fairs/<id>/marketing`)
 

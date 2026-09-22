@@ -102,6 +102,12 @@ export default async function FairsPage() {
                     Sales
                   </Link>
                   <Link
+                    href={`/admin/fairs/${fair.id}/payout-report`}
+                    className="font-semibold text-accent-600 hover:underline"
+                  >
+                    Payout report
+                  </Link>
+                  <Link
                     href={`/admin/fairs/${fair.id}/promotions`}
                     className="font-semibold text-accent-600 hover:underline"
                   >
