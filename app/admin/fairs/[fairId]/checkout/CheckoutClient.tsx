@@ -526,18 +526,16 @@ export function CheckoutClient({
                   <p className="text-neutral-600">
                     No match for &quot;{walletQuery}&quot; — create a wallet for this student?
                   </p>
-                  <div className="mt-2 flex gap-1">
+                  <div className="mt-2 flex flex-col gap-1">
                     <Input
                       placeholder="Grade (optional)"
                       value={newWalletGrade}
                       onChange={(e) => setNewWalletGrade(e.target.value)}
-                      className="w-28"
                     />
                     <Input
                       placeholder="Teacher (optional)"
                       value={newWalletTeacher}
                       onChange={(e) => setNewWalletTeacher(e.target.value)}
-                      className="flex-1"
                     />
                   </div>
                   <Button
