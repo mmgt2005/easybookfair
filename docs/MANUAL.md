@@ -590,6 +590,17 @@ Payable directly), so this card is purely informational — it exists so
 it's clear part of the payout came from donated wallet/pool balances,
 not book sales.
 
+A fifth card, **"Pool assistance given,"** shows how much of the wallet
+assistance pool has been drawn on to help students check out, and how
+many students it's helped — the same numbers behind "Pool assist used"
+on the wallets table (see "Wallet assistance pool" below). Unlike the
+"Wallet donations" card, this money is deliberately **not** part of the
+payout: it's an internal transfer from the pool's balance into a
+student's own wallet before checkout, so the resulting sale still posts
+as an ordinary wallet purchase and contributes to revenue the normal
+way. This card exists purely to show a donor's or org's impact, not to
+account for money still owed anywhere.
+
 A fifth card shows **the payout as of right now** — card/online margin
 owed, minus cash-sale wholesale cost owed, minus the equipment rental
 fee, computed live from the ledger rather than waiting for the fair to
@@ -624,6 +635,10 @@ closes it's labeled "Live estimate — will finalize when the fair closes"
 (the same live numbers as the sales feed); once closed, it shows "Final
 settlement" and pulls in the complete locked-in breakdown (payout due,
 cash wholesale owed, equipment rental fee) from the settlement record.
+Also lists pool assistance given (helped N students) when the wallet
+assistance pool has been drawn on — labeled explicitly as not part of
+the payout, same "informational only" framing as the sales feed's own
+card.
 Click **Print / save as PDF** to keep a copy — same browser print
 pattern used elsewhere in the app (the wallet donation receipt, the
 marketing flyer). Also available to that fair's own org staff

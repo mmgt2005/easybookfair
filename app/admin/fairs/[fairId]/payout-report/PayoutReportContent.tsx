@@ -96,6 +96,13 @@ export async function PayoutReportContent({ fairId }: { fairId: string }) {
           <p>Revenue: ${aggregate.totalRevenue.toFixed(2)}</p>
           <p>Cash collected (already in hand): ${aggregate.cashRevenue.toFixed(2)}</p>
           <p>Wallet donations (already in payout): ${aggregate.walletDonations.toFixed(2)}</p>
+          {aggregate.poolAssistanceGiven > 0 && (
+            <p>
+              Pool assistance given (not part of payout): $
+              {aggregate.poolAssistanceGiven.toFixed(2)} — helped {aggregate.studentsAssisted}{" "}
+              student{aggregate.studentsAssisted === 1 ? "" : "s"}
+            </p>
+          )}
           {settlementDetail && (
             <>
               <p>Payout due (card/online margin): ${settlementDetail.payout_due.toFixed(2)}</p>

@@ -12,6 +12,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **"Pool assistance given" visibility**: the sales feed and payout
+  report now show how much of the wallet assistance pool has been drawn
+  on to help students check out, and how many students it's helped —
+  a new card/line alongside "Wallet donations," but explicitly labeled
+  as *not* part of the payout, since pool assistance is an internal
+  liability transfer that lets a wallet sale post normally rather than
+  money the org receives. No schema change — reuses the existing
+  `pool_assistance_used` column per wallet.
+
 - **Donor email for org-recorded pool donations**: "Record a pool
   donation" (the offline/staff-recorded path on the wallets pages) now
   accepts an optional donor email, so those donors can also receive the

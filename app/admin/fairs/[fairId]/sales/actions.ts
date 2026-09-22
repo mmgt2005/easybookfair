@@ -17,6 +17,8 @@ export type RecentSales = {
   totalRevenue: number;
   cashRevenue: number;
   walletDonations: number;
+  poolAssistanceGiven: number;
+  studentsAssisted: number;
   payout: number;
   payoutIsFinal: boolean;
   missingInventoryCost: number;
@@ -148,7 +150,10 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
       .select("channel, price_charged")
       .eq("fair_id", fairId)
       .eq("status", "completed"),
-    supabase.from("student_wallets").select("donated_amount").eq("fair_id", fairId),
+    supabase
+      .from("student_wallets")
+      .select("donated_amount, pool_assistance_used")
+      .eq("fair_id", fairId),
     supabase.from("wallet_pools").select("swept_amount").eq("fair_id", fairId).maybeSingle(),
     getPayoutEstimate(fairId, supabase),
   ]);
@@ -186,12 +191,30 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     (wallets ?? []).reduce((sum, w) => sum + w.donated_amount, 0) +
     Number(pool?.swept_amount ?? 0);
 
+  // pool_assistance_used (migration 0059) is set once per checkout and
+  // never reset — closing a fair zeroes a wallet's balance but leaves this
+  // column alone, so summing it here reads the same whether the fair is
+  // still open or already closed, no payoutIsFinal branch needed (unlike
+  // walletDonations' swept_amount, this money never touches 2000/Org
+  // Payable at all — it's an internal 1450->1400 liability transfer that
+  // just lets an already-completed wallet sale post normally, so it's
+  // informational only and deliberately excluded from the payout figure).
+  const poolAssistanceGiven = (wallets ?? []).reduce(
+    (sum, w) => sum + Number(w.pool_assistance_used ?? 0),
+    0,
+  );
+  const studentsAssisted = (wallets ?? []).filter(
+    (w) => Number(w.pool_assistance_used ?? 0) > 0,
+  ).length;
+
   return {
     sales,
     totalUnits,
     totalRevenue,
     cashRevenue,
     walletDonations,
+    poolAssistanceGiven,
+    studentsAssisted,
     payout,
     payoutIsFinal,
     missingInventoryCost,
