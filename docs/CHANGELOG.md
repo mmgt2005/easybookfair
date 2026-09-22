@@ -23,6 +23,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **"Send payout"/"Create payment link" crashed the whole page on
+  failure**: both buttons were plain `<form action={...}>` submits with
+  no client-side error handling, so any thrown error (Stripe declining
+  the transfer, insufficient platform balance, a validation check like
+  "payouts aren't enabled yet") propagated all the way up to Next.js's
+  generic "Application error: a server-side exception has occurred"
+  screen instead of showing a useful message. Now client components
+  (`SendPayoutButton`/`CreatePaymentLinkButton`, mirroring the existing
+  "Move to return window"/"Close this fair" buttons) that catch the
+  error and display it inline.
+
 - **Cramped teacher field on checkout's create-wallet form**: Grade and
   Teacher were squeezed into one row (a fixed-width Grade input plus a
   flex-1 Teacher input) inside the checkout screen's narrow sidebar,

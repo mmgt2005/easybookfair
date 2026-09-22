@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { moveFairToReturnWindow, closeFair } from "../../actions";
+import {
+  moveFairToReturnWindow,
+  closeFair,
+  sendSettlementPayout,
+  createSettlementPaymentLink,
+} from "../../actions";
 import { Button } from "@/components/ui";
 
 // window.confirm needs client-side JS, same reasoning as
@@ -65,6 +70,71 @@ export function CloseFairButton({ fairId }: { fairId: string }) {
     <div className="flex flex-col gap-1">
       <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleClick}>
         {isPending ? "Closing…" : "Close this fair"}
+      </Button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+// A plain <form action={sendSettlementPayout}> would let any thrown error
+// (Stripe declining the transfer, insufficient platform balance, etc.)
+// propagate all the way up to Next.js's generic "Application error"
+// screen with no useful message — this catches it the same way the two
+// buttons above do, so a real failure shows inline instead of crashing
+// the whole page.
+export function SendPayoutButton({
+  fairId,
+  amount,
+  disabled,
+}: {
+  fairId: string;
+  amount: number;
+  disabled: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClick() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await sendSettlementPayout(fairId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to send payout");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button type="button" size="sm" disabled={disabled || isPending} onClick={handleClick}>
+        {isPending ? "Sending…" : `Send $${amount.toFixed(2)} payout via Stripe`}
+      </Button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+// Same reasoning as SendPayoutButton above.
+export function CreatePaymentLinkButton({ fairId, amount }: { fairId: string; amount: number }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClick() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await createSettlementPaymentLink(fairId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create payment link");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={handleClick}>
+        {isPending ? "Creating…" : `Create $${amount.toFixed(2)} payment link`}
       </Button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

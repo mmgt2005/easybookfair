@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { updateFair, createTerminalLocation, registerTerminalReader } from "../../actions";
 import {
-  updateFair,
-  createTerminalLocation,
-  registerTerminalReader,
-  sendSettlementPayout,
-  createSettlementPaymentLink,
-} from "../../actions";
-import { MoveToReturnWindowButton } from "./FairLifecycleButtons";
+  MoveToReturnWindowButton,
+  SendPayoutButton,
+  CreatePaymentLinkButton,
+} from "./FairLifecycleButtons";
 import { getStripe } from "@/lib/stripe";
 import { Badge, Button, Card, Field, Input, Select, statusTone } from "@/components/ui";
 
@@ -53,8 +51,6 @@ export default async function EditFairPage({
   const updateFairForFair = updateFair.bind(null, fairId);
   const createTerminalLocationForFair = createTerminalLocation.bind(null, fairId);
   const registerTerminalReaderForFair = registerTerminalReader.bind(null, fairId);
-  const sendSettlementPayoutForFair = sendSettlementPayout.bind(null, fairId);
-  const createSettlementPaymentLinkForFair = createSettlementPaymentLink.bind(null, fairId);
 
   const readers = fair.stripe_terminal_location_id
     ? (
@@ -317,15 +313,11 @@ export default async function EditFairPage({
                         Connect onboarding first.
                       </p>
                     ) : null}
-                    <form action={sendSettlementPayoutForFair}>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={!org?.stripe_connect_account_id || !org.stripe_payouts_enabled}
-                      >
-                        Send ${settlement.net_payout.toFixed(2)} payout via Stripe
-                      </Button>
-                    </form>
+                    <SendPayoutButton
+                      fairId={fair.id}
+                      amount={settlement.net_payout}
+                      disabled={!org?.stripe_connect_account_id || !org.stripe_payouts_enabled}
+                    />
                   </div>
                 ))}
 
@@ -351,11 +343,10 @@ export default async function EditFairPage({
                     )}
                   </div>
                 ) : (
-                  <form action={createSettlementPaymentLinkForFair}>
-                    <Button type="submit" size="sm" variant="outline">
-                      Create ${Math.abs(settlement.net_payout).toFixed(2)} payment link
-                    </Button>
-                  </form>
+                  <CreatePaymentLinkButton
+                    fairId={fair.id}
+                    amount={Math.abs(settlement.net_payout)}
+                  />
                 ))}
             </div>
           </div>
