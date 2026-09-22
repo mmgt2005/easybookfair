@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { updateOrganization, startStripeOnboarding } from "../../actions";
+import { updateOrganization, startStripeOnboarding, refreshStripeAccountStatus } from "../../actions";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 
 export default async function EditOrganizationPage({
@@ -27,6 +27,7 @@ export default async function EditOrganizationPage({
 
   const updateOrganizationForOrg = updateOrganization.bind(null, id);
   const startStripeOnboardingForOrg = startStripeOnboarding.bind(null, id);
+  const refreshStripeAccountStatusForOrg = refreshStripeAccountStatus.bind(null, id);
   const fullyOnboarded = org.stripe_charges_enabled && org.stripe_payouts_enabled;
 
   return (
@@ -45,6 +46,11 @@ export default async function EditOrganizationPage({
       {stripeStatus === "refresh" && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
           That onboarding link expired — click the button below to get a new one.
+        </p>
+      )}
+      {stripeStatus === "refreshed" && (
+        <p className="rounded-xl bg-accent-50 px-3 py-2 text-sm text-accent-700">
+          Refreshed — charges/payouts status above now reflects Stripe&apos;s current record.
         </p>
       )}
 
@@ -90,18 +96,30 @@ export default async function EditOrganizationPage({
           </div>
         </div>
         <p className="mt-2 text-xs text-neutral-500">
-          These only ever get set by Stripe&apos;s own webhook once onboarding actually
-          confirms them, never by hand — not just because the org clicked the link.
+          These normally get set by Stripe&apos;s own webhook once onboarding actually
+          confirms them, never by hand — not just because the org clicked the link. If
+          the webhook hasn&apos;t reached this app yet (not configured, or still catching
+          up), use &quot;Refresh from Stripe&quot; below to check directly instead of
+          waiting.
         </p>
-        <form action={startStripeOnboardingForOrg} className="mt-3">
-          <Button type="submit" size="sm" variant="secondary">
-            {fullyOnboarded
-              ? "Update Stripe details"
-              : org.stripe_connect_account_id
-                ? "Continue Stripe onboarding"
-                : "Start Stripe onboarding"}
-          </Button>
-        </form>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <form action={startStripeOnboardingForOrg}>
+            <Button type="submit" size="sm" variant="secondary">
+              {fullyOnboarded
+                ? "Update Stripe details"
+                : org.stripe_connect_account_id
+                  ? "Continue Stripe onboarding"
+                  : "Start Stripe onboarding"}
+            </Button>
+          </form>
+          {org.stripe_connect_account_id && (
+            <form action={refreshStripeAccountStatusForOrg}>
+              <Button type="submit" size="sm" variant="outline">
+                Refresh from Stripe
+              </Button>
+            </form>
+          )}
+        </div>
       </Card>
     </div>
   );

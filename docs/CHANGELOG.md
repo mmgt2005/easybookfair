@@ -12,6 +12,34 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **"Refresh from Stripe" button** on `/admin/organizations/<id>/edit`:
+  fetches a Connect account's live `charges_enabled`/`payouts_enabled`
+  status directly from Stripe's API and writes it, as a fallback for
+  when the `account.updated` webhook hasn't reached this app (not
+  configured, wrong signing secret, or still catching up) — previously
+  those fields could only ever be set by that webhook, so a misconfigured
+  or unreachable endpoint left the org edit page showing "not enabled"
+  indefinitely no matter how many times onboarding was completed.
+
+### Fixed
+
+- **Cramped teacher field on checkout's create-wallet form**: Grade and
+  Teacher were squeezed into one row (a fixed-width Grade input plus a
+  flex-1 Teacher input) inside the checkout screen's narrow sidebar,
+  leaving too little room to type a teacher's name. Stacked instead so
+  each gets the sidebar's full width — affects both admin and org
+  checkout, which share the same component.
+
+- **Move to return window button appeared to do nothing**: the Status
+  `<select>` on the fair edit page is an uncontrolled element using
+  `defaultValue={fair.status}`, which React only applies on initial
+  mount — after the button's server action succeeded and revalidated
+  the page, the dropdown kept showing the old status. Fixed by keying
+  the select on `fair.status` so it remounts when the value changes.
+  Also hardened `moveFairToReturnWindow()` to check that its update
+  actually matched a row (an RLS denial from a stale session, or the
+  fair already being closed, previously failed silently with no error).
+
 - **Automatic fair status + storefront/wallet gating**: the daily cron
   (`/api/cron/transition-fairs`) now also moves a `scheduled` fair to
   `active` on its own start date, in addition to the already-existing

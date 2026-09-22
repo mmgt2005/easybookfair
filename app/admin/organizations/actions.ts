@@ -137,3 +137,55 @@ export async function startStripeOnboarding(orgId: string) {
 
   redirect(accountLinkUrl);
 }
+
+// Fallback for when the account.updated webhook hasn't reached this app —
+// not configured on the Stripe dashboard, still catching up, or being
+// tested without the Stripe CLI forwarding events locally (see "Stripe
+// setup" in README.md). Fetches the account's live status directly from
+// Stripe's API and writes the exact same two fields the webhook itself
+// would, so the org edit page reflects reality even if the webhook never
+// fires — no amount of re-clicking "Start Stripe onboarding" updates
+// these otherwise, since that button never sets them itself either.
+export async function refreshStripeAccountStatus(orgId: string) {
+  const supabase = await createClient();
+
+  const { data: org, error: fetchError } = await supabase
+    .from("organizations")
+    .select("stripe_connect_account_id")
+    .eq("id", orgId)
+    .single();
+
+  if (fetchError || !org?.stripe_connect_account_id) {
+    redirect(
+      editUrl(orgId, `error=${encodeURIComponent("Start Stripe onboarding first")}`),
+    );
+    return;
+  }
+
+  // redirect() throws internally, and a generic catch below would swallow
+  // that just like any other error — same reason startStripeOnboarding()
+  // above only computes a target string inside try/catch and calls
+  // redirect() once, after it, rather than from within either branch.
+  let redirectTarget: string;
+  try {
+    const stripe = getStripe();
+    const account = await stripe.accounts.retrieve(org.stripe_connect_account_id);
+
+    const { error: updateError } = await supabase
+      .from("organizations")
+      .update({
+        stripe_charges_enabled: account.charges_enabled ?? false,
+        stripe_payouts_enabled: account.payouts_enabled ?? false,
+      })
+      .eq("id", orgId);
+    if (updateError) throw new Error(updateError.message);
+
+    redirectTarget = editUrl(orgId, "stripe=refreshed");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to refresh from Stripe";
+    redirectTarget = editUrl(orgId, `error=${encodeURIComponent(message)}`);
+  }
+
+  revalidatePath(editUrl(orgId));
+  redirect(redirectTarget);
+}

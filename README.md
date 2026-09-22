@@ -314,7 +314,12 @@ code (everything that needs to be unit-tested).
    onboarding" creates a Connect Express account and sends you to Stripe's
    hosted flow. `charges_enabled`/`payouts_enabled` only update once the
    `account.updated` webhook actually confirms them — not just from
-   clicking through the link.
+   clicking through the link. If they still show "not enabled" after
+   completing onboarding, click **"Refresh from Stripe"** on the same
+   card — it fetches the account's live status directly from Stripe's API
+   instead of waiting on the webhook, which is the fix when the webhook
+   endpoint isn't reachable yet (not configured, wrong signing secret, or
+   `account.updated` isn't in its subscribed events).
 4. In-person checkout (physical reader): on a fair's Edit page
    (`/admin/fairs/<id>/edit`), the "Terminal setup" card creates a Stripe
    Terminal Location for that fair's venue, then registers a physical
