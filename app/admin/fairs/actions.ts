@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { sendSettlementPayoutEmail, sendSettlementPaymentLinkEmail } from "@/lib/email";
@@ -183,9 +184,20 @@ export async function closeFair(fairId: string): Promise<ActionResult> {
 // scale, but a double-click before the first response lands could in
 // principle send twice — the disabled-once-sent button is the real guard
 // here, not a network-level safeguard.
+//
+// Uses the service-role client, not the regular RLS-scoped one:
+// settlements only ever had a SELECT policy (migration 0005 — "read-only
+// for clients; only created by close-fair server-side logic"), so the
+// .update() below that records stripe_transfer_id was previously
+// silently matching zero rows under RLS every single time — no error,
+// but the settlement was never actually marked paid, meaning the guard
+// above ("already sent") never engaged and a re-click would have fired a
+// second real Stripe transfer. requireAdmin() is the real authorization
+// boundary here, same reasoning close_fair()'s own SECURITY DEFINER RPC
+// already relies on.
 export async function sendSettlementPayout(fairId: string): Promise<ActionResult> {
   await requireAdmin();
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: settlement, error: settlementError } = await supabase
     .from("settlements")
@@ -274,9 +286,13 @@ export async function sendSettlementPayout(fairId: string): Promise<ActionResult
 // Links API needs an actual Price object, not an inline amount (unlike
 // Checkout Sessions) — prices.create() with product_data makes one on
 // the fly since the amount is different for every settlement.
+//
+// Service-role client — same reasoning as sendSettlementPayout above:
+// settlements has no client-facing UPDATE policy, only SELECT, so the
+// regular RLS-scoped client would silently no-op this write too.
 export async function createSettlementPaymentLink(fairId: string): Promise<ActionResult> {
   await requireAdmin();
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: settlement, error: settlementError } = await supabase
     .from("settlements")

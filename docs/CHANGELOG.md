@@ -23,6 +23,20 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **"Send payout"/"Create payment link" silently failed to record the
+  result, even on success**: `settlements` has only ever had a SELECT
+  RLS policy (migration 0005 — "read-only for clients; only created by
+  close-fair server-side logic"), so the `.update()` writing
+  `stripe_transfer_id`/`stripe_payment_link_id` back after a real Stripe
+  transfer or payment link was created ran through the regular RLS-scoped
+  client and silently matched zero rows — no error, but the settlement
+  was never actually marked paid. That meant the "already sent" guard
+  never engaged, so the button stayed active and a re-click would have
+  created a **second real Stripe transfer** for the same settlement.
+  `sendSettlementPayout`/`createSettlementPaymentLink` now use the
+  service-role client for this write, matching how the Stripe webhook
+  already writes to `settlements` elsewhere.
+
 - **Fair-lifecycle buttons still showed a generic redacted error instead
   of the real message**: catching a thrown Server Action error client-side
   (the previous fix, below) turned out not to be enough — Next.js redacts
