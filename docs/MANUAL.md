@@ -685,6 +685,17 @@ the fact which students needed help and how much. Any pool balance left
 unused when the fair closes is swept into the org's payout the same way
 unspent individual wallet balances are.
 
+Once the fair closes, the wallets page's pool card switches from a
+balance/donation form to a permanent summary: how many students the
+pool helped, the total assistance given, and how much was added to the
+org's payout — the same numbers every donor who funded it live online
+gets emailed automatically, with a link to a printable summary page
+(`/fairs/<id>/wallet/pool-receipt`). Since the pool is shared, that
+summary is the fair's overall impact, not a breakdown of any one
+donor's specific contribution — donations recorded by staff (no email
+captured) aren't individually notified, same limitation as any other
+anonymous, in-person donation.
+
 ### Fair status (`/admin/fairs/<id>/edit`)
 
 Scheduled → Active → Return window → Closed. The first three are a plain
@@ -914,6 +925,11 @@ pool"** — if you'd rather give without naming a specific student. That
 money isn't tied to anyone; it automatically helps cover part of a
 purchase for any student at the fair whose own wallet doesn't have
 enough, up to a per-student limit, so it doesn't all go to one person.
+Once the fair closes, you'll get an email with the fair's overall
+impact — how many students it helped and how much was left over for the
+school — and a link to view or print that summary. Since it's a shared
+pool, this reflects the fair's total impact, not a breakdown of your
+own specific contribution.
 
 Promotions/bundle discounts, when the org running the fair has set any
 up, apply **automatically** at checkout — you don't enter a code or

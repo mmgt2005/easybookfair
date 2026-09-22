@@ -12,6 +12,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Pool donor close-out summary**: once a fair closes, every donor who
+  funded the wallet assistance pool online is emailed the fair's overall
+  impact — how many students it helped, the total assistance given, and
+  how much was left over and added to the school's payout — with a link
+  to a printable summary page (`/fairs/<id>/wallet/pool-receipt`,
+  mirroring the existing wallet donation receipt). Since the pool is
+  shared, this is the fair's aggregate impact, not a per-donor
+  breakdown. The wallets pages also switch from the live balance/
+  donation form to this same permanent summary once closed. Migration
+  `0060`.
+
 - **Wallet assistance pool**: a shared, fair-level fund that
   automatically covers part of a checkout when a student's own wallet
   balance is below $10 (including a brand-new $0 wallet), up to $20 per

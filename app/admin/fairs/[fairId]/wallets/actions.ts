@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireFairStaff } from "@/lib/auth";
-import { sendWalletDonationReceiptEmail, siteUrl } from "@/lib/email";
+import { sendWalletDonationReceiptEmail, sendPoolCloseoutSummaryEmail, siteUrl } from "@/lib/email";
 
 function pagePath(fairId: string) {
   return `/admin/fairs/${fairId}/wallets`;
@@ -58,6 +58,44 @@ export async function closeWalletsForFair(fairId: string) {
       });
     } catch (emailError) {
       console.error("Failed to send wallet donation receipt email", emailError);
+    }
+  }
+
+  // Notify every donor_stripe pool contributor with the fair's overall
+  // impact (migration 0060) — org_recorded donations have no captured
+  // email to notify. Best-effort, same posture as the loop above; skips
+  // entirely if no donor left an email on file.
+  const { data: poolDonors } = await supabase
+    .from("wallet_pool_fundings")
+    .select("donor_email")
+    .eq("fair_id", fairId)
+    .eq("source", "donor_stripe")
+    .not("donor_email", "is", null);
+
+  const uniqueDonorEmails = [...new Set((poolDonors ?? []).map((d) => d.donor_email!))];
+
+  if (uniqueDonorEmails.length > 0 && fair) {
+    const { data: poolSummary } = await supabase
+      .from("wallet_pools")
+      .select("students_helped_count, total_assisted, swept_amount")
+      .eq("fair_id", fairId)
+      .maybeSingle();
+
+    if (poolSummary) {
+      for (const email of uniqueDonorEmails) {
+        try {
+          await sendPoolCloseoutSummaryEmail({
+            to: email,
+            fairName: fair.name,
+            studentsHelped: poolSummary.students_helped_count ?? 0,
+            totalAssisted: Number(poolSummary.total_assisted ?? 0),
+            sweptAmount: Number(poolSummary.swept_amount ?? 0),
+            receiptUrl: `${siteUrl()}/fairs/${fairId}/wallet/pool-receipt`,
+          });
+        } catch (emailError) {
+          console.error("Failed to send pool closeout summary email", emailError);
+        }
+      }
     }
   }
 

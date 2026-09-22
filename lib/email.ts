@@ -153,6 +153,38 @@ export async function sendWalletDonationReceiptEmail(params: {
   });
 }
 
+// Sent to every donor_stripe pool contributor once close_wallets_for_fair
+// snapshots the pool's final impact (migration 0060) — org_recorded
+// donations have no captured email, so only this path can be notified.
+// Deliberately reports the fair-wide total, not a per-donor breakdown —
+// see pool_donation_summary()'s own comment for why that's the honest
+// number for a shared, pooled fund.
+export async function sendPoolCloseoutSummaryEmail(params: {
+  to: string;
+  fairName: string;
+  studentsHelped: number;
+  totalAssisted: number;
+  sweptAmount: number;
+  receiptUrl: string;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Your donation's impact — ${params.fairName}`,
+    html: `
+      <p>Thanks to donations to the wallet assistance pool at
+      <strong>${params.fairName}</strong>, <strong>${params.studentsHelped}</strong>
+      student(s) were able to complete a purchase they otherwise couldn't afford,
+      totaling <strong>$${params.totalAssisted.toFixed(2)}</strong> in assistance.</p>
+      <p>The remaining <strong>$${params.sweptAmount.toFixed(2)}</strong> was added to
+      the school's payout.</p>
+      <p>This is a shared, pooled fund — this summary reflects the fair's total
+      impact, not a breakdown of your specific contribution.</p>
+      <p><a href="${params.receiptUrl}">View this summary online</a></p>
+    `,
+  });
+}
+
 // Sent after an admin sends a settlement payout via Stripe Transfer
 // (app/admin/fairs/actions.ts, sendSettlementPayout) — a receipt, not a
 // notice they need to act on (unlike the payment-link email below).
