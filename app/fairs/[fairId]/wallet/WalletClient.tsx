@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { getStripeClient } from "@/lib/stripeClient";
 import { createWalletFunding, createPoolFunding } from "./actions";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Honeypot, Input, TurnstileWidget } from "@/components/ui";
 
 export function WalletClient({
   fairId,
@@ -22,16 +22,32 @@ export function WalletClient({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    // Read directly from the form — createWalletFunding/createPoolFunding
+    // are called as plain function calls (they need to return a
+    // clientSecret), not via a Server Action's action prop, so there's no
+    // FormData for the server to read a hidden field from itself; the
+    // Turnstile token is captured the same way, via onVerify.
+    const honeypot = String(new FormData(e.currentTarget).get("company") ?? "");
     setSubmitting(true);
     try {
       const result =
         mode === "student"
-          ? await createWalletFunding(fairId, studentName, grade, teacher, Number(amount), parentEmail)
-          : await createPoolFunding(fairId, Number(amount), parentEmail);
+          ? await createWalletFunding(
+              fairId,
+              studentName,
+              grade,
+              teacher,
+              Number(amount),
+              parentEmail,
+              turnstileToken,
+              honeypot,
+            )
+          : await createPoolFunding(fairId, Number(amount), parentEmail, turnstileToken, honeypot);
       setClientSecret(result.clientSecret);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -126,6 +142,8 @@ export function WalletClient({
           </Button>
         ))}
       </div>
+      <Honeypot />
+      <TurnstileWidget onVerify={setTurnstileToken} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={submitting}>
         {submitting ? "Preparing…" : "Continue to payment"}

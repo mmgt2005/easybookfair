@@ -3,7 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewAsAuthorId } from "@/lib/viewAs";
 import { submitAuthorSubmission } from "./actions";
 import { PriceInput } from "./PriceInput";
-import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Field,
+  Honeypot,
+  Input,
+  PageHeader,
+  Select,
+  Textarea,
+  TurnstileWidget,
+} from "@/components/ui";
 
 export default async function AuthorSubmitPage({
   searchParams,
@@ -122,6 +132,17 @@ export default async function AuthorSubmitPage({
           </Field>
 
           <PriceInput />
+
+          {/* Only for a genuinely anonymous public submission — a
+              signed-in author (or an admin viewing as one) submitting a
+              follow-up item is already authenticated, so bot-checking
+              them adds friction with no benefit. */}
+          {!user && (
+            <>
+              <Honeypot />
+              <TurnstileWidget />
+            </>
+          )}
 
           <Button type="submit">Submit for review</Button>
         </form>

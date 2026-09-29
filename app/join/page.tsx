@@ -1,5 +1,14 @@
 import { submitOrgSignup } from "./actions";
-import { Button, Card, Field, Input, PageHeader, Textarea } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Field,
+  Honeypot,
+  Input,
+  PageHeader,
+  Textarea,
+  TurnstileWidget,
+} from "@/components/ui";
 
 export default async function JoinPage({
   searchParams,
@@ -48,6 +57,8 @@ export default async function JoinPage({
             />
           </Field>
 
+          <Honeypot />
+          <TurnstileWidget />
           <Button type="submit">Submit</Button>
         </form>
       </Card>

@@ -377,6 +377,15 @@ code (everything that needs to be unit-tested).
    the org's dashboard will never flip to "✅ Paid" even after the org
    pays. `transfer.reversed` (also step 2) catches the rare case of a
    transfer later being clawed back.
+10. Anti-spam on public no-login forms (org signup, author submission,
+    guest checkout, wallet/pool donations): a Cloudflare Turnstile widget
+    (free — get a site/secret key pair from
+    [dash.cloudflare.com/?to=/:account/turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)
+    for `NEXT_PUBLIC_TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`), a
+    disposable-email-domain blocklist, and a honeypot field
+    (`lib/spamGuard.ts`). Optional: without `TURNSTILE_SECRET_KEY` set,
+    bot-check verification is skipped (fails open, same posture as
+    `RESEND_API_KEY`) — the other two layers still apply.
 
 ## Deploying
 
@@ -384,10 +393,10 @@ Also deployable to Vercel: import the repo, set the **Production Branch**
 (Project Settings → Git) to `claude/new-session-dm851x` since that's where
 this project's work lives, and add the variables from `.env.example` under
 Project Settings → Environment Variables — `NEXT_PUBLIC_*` ones (including
-`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) can use the "Config" type,
-`SUPABASE_SERVICE_ROLE_KEY`/`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/
-`RESEND_API_KEY` should stay "Secret". Every push to that branch triggers a
-new deployment automatically.
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`/`NEXT_PUBLIC_TURNSTILE_SITE_KEY`) can
+use the "Config" type, `SUPABASE_SERVICE_ROLE_KEY`/`STRIPE_SECRET_KEY`/
+`STRIPE_WEBHOOK_SECRET`/`RESEND_API_KEY`/`TURNSTILE_SECRET_KEY` should stay
+"Secret". Every push to that branch triggers a new deployment automatically.
 
 Set `CRON_SECRET` (any random string, e.g. `openssl rand -hex 32`) too —
 `vercel.json` registers a daily cron job (`/api/cron/transition-fairs`,

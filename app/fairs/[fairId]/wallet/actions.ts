@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getStripe } from "@/lib/stripe";
 import { isPlatformAdmin } from "@/lib/auth";
 import { fairAllowsWalletFunding } from "@/lib/fairAccess";
+import { checkForSpam } from "@/lib/spamGuard";
 
 // Public, guest funding flow — no buyer login exists. Re-checks the
 // org.is_school gate server-side (not just hiding the UI), since a client
@@ -15,6 +16,8 @@ export async function createWalletFunding(
   teacher: string,
   amount: number,
   parentEmail: string,
+  turnstileToken: string | null,
+  honeypot: string,
 ) {
   if (!studentName.trim()) {
     throw new Error("Student name is required");
@@ -24,6 +27,11 @@ export async function createWalletFunding(
   }
   if (!parentEmail.trim()) {
     throw new Error("Email is required");
+  }
+
+  const spamCheck = await checkForSpam({ turnstileToken, email: parentEmail, honeypot });
+  if (spamCheck.blocked) {
+    throw new Error(spamCheck.silent ? "Something went wrong" : spamCheck.message);
   }
 
   const service = createServiceClient();
@@ -121,12 +129,23 @@ export async function createWalletFunding(
 // this money isn't earmarked for one named student — it funds the fair's
 // shared wallet assistance pool (migration 0059), which the checkout
 // flow draws from automatically for any qualifying student.
-export async function createPoolFunding(fairId: string, amount: number, donorEmail: string) {
+export async function createPoolFunding(
+  fairId: string,
+  amount: number,
+  donorEmail: string,
+  turnstileToken: string | null,
+  honeypot: string,
+) {
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Amount must be positive");
   }
   if (!donorEmail.trim()) {
     throw new Error("Email is required");
+  }
+
+  const spamCheck = await checkForSpam({ turnstileToken, email: donorEmail, honeypot });
+  if (spamCheck.blocked) {
+    throw new Error(spamCheck.silent ? "Something went wrong" : spamCheck.message);
   }
 
   const service = createServiceClient();

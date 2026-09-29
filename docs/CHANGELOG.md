@@ -12,6 +12,21 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Anti-spam on public no-login forms**: org signup (`/join`), author
+  submission (`/author/submit`), guest checkout, and wallet/pool donations
+  now share a common spam gate (`lib/spamGuard.ts`) combining three
+  independent, best-effort layers — a Cloudflare Turnstile bot-check
+  widget (optional; skipped entirely, failing open, if
+  `TURNSTILE_SECRET_KEY` isn't configured, same posture as
+  `RESEND_API_KEY`), a known-disposable-email-domain blocklist (no
+  external API), and a honeypot field (a bot that fills in every field
+  trips it; a real visitor never sees it). A tripped honeypot fails
+  silently — the submitter is routed to the same success outcome a real
+  submission would reach, rather than being told a trap exists. Author
+  submission's check only applies to genuinely anonymous submitters — a
+  signed-in author (or an admin viewing as one) is already authenticated
+  and skips it, matching the page's own choice to hide the widgets for
+  them.
 - **Manual flat sales tax per fair**: an org (or admin) can set an
   optional sales tax rate on a fair's edit page, applied uniformly across
   all four sale channels (online, in-person, cash, wallet) — a wallet is

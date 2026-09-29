@@ -6,7 +6,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { getStripeClient } from "@/lib/stripeClient";
 import { createGuestCheckout } from "./actions";
 import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
-import { Button, Card, Input, Select } from "@/components/ui";
+import { Button, Card, Honeypot, Input, Select, TurnstileWidget } from "@/components/ui";
 
 type Item = {
   catalog_item_id: string;
@@ -44,6 +44,7 @@ export function StorefrontClient({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const categories = useMemo(
     () => Array.from(new Set(items.map((i) => i.category).filter((c): c is string => !!c))).sort(),
@@ -111,7 +112,7 @@ export function StorefrontClient({
     });
   }
 
-  async function handleCheckout(e: FormEvent) {
+  async function handleCheckout(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const lines = Object.entries(cart).map(([catalog_item_id, quantity]) => ({
@@ -122,9 +123,22 @@ export function StorefrontClient({
       setError("Your cart is empty");
       return;
     }
+    // Read the honeypot straight from the form — this <form> isn't
+    // submitted via a Server Action's action prop (createGuestCheckout is
+    // called directly, since it needs to return a clientSecret), so there's
+    // no FormData Next.js hands the action itself; the Turnstile token is
+    // captured separately via onVerify since it has no form field to read.
+    const honeypot = String(new FormData(e.currentTarget).get("company") ?? "");
     setSubmitting(true);
     try {
-      const result = await createGuestCheckout(fairId, lines, buyerName, buyerEmail);
+      const result = await createGuestCheckout(
+        fairId,
+        lines,
+        buyerName,
+        buyerEmail,
+        turnstileToken,
+        honeypot,
+      );
       setCheckout(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -270,6 +284,8 @@ export function StorefrontClient({
             onChange={(e) => setBuyerEmail(e.target.value)}
             required
           />
+          <Honeypot />
+          <TurnstileWidget onVerify={setTurnstileToken} />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={submitting || total <= 0}>
             {submitting ? "Preparing checkout…" : `Pay $${total.toFixed(2)}`}

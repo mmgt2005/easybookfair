@@ -1012,10 +1012,20 @@ Promotions/bundle discounts, when the org running the fair has set any
 up, apply **automatically** at checkout — you don't enter a code or
 choose anything, the discount is just reflected in your total.
 
+Checkout, wallet funding, and pool donations all run a lightweight,
+automatic bot/spam check (a background verification widget plus a check
+against known disposable/temp-mail addresses) — most buyers never notice
+it. If you see "Verification failed" or a "please use a non-disposable
+email address" message, try again, or use a normal (non-temp-mail) email
+address.
+
 ## Author guide
 
 Submit a book or piece of merchandise for EasyBookFair to carry at
-`/author/submit` — no account needed the first time. Give your name,
+`/author/submit` — no account needed the first time (a first-time,
+anonymous submission runs the same lightweight bot/spam check described
+in the Buyer guide above; an already-signed-in author skips it). Give
+your name,
 email, an optional phone number (a second way for an admin to reach you,
 e.g. about scheduling a reading or signing), a title, and a **suggested
 retail price**; the page shows you the

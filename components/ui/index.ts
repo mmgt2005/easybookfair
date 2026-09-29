@@ -8,3 +8,5 @@ export { PageHeader } from "./PageHeader";
 export { Field } from "./Field";
 export { CopyButton } from "./CopyButton";
 export { PrintButton } from "./PrintButton";
+export { TurnstileWidget } from "./TurnstileWidget";
+export { Honeypot } from "./Honeypot";

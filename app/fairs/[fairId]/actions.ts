@@ -9,6 +9,7 @@ import {
 } from "@/lib/promotions";
 import { isPlatformAdmin } from "@/lib/auth";
 import { fairAllowsStorefront } from "@/lib/fairAccess";
+import { checkForSpam } from "@/lib/spamGuard";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -27,12 +28,22 @@ export async function createGuestCheckout(
   cart: CartLine[],
   buyerName: string,
   buyerEmail: string,
+  turnstileToken: string | null,
+  honeypot: string,
 ) {
   if (!cart.length) {
     throw new Error("Cart is empty");
   }
   if (!buyerName.trim() || !buyerEmail.trim()) {
     throw new Error("Name and email are required");
+  }
+
+  const spamCheck = await checkForSpam({ turnstileToken, email: buyerEmail, honeypot });
+  if (spamCheck.blocked) {
+    // No "silent success" concept for a function call that must return a
+    // clientSecret — a generic error is the closest equivalent, matching
+    // lib/spamGuard.ts's own guidance for a programmatic (non-form) caller.
+    throw new Error(spamCheck.silent ? "Something went wrong" : spamCheck.message);
   }
 
   const service = createServiceClient();

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { checkForSpam } from "@/lib/spamGuard";
 
 // Public — no login required, same trust model as
 // app/author/submit/actions.ts: anyone can submit, an admin reviews every
@@ -19,6 +20,18 @@ export async function submitOrgSignup(formData: FormData) {
     redirect(
       `/join?error=${encodeURIComponent("Organization name, contact name, and contact email are required")}`,
     );
+  }
+
+  const spamCheck = await checkForSpam({
+    turnstileToken: formData.get("cf-turnstile-response") as string | null,
+    email: contactEmail,
+    honeypot: formData.get("company") as string | null,
+  });
+  if (spamCheck.blocked) {
+    if (spamCheck.silent) {
+      redirect("/join?success=1");
+    }
+    redirect(`/join?error=${encodeURIComponent(spamCheck.message)}`);
   }
 
   const { error } = await supabase.from("org_signups").insert({

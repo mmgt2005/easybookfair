@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewAsAuthorId } from "@/lib/viewAs";
+import { checkForSpam } from "@/lib/spamGuard";
 
 // Public — no login required. author_user_id is derived here, server-side
 // — never trusted from a hidden form field — since migration 0041 added
@@ -79,6 +80,26 @@ export async function submitAuthorSubmission(formData: FormData) {
         "Name, email, title, a positive suggested price, front cover, back cover, and interior PDF are all required",
       )}`,
     );
+  }
+
+  // Gated on the same condition the page uses to decide whether to render
+  // the widgets (!user, not !authorUserId) — a signed-in user who is
+  // neither an admin viewing-as nor a resolved author would still have
+  // authorUserId === null, but the page already hid the Turnstile/honeypot
+  // fields for them since they're authenticated. Enforcing on !authorUserId
+  // here would demand a token that was never shown to them.
+  if (!user) {
+    const spamCheck = await checkForSpam({
+      turnstileToken: formData.get("cf-turnstile-response") as string | null,
+      email: authorEmail,
+      honeypot: formData.get("company") as string | null,
+    });
+    if (spamCheck.blocked) {
+      if (spamCheck.silent) {
+        redirect("/author/submit?success=1");
+      }
+      redirect(`/author/submit?error=${encodeURIComponent(spamCheck.message)}`);
+    }
   }
 
   async function uploadSubmissionFile(fieldName: string, label: string): Promise<string | null> {
