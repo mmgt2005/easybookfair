@@ -12,6 +12,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Org staff can now set their own fair's sales tax rate** from a new
+  `/org/fairs/<id>/sales-tax` screen — previously admin-only
+  (`/admin/fairs/<id>/edit`), with no org-side fair-editing screen at
+  all. Reuses the same state-picker + county/city rate fields as the
+  admin edit page, wired to a new security-definer RPC,
+  `set_fair_sales_tax()` (migration `0067`), since `fairs` has no
+  org-staff UPDATE policy — mirrors `set_fundraiser_goal()`'s exact
+  reasoning. Any org staff member can set it, not just an org admin.
 - **Org shipping address**: the public `/join` signup form now collects a
   full shipping address (Attn contact name/phone, street address, city,
   state, ZIP, country) so admins know where to send inventory — carried

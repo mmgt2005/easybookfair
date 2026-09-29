@@ -185,6 +185,38 @@ export async function updateFundraiserGoal(
   return {};
 }
 
+// The admin edit page above still writes sales_tax_pct directly (it
+// computes state base + county + city itself before the big single
+// .update() call) — this is a separate path just for org staff, who have
+// no fair-editing screen at all otherwise. fairs has no org-staff UPDATE
+// policy (only fairs_admin_write, migration 0005), so this goes through
+// set_fair_sales_tax() (migration 0067), a security definer RPC gated by
+// app.can_operate_fair() — same reasoning as updateFundraiserGoal above.
+export async function updateFairSalesTax(
+  fairId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const taxState = String(formData.get("tax_state") ?? "").trim() || null;
+  const taxCountyPctRaw = formData.get("tax_county_pct");
+  const taxCityPctRaw = formData.get("tax_city_pct");
+  const taxCountyPct = taxCountyPctRaw ? Number(taxCountyPctRaw) : null;
+  const taxCityPct = taxCityPctRaw ? Number(taxCityPctRaw) : null;
+
+  const { error } = await supabase.rpc("set_fair_sales_tax", {
+    p_fair_id: fairId,
+    p_tax_state: taxState,
+    p_tax_county_pct: taxCountyPct,
+    p_tax_city_pct: taxCityPct,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/org/fairs/${fairId}/sales-tax`);
+  revalidatePath(`/admin/fairs/${fairId}/edit`);
+  return {};
+}
+
 // One-click transition into the return window, separate from the big
 // save-everything form above — the fair lifecycle's one truly safe,
 // reversible-in-spirit status change (unlike closing), so it gets its

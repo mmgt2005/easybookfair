@@ -204,6 +204,12 @@ export default async function OrgDashboard() {
                       >
                         Payout report →
                       </Link>
+                      <Link
+                        href={`/org/fairs/${fair.id}/sales-tax`}
+                        className="font-semibold text-accent-600 hover:underline"
+                      >
+                        Sales tax →
+                      </Link>
                       {!fair.allow_in_person &&
                         !fair.allow_cash &&
                         !fair.allow_online &&
