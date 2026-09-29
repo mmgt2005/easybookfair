@@ -27,6 +27,7 @@ export function SalesFeedClient({
   initialPayoutIsFinal,
   initialMissingInventoryCost,
   initialMissingInventoryUnits,
+  initialSalesTaxCollected,
 }: {
   fairId: string;
   initialSales: SaleRow[];
@@ -40,6 +41,7 @@ export function SalesFeedClient({
   initialPayoutIsFinal: boolean;
   initialMissingInventoryCost: number;
   initialMissingInventoryUnits: number;
+  initialSalesTaxCollected: number;
 }) {
   const [sales, setSales] = useState(initialSales);
   const [totalUnits, setTotalUnits] = useState(initialTotalUnits);
@@ -52,6 +54,7 @@ export function SalesFeedClient({
   const [payoutIsFinal, setPayoutIsFinal] = useState(initialPayoutIsFinal);
   const [missingInventoryCost, setMissingInventoryCost] = useState(initialMissingInventoryCost);
   const [missingInventoryUnits, setMissingInventoryUnits] = useState(initialMissingInventoryUnits);
+  const [salesTaxCollected, setSalesTaxCollected] = useState(initialSalesTaxCollected);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const seenIds = useRef(new Set(initialSales.map((s) => s.id)));
 
@@ -82,6 +85,7 @@ export function SalesFeedClient({
         setPayoutIsFinal(result.payoutIsFinal);
         setMissingInventoryCost(result.missingInventoryCost);
         setMissingInventoryUnits(result.missingInventoryUnits);
+        setSalesTaxCollected(result.salesTaxCollected);
 
         if (freshIds.size > 0) {
           setNewIds(freshIds);
@@ -184,6 +188,17 @@ export function SalesFeedClient({
                 : "Nothing unaccounted for right now."}
           </p>
         </Card>
+        {salesTaxCollected > 0 && (
+          <Card className="flex-1">
+            <p className="text-xs font-semibold text-neutral-500">Sales tax collected</p>
+            <p className="font-heading text-2xl font-bold text-neutral-700">
+              ${salesTaxCollected.toFixed(2)}
+            </p>
+            <p className="mt-0.5 text-xs text-neutral-400">
+              You are responsible for remitting this — it&apos;s never part of the payout above.
+            </p>
+          </Card>
+        )}
       </div>
 
       <Card className="overflow-x-auto p-0">

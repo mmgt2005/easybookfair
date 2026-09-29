@@ -9,6 +9,7 @@ type OrderSummary = {
   buyer_name: string | null;
   line_items: { title: string; quantity: number; price_charged: number }[];
   created_at: string;
+  tax_amount: number;
 };
 
 // Order recovery: no buyer login and no guaranteed confirmation email means
@@ -60,10 +61,9 @@ export default async function FindOrdersPage({
           ) : (
             <ul className="flex flex-col gap-3">
               {orders.map((order) => {
-                const total = order.line_items.reduce(
-                  (sum, l) => sum + l.quantity * l.price_charged,
-                  0,
-                );
+                const total =
+                  order.line_items.reduce((sum, l) => sum + l.quantity * l.price_charged, 0) +
+                  order.tax_amount;
                 return (
                   <li key={order.id} className="rounded-lg bg-neutral-50 p-3 text-sm">
                     <div className="flex items-center justify-between">

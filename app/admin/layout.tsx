@@ -39,6 +39,7 @@ const navGroups: NavGroup[] = [
     links: [
       { href: "/admin/carton-specs", label: "Carton specs" },
       { href: "/admin/label-templates", label: "Label templates" },
+      { href: "/admin/sales-tax-rates", label: "Sales tax rates" },
     ],
   },
   {
@@ -101,6 +102,11 @@ const adminTourSteps = [
     title: "Label templates",
     description:
       "Sheet/label geometry (dimensions, margins, gaps, grid) for whatever label sheets you actually have — configure once, then pick it when printing labels for a fair's allocation.",
+  },
+  {
+    title: "Sales tax rates",
+    description:
+      "Each state's base sales tax rate, suggested when org staff set a fair's tax rate — correct a row here if a state's rate changes via legislation.",
   },
   {
     title: "Demo fair",

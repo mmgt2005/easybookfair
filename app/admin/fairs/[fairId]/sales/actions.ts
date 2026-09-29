@@ -23,6 +23,7 @@ export type RecentSales = {
   payoutIsFinal: boolean;
   missingInventoryCost: number;
   missingInventoryUnits: number;
+  salesTaxCollected: number;
 };
 
 type PayoutEstimate = {
@@ -30,6 +31,7 @@ type PayoutEstimate = {
   payoutIsFinal: boolean;
   missingInventoryCost: number;
   missingInventoryUnits: number;
+  salesTaxCollected: number;
 };
 
 // The headline "payout" is deliberately sales-only — it never deducts for
@@ -51,7 +53,7 @@ async function getPayoutEstimate(
 ): Promise<PayoutEstimate> {
   const { data: settlement } = await supabase
     .from("settlements")
-    .select("net_payout, missing_inventory_cost")
+    .select("net_payout, missing_inventory_cost, sales_tax_collected")
     .eq("fair_id", fairId)
     .maybeSingle();
 
@@ -61,6 +63,7 @@ async function getPayoutEstimate(
       payoutIsFinal: true,
       missingInventoryCost: settlement.missing_inventory_cost,
       missingInventoryUnits: 0,
+      salesTaxCollected: settlement.sales_tax_collected,
     };
   }
 
@@ -71,7 +74,7 @@ async function getPayoutEstimate(
         .from("journal_lines")
         .select("account_code, debit, credit, journal_entries!inner(fair_id)")
         .eq("journal_entries.fair_id", fairId)
-        .in("account_code", ["2000", "1300"]),
+        .in("account_code", ["2000", "1300", "2100"]),
       supabase
         .from("allocations")
         .select("catalog_item_id, quantity_allocated, quantity_returned, catalog_items(cost)")
@@ -85,11 +88,18 @@ async function getPayoutEstimate(
 
   let payoutDue = 0;
   let cashWholesaleOwed = 0;
+  // 2100 (Sales Tax Payable) is accumulated here purely for visibility —
+  // never mixed into payoutDue/cashWholesaleOwed, matching
+  // record_sales_tax_collected()'s own comment on why tax is excluded
+  // from payout math entirely (migration 0064).
+  let salesTaxCollected = 0;
   for (const line of lines ?? []) {
     if (line.account_code === "2000") {
       payoutDue += line.credit - line.debit;
     } else if (line.account_code === "1300") {
       cashWholesaleOwed += line.debit - line.credit;
+    } else if (line.account_code === "2100") {
+      salesTaxCollected += line.credit - line.debit;
     }
   }
   payoutDue = Math.max(payoutDue, 0);
@@ -112,7 +122,13 @@ async function getPayoutEstimate(
   const rentalFee = fair?.equipment_rental_fee ?? 0;
   const payout = payoutDue - (cashWholesaleOwed + rentalFee);
 
-  return { payout, payoutIsFinal: false, missingInventoryCost, missingInventoryUnits };
+  return {
+    payout,
+    payoutIsFinal: false,
+    missingInventoryCost,
+    missingInventoryUnits,
+    salesTaxCollected: Math.max(salesTaxCollected, 0),
+  };
 }
 
 // Polled by SalesFeedClient every few seconds — a "live" feed built on
@@ -136,7 +152,7 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     { data: totals, error: totalsError },
     { data: wallets, error: walletsError },
     { data: pool },
-    { payout, payoutIsFinal, missingInventoryCost, missingInventoryUnits },
+    { payout, payoutIsFinal, missingInventoryCost, missingInventoryUnits, salesTaxCollected },
   ] = await Promise.all([
     supabase
       .from("sales")
@@ -219,5 +235,6 @@ export async function getRecentSales(fairId: string): Promise<RecentSales> {
     payoutIsFinal,
     missingInventoryCost,
     missingInventoryUnits,
+    salesTaxCollected,
   };
 }

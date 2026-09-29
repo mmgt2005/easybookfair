@@ -24,10 +24,12 @@ export function StorefrontClient({
   fairId,
   items,
   promotions,
+  salesTaxPct,
 }: {
   fairId: string;
   items: Item[];
   promotions: ActivePromotion[];
+  salesTaxPct: number | null;
 }) {
   const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -90,7 +92,12 @@ export function StorefrontClient({
     [cartLines, catalogById, promotions],
   );
 
-  const total = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
+  // Computed once on the whole cart, not per line, to avoid rounding
+  // drift — matches createGuestCheckout()'s own once-per-checkout tax
+  // computation (migration 0064).
+  const subtotal = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
+  const taxAmount = Math.round(subtotal * (salesTaxPct ?? 0) * 100) / 100;
+  const total = subtotal + taxAmount;
 
   function updateQty(catalogItemId: string, qty: number) {
     setCart((prev) => {
@@ -242,6 +249,12 @@ export function StorefrontClient({
             );
           })}
         </ul>
+        {taxAmount > 0 && (
+          <div className="mb-1 flex flex-col text-sm text-neutral-600">
+            <span>Subtotal: ${subtotal.toFixed(2)}</span>
+            <span>Sales tax: ${taxAmount.toFixed(2)}</span>
+          </div>
+        )}
         <p className="mb-3 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
         <form onSubmit={handleCheckout} className="flex flex-col gap-2">
           <Input

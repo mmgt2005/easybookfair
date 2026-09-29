@@ -51,6 +51,10 @@ export async function updateFair(fairId: string, formData: FormData) {
   const returnDeadline = String(formData.get("return_deadline") ?? "");
   const status = String(formData.get("status") ?? "");
   const cashPct = formData.get("cash_sales_assumption_pct");
+  const taxPct = formData.get("sales_tax_pct");
+  const taxState = String(formData.get("tax_state") ?? "").trim() || null;
+  const taxCounty = String(formData.get("tax_county") ?? "").trim() || null;
+  const taxCity = String(formData.get("tax_city") ?? "").trim() || null;
   const allowInPerson = formData.get("allow_in_person") === "on";
   const allowOnline = formData.get("allow_online") === "on";
   const allowWallet = formData.get("allow_wallet") === "on";
@@ -94,6 +98,10 @@ export async function updateFair(fairId: string, formData: FormData) {
       return_deadline: returnDeadline,
       status,
       cash_sales_assumption_pct: cashPct ? Number(cashPct) : null,
+      sales_tax_pct: taxPct ? Number(taxPct) : null,
+      tax_state: taxState,
+      tax_county: taxCounty,
+      tax_city: taxCity,
       allow_in_person: allowInPerson,
       allow_online: allowOnline,
       allow_wallet: allowWallet,

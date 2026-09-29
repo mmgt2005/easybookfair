@@ -142,9 +142,9 @@ to support pencils, erasers, posters, journals, etc. alongside books.
 the settlement math treats the two differently — it doesn't.
 
 **Explicitly deferred, not designed yet**:
-- Sales tax (no tax calculation, `Sales Tax Payable` account, or
-  remittance flow). Needs a jurisdiction/exemption decision before it's
-  designed — not something to guess at here.
+- Sales tax remittance automation (calculation and tracking are built —
+  see the chart of accounts below and migration `0064` — but actually
+  filing/paying it to the state stays the org's own manual responsibility).
 - Chargebacks/disputes beyond a simple refund (a `disputed` sales status
   exists as a placeholder; the reconciliation workflow around it is not
   built out).
@@ -158,6 +158,12 @@ the settlement math treats the two differently — it doesn't.
 - `1200` Inventory — Consigned to Orgs (asset)
 - `1300` Accounts Receivable — Orgs (asset)
 - `2000` Org Payable (liability)
+- `2100` Sales Tax Payable (liability) — collected on behalf of the org's
+  own state; deliberately excluded from Org Payable/payout math (migration
+  `0064`)
+- `1350` Cash Held by Org — Sales Tax (asset) — the debit side of a *cash*
+  sale's tax line, kept separate from Accounts Receivable — Orgs so tax
+  cash is never mistaken for wholesale cash owed
 - `4000` Wholesale Revenue (revenue)
 - `5000` Payment Processing Fees (expense)
 
@@ -175,6 +181,9 @@ the settlement math treats the two differently — it doesn't.
 | Org payment via Payment Link (net negative) | Stripe Clearing | Accounts Receivable — Orgs |
 | Unsold return | Inventory — Unallocated | Inventory — Consigned |
 | Missing inventory billed | Accounts Receivable — Orgs | Inventory — Consigned |
+| Sales tax collected — card/online/in-person | Stripe Clearing | Sales Tax Payable |
+| Sales tax collected — cash | Cash Held by Org — Sales Tax | Sales Tax Payable |
+| Sales tax collected — wallet | Buyer Wallet Liability | Sales Tax Payable |
 
 A refund restores the unit to available inventory and reverses exactly
 the entry the original sale posted. A refund requested **after** the

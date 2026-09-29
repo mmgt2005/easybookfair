@@ -12,6 +12,26 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Manual flat sales tax per fair**: an org (or admin) can set an
+  optional sales tax rate on a fair's edit page, applied uniformly across
+  all four sale channels (online, in-person, cash, wallet) — a wallet is
+  only taxed when it's spent on items, never when it's funded. A new
+  state picker suggests each state's base rate (seeded, admin-editable at
+  `/admin/sales-tax-rates`) and links out to look up the local county/
+  city add-on, since a full jurisdiction-level rate table isn't something
+  this app takes on. Tax collected is tracked in its own new ledger
+  account (`2100 Sales Tax Payable`) and is never part of the org's
+  payout — it's surfaced everywhere as its own "you're responsible for
+  remitting this" figure (sales feed, admin dashboard, payout report,
+  final settlement) instead. New migration `0064` adds
+  `fairs.sales_tax_pct`/`tax_state`/`tax_county`/`tax_city`, the
+  `sales_tax_state_rates` reference table, `record_sales_tax_collected()`,
+  and extends `record_checkout_sale()`/`record_cash_sale()`/
+  `spend_from_wallet()`/`close_fair()` plus the public
+  `fair_public_info()`/`get_checkout_session_public()`/
+  `get_checkout_sessions_by_email()` RPCs. The wallet-assistance-pool
+  shortfall calculation is now tax-inclusive too, so a taxed cart can't
+  wrongly skip or wrongly trigger pool assistance.
 - **Fundraiser goal + homepage carousel**: org staff (or an admin) can
   now set a fundraiser goal amount and description for a fair from its
   Marketing toolkit. Once set — and as long as wallet funding is turned

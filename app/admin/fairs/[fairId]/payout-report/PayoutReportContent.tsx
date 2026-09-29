@@ -115,6 +115,12 @@ export async function PayoutReportContent({ fairId }: { fairId: string }) {
           {settlementDetail && settlementDetail.equipment_rental_fee > 0 && (
             <p>Equipment rental fee: ${settlementDetail.equipment_rental_fee.toFixed(2)}</p>
           )}
+          {aggregate.salesTaxCollected > 0 && (
+            <p>
+              Sales tax collected (you are responsible for remitting this): $
+              {aggregate.salesTaxCollected.toFixed(2)}
+            </p>
+          )}
           <p className="mt-1 font-semibold text-neutral-900">
             {aggregate.payout >= 0 ? (
               <span className="text-green-700">Net payout: ${aggregate.payout.toFixed(2)}</span>

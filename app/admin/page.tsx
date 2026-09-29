@@ -59,6 +59,7 @@ export default async function AdminHome() {
   const payoutDueByFair = new Map<string, number>();
   const cashWholesaleOwedByFair = new Map<string, number>();
   const missingInventoryCostByFair = new Map<string, number>();
+  const salesTaxCollectedByFair = new Map<string, number>();
 
   if (fairIds.length > 0) {
     const [{ data: sales }, { data: lines }, { data: allocations }] = await Promise.all([
@@ -71,7 +72,7 @@ export default async function AdminHome() {
         .from("journal_lines")
         .select("account_code, debit, credit, journal_entries!inner(fair_id)")
         .in("journal_entries.fair_id", fairIds)
-        .in("account_code", ["2000", "1300"]),
+        .in("account_code", ["2000", "1300", "2100"]),
       supabase
         .from("allocations")
         .select("fair_id, catalog_item_id, quantity_allocated, quantity_returned, catalog_items(cost)")
@@ -96,6 +97,11 @@ export default async function AdminHome() {
           fairId,
           (cashWholesaleOwedByFair.get(fairId) ?? 0) + (line.debit - line.credit),
         );
+      } else if (line.account_code === "2100") {
+        salesTaxCollectedByFair.set(
+          fairId,
+          (salesTaxCollectedByFair.get(fairId) ?? 0) + (line.credit - line.debit),
+        );
       }
     }
 
@@ -113,6 +119,7 @@ export default async function AdminHome() {
   let totalUnits = 0;
   let totalRevenue = 0;
   let totalMissingInventoryCost = 0;
+  let totalSalesTaxCollected = 0;
 
   // Payout here is sales-only, deliberately not netting missing-inventory
   // cost — allocated-minus-sold-minus-returned counts every unit still out
@@ -133,8 +140,10 @@ export default async function AdminHome() {
     const missingInventoryCost = missingInventoryCostByFair.get(fair.id) ?? 0;
     totalMissingInventoryCost += missingInventoryCost;
     const payout = payoutDue - (cashWholesaleOwed + fair.equipment_rental_fee);
+    const salesTaxCollected = Math.max(salesTaxCollectedByFair.get(fair.id) ?? 0, 0);
+    totalSalesTaxCollected += salesTaxCollected;
 
-    return { fair, units, revenue, payout, missingInventoryCost };
+    return { fair, units, revenue, payout, missingInventoryCost, salesTaxCollected };
   });
 
   return (
@@ -181,10 +190,11 @@ export default async function AdminHome() {
                 <th className="py-2 pr-4">Revenue</th>
                 <th className="py-2 pr-4">Payout</th>
                 <th className="py-2 pr-4">Missing inventory if not returned</th>
+                <th className="py-2 pr-4">Sales tax collected</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ fair, units, revenue, payout, missingInventoryCost }) => (
+              {rows.map(({ fair, units, revenue, payout, missingInventoryCost, salesTaxCollected }) => (
                 <tr key={fair.id} className="border-b border-neutral-50 last:border-0">
                   <td className="py-2 pl-4 pr-4">
                     <Link
@@ -215,6 +225,9 @@ export default async function AdminHome() {
                   <td className="py-2 pr-4 text-neutral-600">
                     {missingInventoryCost > 0 ? `$${missingInventoryCost.toFixed(2)}` : "—"}
                   </td>
+                  <td className="py-2 pr-4 text-neutral-600">
+                    {salesTaxCollected > 0 ? `$${salesTaxCollected.toFixed(2)}` : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -228,6 +241,9 @@ export default async function AdminHome() {
                 <td className="py-2 pr-4" />
                 <td className="py-2 pr-4">
                   {totalMissingInventoryCost > 0 ? `$${totalMissingInventoryCost.toFixed(2)}` : "—"}
+                </td>
+                <td className="py-2 pr-4">
+                  {totalSalesTaxCollected > 0 ? `$${totalSalesTaxCollected.toFixed(2)}` : "—"}
                 </td>
               </tr>
             </tfoot>

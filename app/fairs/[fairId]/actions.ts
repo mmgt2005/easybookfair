@@ -39,7 +39,7 @@ export async function createGuestCheckout(
 
   const { data: fair } = await service
     .from("fairs")
-    .select("status, allow_online, organizations(is_demo, is_demo_enabled)")
+    .select("status, allow_online, sales_tax_pct, organizations(is_demo, is_demo_enabled)")
     .eq("id", fairId)
     .single();
   if (!fair?.allow_online) {
@@ -137,10 +137,16 @@ export async function createGuestCheckout(
     title: catalogById.get(line.catalog_item_id)?.title ?? "",
   }));
 
-  const totalCents = lineItems.reduce(
+  const subtotalCents = lineItems.reduce(
     (sum, line) => sum + Math.round(line.price_charged * 100) * line.quantity,
     0,
   );
+  // Computed once on the whole cart's subtotal, not per line item, to
+  // avoid rounding drift across several small per-line tax fractions —
+  // matches record_cash_sale()/spend_from_wallet()'s own once-per-checkout
+  // tax computation (migration 0064).
+  const taxCents = Math.round(subtotalCents * (fair.sales_tax_pct ?? 0));
+  const totalCents = subtotalCents + taxCents;
 
   if (totalCents <= 0) {
     throw new Error("Total must be greater than zero");
@@ -154,6 +160,7 @@ export async function createGuestCheckout(
       buyer_name: buyerName.trim(),
       buyer_email: buyerEmail.trim(),
       line_items: lineItems,
+      tax_amount: taxCents / 100,
     })
     .select("id")
     .single();

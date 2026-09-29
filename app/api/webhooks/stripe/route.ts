@@ -146,7 +146,9 @@ export async function POST(request: Request) {
           try {
             const { data: session } = await supabase
               .from("checkout_sessions")
-              .select("id, fair_id, buyer_name, buyer_email, channel, line_items, fairs(name)")
+              .select(
+                "id, fair_id, buyer_name, buyer_email, channel, line_items, tax_amount, fairs(name)",
+              )
               .eq("payment_intent_id", paymentIntent.id)
               .single();
             const fair = session?.fairs as unknown as { name: string } | null;
@@ -158,6 +160,7 @@ export async function POST(request: Request) {
                 orderCode: session.id.slice(0, 8).toUpperCase(),
                 orderUrl: `${origin}/fairs/${session.fair_id}/order/${session.id}`,
                 lineItems: session.line_items,
+                taxAmount: session.tax_amount,
               });
             }
           } catch (emailErr) {

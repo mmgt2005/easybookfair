@@ -13,6 +13,7 @@ type OrderPublic = {
     price_charged: number;
   }[];
   fair_name: string;
+  tax_amount: number;
 };
 
 // No buyer login exists, so this page is reachable by the checkout
@@ -38,10 +39,11 @@ export default async function OrderConfirmationPage({
     return <p className="p-6 text-sm text-red-600">Order not found.</p>;
   }
 
-  const total = order.line_items.reduce(
+  const subtotal = order.line_items.reduce(
     (sum, line) => sum + line.quantity * line.price_charged,
     0,
   );
+  const total = subtotal + order.tax_amount;
   const orderCode = order.id.slice(0, 8).toUpperCase();
 
   return (
@@ -70,6 +72,12 @@ export default async function OrderConfirmationPage({
                 </li>
               ))}
             </ul>
+            {order.tax_amount > 0 && (
+              <div className="mt-2 flex flex-col text-sm text-neutral-600">
+                <span>Subtotal: ${subtotal.toFixed(2)}</span>
+                <span>Sales tax: ${order.tax_amount.toFixed(2)}</span>
+              </div>
+            )}
             <p className="mt-2 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
             <p className="mt-3 text-sm">
               Status:{" "}

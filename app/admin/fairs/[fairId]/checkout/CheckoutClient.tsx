@@ -26,6 +26,7 @@ export function CheckoutClient({
   allowWallet,
   allowCash,
   promotions,
+  salesTaxPct,
 }: {
   fairId: string;
   items: Item[];
@@ -33,6 +34,7 @@ export function CheckoutClient({
   allowWallet: boolean;
   allowCash: boolean;
   promotions: ActivePromotion[];
+  salesTaxPct: number | null;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>("idle");
@@ -81,7 +83,13 @@ export function CheckoutClient({
     [cartLines, catalogById, promotions],
   );
 
-  const total = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
+  // subtotal/tax are computed the same way the server actions do (once on
+  // the whole cart, not per line, to avoid rounding drift) so the number
+  // shown here matches what actually gets charged — see
+  // createInPersonCheckout/record_cash_sale/spend_from_wallet.
+  const subtotal = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
+  const taxAmount = Math.round(subtotal * (salesTaxPct ?? 0) * 100) / 100;
+  const total = subtotal + taxAmount;
 
   async function getTerminal(): Promise<Terminal> {
     if (terminalRef.current) return terminalRef.current;
@@ -442,6 +450,12 @@ export function CheckoutClient({
           })}
           {pricedLines.length === 0 && <li className="text-neutral-500">Empty</li>}
         </ul>
+        {taxAmount > 0 && (
+          <div className="mb-1 flex flex-col text-sm text-neutral-600">
+            <span>Subtotal: ${subtotal.toFixed(2)}</span>
+            <span>Sales tax: ${taxAmount.toFixed(2)}</span>
+          </div>
+        )}
         <p className="mb-3 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
 
         {terminalLocationId && (

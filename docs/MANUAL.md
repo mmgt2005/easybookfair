@@ -185,6 +185,14 @@ Deleting one that's still referenced by a past packing suggestion is
 blocked with an inline error rather than silently orphaning that
 suggestion's record.
 
+### Sales tax rates (`/admin/sales-tax-rates`)
+
+Each US state's base sales tax rate, seeded once and shown as a
+suggestion when org staff or an admin sets a fair's sales tax rate on
+its edit page — county/city add-ons aren't modeled here, only the
+state-level base. Correct a row here if a state's rate changes via
+legislation; no migration needed.
+
 ### Organizations and fairs (`/admin/organizations`, `/admin/fairs`)
 
 The application-review workflow itself is still minimal scaffolding:
@@ -275,6 +283,19 @@ toolkit the org has at `/org/fairs/<id>/marketing` (links, QR codes, a
 printable flyer, ready-to-copy text), also reachable from the fairs list
 and the demo fair page. You don't need to "view as" the org to use it —
 it's the same page either way.
+
+**Sales tax** (same page): optional and off by default. Pick a state to
+see its base sales tax rate as a starting point, add your county/city
+rate on top using the "look up your local rate" link, then set the final
+combined rate in the tax field — that field alone is what actually gets
+applied at checkout, across all four payment channels; the state/county/
+city fields are just for your own reference. Leave the rate blank to
+collect no tax. Collected tax is never part of your payout — see it on
+the sales feed, payout report, and (once closed) the settlement, always
+labeled as money you're responsible for remitting to your own state.
+State base rates are maintained at `/admin/sales-tax-rates` (Setup →
+Sales tax rates in the nav) — correct a row there if a state's rate
+changes.
 
 **Terminal setup** (same page): needed once per fair before the checkout
 screen can charge cards with a physical reader. Fill in the venue's
@@ -1030,7 +1051,9 @@ anything you've actually submitted yourself.
 
 ## Not yet supported
 
-- Sales tax calculation or remittance.
+- Sales tax remittance/filing automation (calculating and tracking it at
+  checkout is built — see the fair edit page and the Sales feed/Payout
+  report — but actually paying it to the state stays manual).
 - Chargeback/dispute reconciliation beyond a basic refund.
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't

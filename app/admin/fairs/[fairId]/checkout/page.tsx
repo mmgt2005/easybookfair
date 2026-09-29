@@ -14,7 +14,7 @@ export default async function CheckoutPage({
   const { data: fair } = await supabase
     .from("fairs")
     .select(
-      "id, name, stripe_terminal_location_id, allow_in_person, allow_wallet, allow_cash, organizations(name)",
+      "id, name, stripe_terminal_location_id, allow_in_person, allow_wallet, allow_cash, sales_tax_pct, organizations(name)",
     )
     .eq("id", fairId)
     .single();
@@ -139,6 +139,7 @@ export default async function CheckoutPage({
         allowWallet={fair.allow_wallet}
         allowCash={fair.allow_cash}
         promotions={activePromotions}
+        salesTaxPct={fair.sales_tax_pct}
       />
     </div>
   );

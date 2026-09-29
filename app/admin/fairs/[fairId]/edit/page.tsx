@@ -9,6 +9,7 @@ import {
 } from "./FairLifecycleButtons";
 import { getStripe } from "@/lib/stripe";
 import { Badge, Button, Card, Field, Input, Select, statusTone } from "@/components/ui";
+import { TaxRateFields } from "./TaxRateFields";
 
 export default async function EditFairPage({
   params,
@@ -21,7 +22,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, sales_tax_pct, tax_state, tax_county, tax_city, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
     )
     .eq("id", fairId)
     .single();
@@ -29,6 +30,11 @@ export default async function EditFairPage({
   if (error || !fair) {
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
+
+  const { data: stateRates } = await supabase
+    .from("sales_tax_state_rates")
+    .select("state_code, state_name, base_rate")
+    .order("state_name");
 
   const org = fair.organizations as unknown as {
     name: string;
@@ -172,6 +178,13 @@ export default async function EditFairPage({
               defaultValue={fair.cash_sales_assumption_pct ?? ""}
             />
           </Field>
+          <TaxRateFields
+            rates={stateRates ?? []}
+            initialState={fair.tax_state}
+            initialCounty={fair.tax_county}
+            initialCity={fair.tax_city}
+            initialPct={fair.sales_tax_pct}
+          />
           <p className="text-xs text-neutral-500">
             Moves from scheduled to active automatically on the start date, and from active to
             return window automatically the morning after the end date — the button above jumps

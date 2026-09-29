@@ -43,14 +43,20 @@ export async function sendOrderConfirmationEmail(params: {
   orderCode: string;
   orderUrl: string;
   lineItems: { title: string; quantity: number; price_charged: number }[];
+  taxAmount: number;
 }) {
-  const total = params.lineItems.reduce((sum, l) => sum + l.quantity * l.price_charged, 0);
+  const subtotal = params.lineItems.reduce((sum, l) => sum + l.quantity * l.price_charged, 0);
+  const total = subtotal + params.taxAmount;
   const itemsHtml = params.lineItems
     .map(
       (l) =>
         `<li>${l.quantity}× ${l.title} — $${(l.quantity * l.price_charged).toFixed(2)}</li>`,
     )
     .join("");
+  const taxLine =
+    params.taxAmount > 0
+      ? `<p>Subtotal: $${subtotal.toFixed(2)}<br>Sales tax: $${params.taxAmount.toFixed(2)}</p>`
+      : "";
 
   await getResend().emails.send({
     from: emailFrom(),
@@ -61,6 +67,7 @@ export async function sendOrderConfirmationEmail(params: {
       <p>Your order for <strong>${params.fairName}</strong> is confirmed. Order code:
       <strong>${params.orderCode}</strong></p>
       <ul>${itemsHtml}</ul>
+      ${taxLine}
       <p><strong>Total: $${total.toFixed(2)}</strong></p>
       <p>Pick up your order at the fair — nothing ships.
       <a href="${params.orderUrl}">View your order</a>.</p>

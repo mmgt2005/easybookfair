@@ -37,6 +37,7 @@ export default async function SalesFeedPage({
         initialPayoutIsFinal={initial.payoutIsFinal}
         initialMissingInventoryCost={initial.missingInventoryCost}
         initialMissingInventoryUnits={initial.missingInventoryUnits}
+        initialSalesTaxCollected={initial.salesTaxCollected}
       />
     </div>
   );
