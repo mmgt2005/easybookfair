@@ -51,10 +51,11 @@ export async function updateFair(fairId: string, formData: FormData) {
   const returnDeadline = String(formData.get("return_deadline") ?? "");
   const status = String(formData.get("status") ?? "");
   const cashPct = formData.get("cash_sales_assumption_pct");
-  const taxPct = formData.get("sales_tax_pct");
   const taxState = String(formData.get("tax_state") ?? "").trim() || null;
-  const taxCounty = String(formData.get("tax_county") ?? "").trim() || null;
-  const taxCity = String(formData.get("tax_city") ?? "").trim() || null;
+  const taxCountyPctRaw = formData.get("tax_county_pct");
+  const taxCityPctRaw = formData.get("tax_city_pct");
+  const taxCountyPct = taxCountyPctRaw ? Number(taxCountyPctRaw) : null;
+  const taxCityPct = taxCityPctRaw ? Number(taxCityPctRaw) : null;
   const allowInPerson = formData.get("allow_in_person") === "on";
   const allowOnline = formData.get("allow_online") === "on";
   const allowWallet = formData.get("allow_wallet") === "on";
@@ -89,6 +90,25 @@ export async function updateFair(fairId: string, formData: FormData) {
     );
   }
 
+  // sales_tax_pct is always computed here, server-side, from the state's
+  // own base rate (never trusted from the client — TaxRateFields'
+  // combined-rate line is a preview only) plus the county/city
+  // contributions, so it can never drift out of sync with its parts.
+  // This replaces an earlier design where staff typed one pre-combined
+  // number directly, which was prone to being silently reset to just the
+  // state's bare base rate whenever the state dropdown was touched again.
+  let baseRate = 0;
+  if (taxState) {
+    const { data: stateRate } = await supabase
+      .from("sales_tax_state_rates")
+      .select("base_rate")
+      .eq("state_code", taxState)
+      .maybeSingle();
+    baseRate = stateRate?.base_rate ?? 0;
+  }
+  const combinedTaxPct = baseRate + (taxCountyPct ?? 0) + (taxCityPct ?? 0);
+  const salesTaxPct = combinedTaxPct > 0 ? Math.round(combinedTaxPct * 10000) / 10000 : null;
+
   const { error } = await supabase
     .from("fairs")
     .update({
@@ -98,10 +118,10 @@ export async function updateFair(fairId: string, formData: FormData) {
       return_deadline: returnDeadline,
       status,
       cash_sales_assumption_pct: cashPct ? Number(cashPct) : null,
-      sales_tax_pct: taxPct ? Number(taxPct) : null,
+      sales_tax_pct: salesTaxPct,
       tax_state: taxState,
-      tax_county: taxCounty,
-      tax_city: taxCity,
+      tax_county_pct: taxCountyPct,
+      tax_city_pct: taxCityPct,
       allow_in_person: allowInPerson,
       allow_online: allowOnline,
       allow_wallet: allowWallet,

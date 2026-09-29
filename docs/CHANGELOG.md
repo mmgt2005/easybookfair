@@ -12,6 +12,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Sales tax: county/city are now numeric rates the app sums
+  automatically**, replacing the earlier free-text County/City fields
+  (which were descriptive-only) and the single manually-typed combined
+  rate. Staff still look up their own county's and city's rates (the
+  "look up your local rate" link), but now enter each as its own number
+  and the app adds state base + county + city together — shown live as a
+  "Combined rate applied at checkout" preview, and computed/persisted
+  server-side on save so it can never drift out of sync with its parts.
+  New migration `0065` drops `fairs.tax_county`/`tax_city` (text) and
+  adds `tax_county_pct`/`tax_city_pct` (numeric); existing fairs' already-
+  set `sales_tax_pct` is left untouched.
 - **Anti-spam on public no-login forms**: org signup (`/join`), author
   submission (`/author/submit`), guest checkout, and wallet/pool donations
   now share a common spam gate (`lib/spamGuard.ts`) combining three

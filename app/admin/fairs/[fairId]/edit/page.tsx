@@ -22,7 +22,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, sales_tax_pct, tax_state, tax_county, tax_city, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, tax_state, tax_county_pct, tax_city_pct, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
     )
     .eq("id", fairId)
     .single();
@@ -181,9 +181,8 @@ export default async function EditFairPage({
           <TaxRateFields
             rates={stateRates ?? []}
             initialState={fair.tax_state}
-            initialCounty={fair.tax_county}
-            initialCity={fair.tax_city}
-            initialPct={fair.sales_tax_pct}
+            initialCountyPct={fair.tax_county_pct}
+            initialCityPct={fair.tax_city_pct}
           />
           <p className="text-xs text-neutral-500">
             Moves from scheduled to active automatically on the start date, and from active to

@@ -285,11 +285,12 @@ and the demo fair page. You don't need to "view as" the org to use it —
 it's the same page either way.
 
 **Sales tax** (same page): optional and off by default. Pick a state to
-see its base sales tax rate as a starting point, add your county/city
-rate on top using the "look up your local rate" link, then set the final
-combined rate in the tax field — that field alone is what actually gets
-applied at checkout, across all four payment channels; the state/county/
-city fields are just for your own reference. Leave the rate blank to
+see its base sales tax rate, then use the "look up your local rate" link
+to find your county's and city's own add-on rates and enter each as its
+own number in the County/City fields — the app adds all three together
+automatically into the combined rate actually applied at checkout, across
+all four payment channels (shown live as you type, so you can always see
+the total before saving). Leave the state and both rate fields blank to
 collect no tax. Collected tax is never part of your payout — see it on
 the sales feed, payout report, and (once closed) the settlement, always
 labeled as money you're responsible for remitting to your own state.
