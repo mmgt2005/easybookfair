@@ -73,6 +73,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Fair edit page: selecting a state for sales tax silently discarded an
+  already-set combined rate**: `TaxRateFields.tsx` suggested a state's
+  base rate by remounting the sales-tax-rate input (`key={suggestedPct}`)
+  every time a state was picked, overwriting whatever rate was already
+  there — including a rate an org had correctly set to the state base
+  plus their own county/city add-on (e.g. an org sets 8.25% for California
+  [7.25% base + 1% county], later reselects California in the dropdown
+  while editing other fields, and the rate silently snapped back to
+  7.25%, dropping the county portion, unless noticed before saving). The
+  field is now controlled and only pre-fills the suggested base rate when
+  it's still empty, never overwriting a rate that's already set.
 - **"Send payout"/"Create payment link" silently failed to record the
   result, even on success**: `settlements` has only ever had a SELECT
   RLS policy (migration 0005 — "read-only for clients; only created by

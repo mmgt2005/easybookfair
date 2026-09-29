@@ -7,14 +7,20 @@ type StateRate = { state_code: string; state_name: string; base_rate: number };
 
 // The actual checkout math only ever reads sales_tax_pct — this component
 // just helps an org fill that one field in. Picking a state suggests that
-// state's base rate as a starting defaultValue (still fully editable, and
-// never re-applied to an already-saved custom rate just from re-rendering
-// the page); it deliberately doesn't try to look up a precise county/city
-// rate itself — see the migration 0064 plan's note on why a full
-// jurisdiction table isn't something this app takes on. The "look up your
-// local rate" link is a constructed search query, not a hardcoded
-// per-state government URL, so it can't go stale or point at the wrong
-// page the way a curated list of 50 links eventually would.
+// state's base rate as a starting point ONLY when the rate field is still
+// empty — it never overwrites a rate that's already set, since that rate
+// may already be the state base plus a manually-added county/city amount.
+// (Bug fixed here: this previously reset the field to the raw state base
+// rate on every state selection via a key-remount, silently discarding an
+// already-correct combined rate — e.g. an org sets 8.25% [7.25% CA base +
+// 1% county], later reselects California in the dropdown, and the field
+// snapped back down to 7.25%, dropping the county portion, unless they
+// noticed before saving.) This component deliberately doesn't try to look
+// up a precise county/city rate itself — see the migration 0064 plan's
+// note on why a full jurisdiction table isn't something this app takes
+// on. The "look up your local rate" link is a constructed search query,
+// not a hardcoded per-state government URL, so it can't go stale or point
+// at the wrong page the way a curated list of 50 links eventually would.
 export function TaxRateFields({
   rates,
   initialState,
@@ -29,13 +35,17 @@ export function TaxRateFields({
   initialPct: number | null;
 }) {
   const [stateCode, setStateCode] = useState(initialState ?? "");
-  const [suggestedPct, setSuggestedPct] = useState<number | null>(null);
+  const [pctValue, setPctValue] = useState(initialPct != null ? String(initialPct) : "");
   const selected = rates.find((r) => r.state_code === stateCode);
 
   function handleStateChange(code: string) {
     setStateCode(code);
-    const rate = rates.find((r) => r.state_code === code);
-    setSuggestedPct(rate ? rate.base_rate : null);
+    // Only suggest the base rate into an empty field — never overwrite an
+    // already-entered rate, which may already include a county/city add-on.
+    if (pctValue.trim() === "") {
+      const rate = rates.find((r) => r.state_code === code);
+      if (rate) setPctValue(String(rate.base_rate));
+    }
   }
 
   return (
@@ -83,13 +93,13 @@ export function TaxRateFields({
       )}
       <Field label="Sales tax rate applied at checkout (0–1, blank = no tax collected)">
         <Input
-          key={suggestedPct ?? "unset"}
           name="sales_tax_pct"
           type="number"
           step="0.0001"
           min={0}
           max={1}
-          defaultValue={suggestedPct ?? initialPct ?? ""}
+          value={pctValue}
+          onChange={(e) => setPctValue(e.target.value)}
           placeholder="e.g. 0.0825 for 8.25%"
         />
       </Field>
