@@ -13,7 +13,7 @@ export default async function OrgSignupsPage({
   const { data: signups } = await supabase
     .from("org_signups")
     .select(
-      "id, org_name, contact_name, contact_email, is_school, message, status, admin_note, created_at",
+      "id, org_name, contact_name, contact_email, is_school, message, status, admin_note, created_at, shipping_contact_name, shipping_contact_phone, shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country",
     )
     .order("created_at", { ascending: false });
 
@@ -43,6 +43,15 @@ export default async function OrgSignupsPage({
                     {s.contact_name} — {s.contact_email}
                   </p>
                   {s.message && <p className="mt-1 text-sm text-neutral-600">{s.message}</p>}
+                  {s.shipping_address_line1 && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      📦 {s.shipping_contact_name && `Attn: ${s.shipping_contact_name} — `}
+                      {s.shipping_address_line1}
+                      {s.shipping_address_line2 && `, ${s.shipping_address_line2}`}, {s.shipping_city},{" "}
+                      {s.shipping_state} {s.shipping_postal_code}, {s.shipping_country}
+                      {s.shipping_contact_phone && ` — ${s.shipping_contact_phone}`}
+                    </p>
+                  )}
                 </div>
                 <Badge tone={statusTone(s.status)}>{s.status}</Badge>
               </div>

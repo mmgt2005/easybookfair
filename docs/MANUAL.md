@@ -201,10 +201,12 @@ review step. This exists so a fair has an org to belong to, and
 allocation has a fair to allocate against.
 
 **Editing an organization** (`/admin/organizations/<id>/edit`): change
-name, contact info, `status` (pending/approved/declined), and whether it's
+name, contact info, `status` (pending/approved/declined), whether it's
 **"a school"** — a checkbox that gates the student-wallet feature (see
 "Student wallets" below) for all of that org's fairs; leave it off for any
-non-school consignor. Below that, a **Stripe Connect** card shows current
+non-school consignor — and its **shipping address**, where inventory
+gets sent (org staff can also view/edit this themselves from `/org/staff`
+— see the Org staff guide below). Below that, a **Stripe Connect** card shows current
 charges/payouts status and a button — "Start Stripe onboarding" the first
 time, "Continue Stripe onboarding" if an account exists but isn't fully
 set up yet, "Update Stripe details" once it is. Clicking it creates (or
@@ -464,14 +466,16 @@ flagged inline the same way an admin-submitted fair request is.
 
 A school or organization can express interest with no account at all from
 the public `/join` form — organization name, contact name/email, whether
-it's a school (unlocks student wallets once approved), and an optional
-message. Each pending signup shows **Approve** and **Decline**:
+it's a school (unlocks student wallets once approved), a required
+shipping address (so you know where to send inventory), and an optional
+message. Each pending signup shows the shipping address inline, plus
+**Approve** and **Decline**:
 
-- **Approve** creates the real `organizations` row, invites the contact by
-  email (Supabase's own invite flow, same mechanism as author approval),
-  and adds them as org staff (`org_members`) — they can sign in to `/org`
-  immediately and request their first fair, with no separate database
-  step needed.
+- **Approve** creates the real `organizations` row (shipping address
+  included), invites the contact by email (Supabase's own invite flow,
+  same mechanism as author approval), and adds them as org staff
+  (`org_members`) — they can sign in to `/org` immediately and request
+  their first fair, with no separate database step needed.
 - **Decline** takes an optional note and creates nothing.
 
 This is the organization-side counterpart to author submissions above —
@@ -866,6 +870,12 @@ admin, so there's always someone who can invite the rest of the team —
 no platform admin involvement needed for ordinary staff additions.
 There's no removal flow yet — demoting is self-serve, fully removing
 someone is still a manual database step for a platform admin.
+
+Below the staff list, a **Shipping address** card shows and lets you edit
+where inventory gets sent for your org's fairs — any staff member can
+update it (not just an org admin, since it's contact info rather than a
+money or access change), and it's the same address an admin sees and can
+edit from their own organization screen.
 
 ### Running your fair (`/org/fairs/<id>/{checkout,pickup,wallets,sales}`)
 

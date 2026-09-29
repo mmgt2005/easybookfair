@@ -12,6 +12,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Org shipping address**: the public `/join` signup form now collects a
+  full shipping address (Attn contact name/phone, street address, city,
+  state, ZIP, country) so admins know where to send inventory — carried
+  over onto the real organization on approval. Every org has one, not
+  just self-signups — the admin's direct "create organization" form and
+  the org edit page collect/show it too, and org staff can view and
+  update their own org's address anytime from `/org/staff` (any staff
+  member, not just an org admin — this is contact info, not a money or
+  access-control change). New migration `0066` adds the shipping columns
+  to `org_signups`/`organizations`, `app.can_operate_org()`, and
+  `update_org_shipping_address()` (a security-definer RPC, since
+  `organizations` has no org-staff UPDATE policy otherwise).
 - **Sales tax: county/city are now numeric rates the app sums
   automatically**, replacing the earlier free-text County/City fields
   (which were descriptive-only) and the single manually-typed combined

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
+import { parseShippingAddress } from "@/lib/shippingAddress";
 
 // Minimal scaffolding so a fair has somewhere to belong — the real
 // application review workflow (approve/decline, Stripe Connect onboarding
@@ -27,6 +28,7 @@ export async function createOrganization(formData: FormData) {
     contact_name: contactName,
     contact_email: contactEmail,
     status: "approved",
+    ...parseShippingAddress(formData),
   });
 
   if (error) {
@@ -57,6 +59,7 @@ export async function updateOrganization(orgId: string, formData: FormData) {
       contact_email: contactEmail,
       status,
       is_school: isSchool,
+      ...parseShippingAddress(formData),
     })
     .eq("id", orgId);
 

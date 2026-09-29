@@ -9,6 +9,7 @@ import {
   Textarea,
   TurnstileWidget,
 } from "@/components/ui";
+import { ShippingAddressFields } from "@/components/ShippingAddressFields";
 
 export default async function JoinPage({
   searchParams,
@@ -49,6 +50,7 @@ export default async function JoinPage({
             <input type="checkbox" name="is_school" />
             We&apos;re a school (unlocks student wallets for your fairs)
           </label>
+          <ShippingAddressFields required />
           <Field label="Anything else? (optional)">
             <Textarea
               name="message"

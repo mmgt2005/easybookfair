@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createOrganization } from "./actions";
 import { startViewAsOrg } from "../view-as/actions";
 import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import { ShippingAddressFields } from "@/components/ShippingAddressFields";
 
 export default async function OrganizationsPage() {
   const supabase = await createClient();
@@ -68,6 +69,7 @@ export default async function OrganizationsPage() {
           <Input name="name" required placeholder="Organization name" />
           <Input name="contact_name" placeholder="Contact name" />
           <Input name="contact_email" type="email" placeholder="Contact email" />
+          <ShippingAddressFields />
           <Button type="submit">Create</Button>
         </form>
       </Card>

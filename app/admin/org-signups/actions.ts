@@ -19,7 +19,9 @@ export async function approveOrgSignup(signupId: string) {
 
   const { data: signup, error: fetchError } = await service
     .from("org_signups")
-    .select("org_name, contact_name, contact_email, is_school, status")
+    .select(
+      "org_name, contact_name, contact_email, is_school, status, shipping_contact_name, shipping_contact_phone, shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country",
+    )
     .eq("id", signupId)
     .single();
 
@@ -38,6 +40,14 @@ export async function approveOrgSignup(signupId: string) {
       contact_email: signup!.contact_email,
       is_school: signup!.is_school,
       status: "approved",
+      shipping_contact_name: signup!.shipping_contact_name,
+      shipping_contact_phone: signup!.shipping_contact_phone,
+      shipping_address_line1: signup!.shipping_address_line1,
+      shipping_address_line2: signup!.shipping_address_line2,
+      shipping_city: signup!.shipping_city,
+      shipping_state: signup!.shipping_state,
+      shipping_postal_code: signup!.shipping_postal_code,
+      shipping_country: signup!.shipping_country,
     })
     .select("id")
     .single();

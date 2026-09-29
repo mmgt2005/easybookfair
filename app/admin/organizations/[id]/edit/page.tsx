@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { updateOrganization, startStripeOnboarding, refreshStripeAccountStatus } from "../../actions";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
+import { ShippingAddressFields } from "@/components/ShippingAddressFields";
 
 export default async function EditOrganizationPage({
   params,
@@ -16,7 +17,7 @@ export default async function EditOrganizationPage({
   const { data: org, error } = await supabase
     .from("organizations")
     .select(
-      "id, name, contact_name, contact_email, status, is_school, stripe_connect_account_id, stripe_charges_enabled, stripe_payouts_enabled",
+      "id, name, contact_name, contact_email, status, is_school, stripe_connect_account_id, stripe_charges_enabled, stripe_payouts_enabled, shipping_contact_name, shipping_contact_phone, shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country",
     )
     .eq("id", id)
     .single();
@@ -75,6 +76,7 @@ export default async function EditOrganizationPage({
             <input type="checkbox" name="is_school" defaultChecked={org.is_school} />
             Is a school (enables the student-wallet feature for its fairs)
           </label>
+          <ShippingAddressFields initial={org} />
           <Button type="submit">Save changes</Button>
         </form>
       </Card>

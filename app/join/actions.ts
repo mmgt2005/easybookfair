@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { checkForSpam } from "@/lib/spamGuard";
+import { parseShippingAddress } from "@/lib/shippingAddress";
 
 // Public — no login required, same trust model as
 // app/author/submit/actions.ts: anyone can submit, an admin reviews every
@@ -15,10 +16,16 @@ export async function submitOrgSignup(formData: FormData) {
   const contactEmail = String(formData.get("contact_email") ?? "").trim();
   const isSchool = formData.get("is_school") === "on";
   const message = String(formData.get("message") ?? "").trim() || null;
+  const shipping = parseShippingAddress(formData);
 
   if (!orgName || !contactName || !contactEmail) {
     redirect(
       `/join?error=${encodeURIComponent("Organization name, contact name, and contact email are required")}`,
+    );
+  }
+  if (!shipping.shipping_address_line1 || !shipping.shipping_city || !shipping.shipping_state || !shipping.shipping_postal_code) {
+    redirect(
+      `/join?error=${encodeURIComponent("A full shipping address is required so we know where to send inventory")}`,
     );
   }
 
@@ -40,6 +47,7 @@ export async function submitOrgSignup(formData: FormData) {
     contact_email: contactEmail,
     is_school: isSchool,
     message,
+    ...shipping,
   });
 
   if (error) {

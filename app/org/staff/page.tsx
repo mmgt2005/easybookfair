@@ -1,8 +1,9 @@
 import { requireOrgStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { inviteOrgStaff, updateOrgMemberRole } from "./actions";
+import { inviteOrgStaff, updateOrgMemberRole, updateOrgShippingAddress } from "./actions";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
+import { ShippingAddressFields } from "@/components/ShippingAddressFields";
 
 export default async function OrgStaffPage({
   searchParams,
@@ -18,7 +19,13 @@ export default async function OrgStaffPage({
   // of this portal (app/org/page.tsx) — an admin "viewing as" this org
   // has full RLS visibility, so without it they'd see every org's members.
   const [{ data: orgs }, { data: members }] = await Promise.all([
-    supabase.from("organizations").select("id, name").in("id", orgIds).order("name"),
+    supabase
+      .from("organizations")
+      .select(
+        "id, name, shipping_contact_name, shipping_contact_phone, shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country",
+      )
+      .in("id", orgIds)
+      .order("name"),
     supabase
       .from("org_members")
       .select("org_id, user_id, role, created_at")
@@ -107,6 +114,21 @@ export default async function OrgStaffPage({
                   )}
                 </tbody>
               </table>
+            </Card>
+
+            <Card className="max-w-sm">
+              <form
+                action={updateOrgShippingAddress.bind(null, org.id)}
+                className="flex flex-col gap-3"
+              >
+                <h3 className="font-heading font-bold text-neutral-900">Shipping address</h3>
+                <p className="text-xs text-neutral-500">
+                  Where inventory gets sent for this org&apos;s fairs — any staff member can keep
+                  this current.
+                </p>
+                <ShippingAddressFields initial={org} />
+                <Button type="submit">Save address</Button>
+              </form>
             </Card>
 
             {canManage && (
