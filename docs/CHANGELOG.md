@@ -12,6 +12,22 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Sales tax can now be exempted per sale channel** (online, in-person
+  card, cash, wallet spend) instead of always applying uniformly to all
+  four — some states' nonprofit/school fundraiser exemptions turn on who
+  the legal seller is (an occasional, direct, in-person sale by the org
+  itself vs. a sale routed through a platform), so the actual split
+  varies by state and isn't something this app claims to know. Four new
+  checkboxes ("Apply this tax to: Online / In-person card / Cash / Wallet
+  spending"), all checked by default so every existing fair keeps taxing
+  every channel exactly as before, next to a new "check your state's
+  rule" search-link on both the admin edit page and the org
+  `/org/fairs/<id>/sales-tax` screen — mirrors the existing local-rate
+  lookup link exactly, and comes with an explicit disclaimer that this
+  app doesn't know or claim any specific state's law. New migration
+  `0068` adds `tax_applies_online`/`tax_applies_in_person`/
+  `tax_applies_cash`/`tax_applies_wallet` to `fairs` and widens
+  `set_fair_sales_tax()` to 8 parameters.
 - **Org staff can now set their own fair's sales tax rate** from a new
   `/org/fairs/<id>/sales-tax` screen — previously admin-only
   (`/admin/fairs/<id>/edit`), with no org-side fair-editing screen at

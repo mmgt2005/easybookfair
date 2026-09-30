@@ -50,7 +50,9 @@ export async function createGuestCheckout(
 
   const { data: fair } = await service
     .from("fairs")
-    .select("status, allow_online, sales_tax_pct, organizations(is_demo, is_demo_enabled)")
+    .select(
+      "status, allow_online, sales_tax_pct, tax_applies_online, organizations(is_demo, is_demo_enabled)",
+    )
     .eq("id", fairId)
     .single();
   if (!fair?.allow_online) {
@@ -156,7 +158,9 @@ export async function createGuestCheckout(
   // avoid rounding drift across several small per-line tax fractions —
   // matches record_cash_sale()/spend_from_wallet()'s own once-per-checkout
   // tax computation (migration 0064).
-  const taxCents = Math.round(subtotalCents * (fair.sales_tax_pct ?? 0));
+  const taxCents = fair.tax_applies_online
+    ? Math.round(subtotalCents * (fair.sales_tax_pct ?? 0))
+    : 0;
   const totalCents = subtotalCents + taxCents;
 
   if (totalCents <= 0) {

@@ -26,11 +26,19 @@ export function TaxRateFields({
   initialState,
   initialCountyPct,
   initialCityPct,
+  initialTaxAppliesOnline = true,
+  initialTaxAppliesInPerson = true,
+  initialTaxAppliesCash = true,
+  initialTaxAppliesWallet = true,
 }: {
   rates: StateRate[];
   initialState: string | null;
   initialCountyPct: number | null;
   initialCityPct: number | null;
+  initialTaxAppliesOnline?: boolean;
+  initialTaxAppliesInPerson?: boolean;
+  initialTaxAppliesCash?: boolean;
+  initialTaxAppliesWallet?: boolean;
 }) {
   const [stateCode, setStateCode] = useState(initialState ?? "");
   const [countyPct, setCountyPct] = useState(
@@ -107,6 +115,58 @@ export function TaxRateFields({
         Combined rate applied at checkout: {(combinedPct * 100).toFixed(2)}%
         {combinedPct === 0 && " — no tax will be collected"}
       </p>
+      <div className="flex flex-col gap-1 border-t border-neutral-200 pt-2">
+        <p className="text-xs font-semibold text-neutral-600">Apply this tax to:</p>
+        <div className="grid grid-cols-2 gap-1">
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              name="tax_applies_online"
+              defaultChecked={initialTaxAppliesOnline}
+            />
+            Online
+          </label>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              name="tax_applies_in_person"
+              defaultChecked={initialTaxAppliesInPerson}
+            />
+            In-person card
+          </label>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input type="checkbox" name="tax_applies_cash" defaultChecked={initialTaxAppliesCash} />
+            Cash
+          </label>
+          <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              name="tax_applies_wallet"
+              defaultChecked={initialTaxAppliesWallet}
+            />
+            Wallet spending
+          </label>
+        </div>
+        {selected && (
+          <p className="text-xs text-neutral-500">
+            Some states tax these channels differently for a school/nonprofit fundraiser (e.g. an
+            in-person sale run directly by the org may be exempt while the same sale online
+            isn&apos;t) — this app doesn&apos;t know your state&apos;s specific rule.{" "}
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(
+                `${selected.state_name} sales tax exemption school PTA book fair fundraiser online vs in-person sales`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-accent-600 hover:underline"
+            >
+              🔍 Check {selected.state_name}&apos;s rule on which sale types are taxable →
+            </a>{" "}
+            — confirm with your state&apos;s Department of Revenue or a tax advisor before relying
+            on these toggles.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

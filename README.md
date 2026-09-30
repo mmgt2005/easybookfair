@@ -258,6 +258,7 @@ code (everything that needs to be unit-tested).
    - `0065_sales_tax_county_city_rates.sql`
    - `0066_org_shipping_address.sql`
    - `0067_org_sales_tax_rpc.sql`
+   - `0068_sales_tax_channel_exemptions.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an

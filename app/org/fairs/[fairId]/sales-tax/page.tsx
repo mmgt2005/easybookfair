@@ -21,7 +21,9 @@ export default async function OrgFairSalesTaxPage({
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, tax_state, tax_county_pct, tax_city_pct")
+    .select(
+      "id, name, tax_state, tax_county_pct, tax_city_pct, tax_applies_online, tax_applies_in_person, tax_applies_cash, tax_applies_wallet",
+    )
     .eq("id", fairId)
     .in("org_id", orgIds)
     .maybeSingle();
@@ -47,6 +49,10 @@ export default async function OrgFairSalesTaxPage({
           initialState={fair.tax_state}
           initialCountyPct={fair.tax_county_pct}
           initialCityPct={fair.tax_city_pct}
+          initialTaxAppliesOnline={fair.tax_applies_online}
+          initialTaxAppliesInPerson={fair.tax_applies_in_person}
+          initialTaxAppliesCash={fair.tax_applies_cash}
+          initialTaxAppliesWallet={fair.tax_applies_wallet}
         />
       </Card>
     </div>

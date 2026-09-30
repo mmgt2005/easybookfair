@@ -29,6 +29,7 @@ type FairPublicInfo = {
   is_demo: boolean;
   is_demo_enabled: boolean;
   sales_tax_pct: number | null;
+  tax_applies_online: boolean;
 };
 
 export default async function FairStorefrontPage({
@@ -142,6 +143,7 @@ export default async function FairStorefrontPage({
           items={(items as StorefrontItem[]) ?? []}
           promotions={activePromotions}
           salesTaxPct={fairInfo.sales_tax_pct}
+          taxAppliesOnline={fairInfo.tax_applies_online}
         />
       ) : (
         <p className="text-sm text-neutral-600">

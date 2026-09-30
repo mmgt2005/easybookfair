@@ -39,7 +39,7 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("stripe_terminal_location_id, sales_tax_pct")
+    .select("stripe_terminal_location_id, sales_tax_pct, tax_applies_in_person")
     .eq("id", fairId)
     .single();
 
@@ -131,7 +131,9 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
   // avoid rounding drift — matches record_cash_sale()/
   // spend_from_wallet()'s own once-per-checkout tax computation
   // (migration 0064).
-  const taxCents = Math.round(subtotalCents * (fair.sales_tax_pct ?? 0));
+  const taxCents = fair.tax_applies_in_person
+    ? Math.round(subtotalCents * (fair.sales_tax_pct ?? 0))
+    : 0;
   const totalCents = subtotalCents + taxCents;
 
   if (totalCents <= 0) {

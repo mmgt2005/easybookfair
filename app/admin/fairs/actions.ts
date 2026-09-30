@@ -56,6 +56,10 @@ export async function updateFair(fairId: string, formData: FormData) {
   const taxCityPctRaw = formData.get("tax_city_pct");
   const taxCountyPct = taxCountyPctRaw ? Number(taxCountyPctRaw) : null;
   const taxCityPct = taxCityPctRaw ? Number(taxCityPctRaw) : null;
+  const taxAppliesOnline = formData.get("tax_applies_online") === "on";
+  const taxAppliesInPerson = formData.get("tax_applies_in_person") === "on";
+  const taxAppliesCash = formData.get("tax_applies_cash") === "on";
+  const taxAppliesWallet = formData.get("tax_applies_wallet") === "on";
   const allowInPerson = formData.get("allow_in_person") === "on";
   const allowOnline = formData.get("allow_online") === "on";
   const allowWallet = formData.get("allow_wallet") === "on";
@@ -122,6 +126,10 @@ export async function updateFair(fairId: string, formData: FormData) {
       tax_state: taxState,
       tax_county_pct: taxCountyPct,
       tax_city_pct: taxCityPct,
+      tax_applies_online: taxAppliesOnline,
+      tax_applies_in_person: taxAppliesInPerson,
+      tax_applies_cash: taxAppliesCash,
+      tax_applies_wallet: taxAppliesWallet,
       allow_in_person: allowInPerson,
       allow_online: allowOnline,
       allow_wallet: allowWallet,
@@ -203,12 +211,20 @@ export async function updateFairSalesTax(
   const taxCityPctRaw = formData.get("tax_city_pct");
   const taxCountyPct = taxCountyPctRaw ? Number(taxCountyPctRaw) : null;
   const taxCityPct = taxCityPctRaw ? Number(taxCityPctRaw) : null;
+  const taxAppliesOnline = formData.get("tax_applies_online") === "on";
+  const taxAppliesInPerson = formData.get("tax_applies_in_person") === "on";
+  const taxAppliesCash = formData.get("tax_applies_cash") === "on";
+  const taxAppliesWallet = formData.get("tax_applies_wallet") === "on";
 
   const { error } = await supabase.rpc("set_fair_sales_tax", {
     p_fair_id: fairId,
     p_tax_state: taxState,
     p_tax_county_pct: taxCountyPct,
     p_tax_city_pct: taxCityPct,
+    p_tax_applies_online: taxAppliesOnline,
+    p_tax_applies_in_person: taxAppliesInPerson,
+    p_tax_applies_cash: taxAppliesCash,
+    p_tax_applies_wallet: taxAppliesWallet,
   });
   if (error) return { error: error.message };
 

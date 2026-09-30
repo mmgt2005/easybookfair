@@ -25,11 +25,13 @@ export function StorefrontClient({
   items,
   promotions,
   salesTaxPct,
+  taxAppliesOnline,
 }: {
   fairId: string;
   items: Item[];
   promotions: ActivePromotion[];
   salesTaxPct: number | null;
+  taxAppliesOnline: boolean;
 }) {
   const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -97,7 +99,7 @@ export function StorefrontClient({
   // drift — matches createGuestCheckout()'s own once-per-checkout tax
   // computation (migration 0064).
   const subtotal = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
-  const taxAmount = Math.round(subtotal * (salesTaxPct ?? 0) * 100) / 100;
+  const taxAmount = taxAppliesOnline ? Math.round(subtotal * (salesTaxPct ?? 0) * 100) / 100 : 0;
   const total = subtotal + taxAmount;
 
   function updateQty(catalogItemId: string, qty: number) {

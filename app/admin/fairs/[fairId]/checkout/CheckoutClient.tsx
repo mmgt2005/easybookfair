@@ -27,6 +27,9 @@ export function CheckoutClient({
   allowCash,
   promotions,
   salesTaxPct,
+  taxAppliesInPerson,
+  taxAppliesCash,
+  taxAppliesWallet,
 }: {
   fairId: string;
   items: Item[];
@@ -35,6 +38,9 @@ export function CheckoutClient({
   allowCash: boolean;
   promotions: ActivePromotion[];
   salesTaxPct: number | null;
+  taxAppliesInPerson: boolean;
+  taxAppliesCash: boolean;
+  taxAppliesWallet: boolean;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>("idle");
@@ -86,10 +92,18 @@ export function CheckoutClient({
   // subtotal/tax are computed the same way the server actions do (once on
   // the whole cart, not per line, to avoid rounding drift) so the number
   // shown here matches what actually gets charged — see
-  // createInPersonCheckout/record_cash_sale/spend_from_wallet.
+  // createInPersonCheckout/record_cash_sale/spend_from_wallet. This screen
+  // has three separate tender buttons (card/wallet/cash), each of which can
+  // be independently exempted from tax, so tax/total are computed per
+  // tender rather than once for the whole screen.
   const subtotal = pricedLines.reduce((sum, line) => sum + line.price_charged * line.quantity, 0);
-  const taxAmount = Math.round(subtotal * (salesTaxPct ?? 0) * 100) / 100;
-  const total = subtotal + taxAmount;
+  const taxRate = salesTaxPct ?? 0;
+  const cardTax = taxAppliesInPerson ? Math.round(subtotal * taxRate * 100) / 100 : 0;
+  const cardTotal = subtotal + cardTax;
+  const walletTax = taxAppliesWallet ? Math.round(subtotal * taxRate * 100) / 100 : 0;
+  const walletTotal = subtotal + walletTax;
+  const cashTax = taxAppliesCash ? Math.round(subtotal * taxRate * 100) / 100 : 0;
+  const cashTotal = subtotal + cashTax;
 
   async function getTerminal(): Promise<Terminal> {
     if (terminalRef.current) return terminalRef.current;
@@ -313,7 +327,7 @@ export function CheckoutClient({
     setMessage("Charging wallet…");
     try {
       await chargeWallet(fairId, selectedWallet.id, lines);
-      setMessage(`Charged $${total.toFixed(2)} to ${selectedWallet.student_name}'s wallet ✅`);
+      setMessage(`Charged $${walletTotal.toFixed(2)} to ${selectedWallet.student_name}'s wallet ✅`);
       setCart({});
       setSelectedWallet(null);
       setWalletQuery("");
@@ -339,7 +353,7 @@ export function CheckoutClient({
     setMessage("Recording cash sale…");
     try {
       await chargeCash(fairId, lines);
-      setMessage(`Recorded $${total.toFixed(2)} cash sale ✅`);
+      setMessage(`Recorded $${cashTotal.toFixed(2)} cash sale ✅`);
       setCart({});
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Cash sale failed");
@@ -450,13 +464,7 @@ export function CheckoutClient({
           })}
           {pricedLines.length === 0 && <li className="text-neutral-500">Empty</li>}
         </ul>
-        {taxAmount > 0 && (
-          <div className="mb-1 flex flex-col text-sm text-neutral-600">
-            <span>Subtotal: ${subtotal.toFixed(2)}</span>
-            <span>Sales tax: ${taxAmount.toFixed(2)}</span>
-          </div>
-        )}
-        <p className="mb-3 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
+        <p className="mb-3 font-semibold text-neutral-900">Subtotal: ${subtotal.toFixed(2)}</p>
 
         {terminalLocationId && (
           <div className="mb-3 flex flex-col gap-2">
@@ -493,12 +501,19 @@ export function CheckoutClient({
           </div>
         )}
 
+        {cardTax > 0 && (
+          <p className="mb-1 text-xs text-neutral-500">
+            + ${cardTax.toFixed(2)} sales tax = ${cardTotal.toFixed(2)} with reader
+          </p>
+        )}
         <Button
           type="button"
-          disabled={!terminalLocationId || terminalStatus !== "connected" || charging || total <= 0}
+          disabled={
+            !terminalLocationId || terminalStatus !== "connected" || charging || cardTotal <= 0
+          }
           onClick={charge}
         >
-          {charging ? "Charging…" : `Charge $${total.toFixed(2)} with reader`}
+          {charging ? "Charging…" : `Charge $${cardTotal.toFixed(2)} with reader`}
         </Button>
 
         {allowWallet && (
@@ -570,16 +585,21 @@ export function CheckoutClient({
                   <span className="font-semibold">{selectedWallet.student_name}</span> — balance:
                   ${selectedWallet.balance.toFixed(2)}
                 </p>
+                {walletTax > 0 && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    + ${walletTax.toFixed(2)} sales tax = ${walletTotal.toFixed(2)}
+                  </p>
+                )}
                 <Button
                   type="button"
                   size="sm"
                   className="mt-2"
-                  disabled={charging || total <= 0}
+                  disabled={charging || walletTotal <= 0}
                   onClick={chargeSelectedWallet}
                 >
-                  {charging ? "Charging…" : `Charge $${total.toFixed(2)} to wallet`}
+                  {charging ? "Charging…" : `Charge $${walletTotal.toFixed(2)} to wallet`}
                 </Button>
-                {total > selectedWallet.balance && (
+                {walletTotal > selectedWallet.balance && (
                   <p className="mt-1 text-xs text-amber-700">
                     Cart total exceeds this wallet&apos;s balance — will try to cover the
                     difference from the assistance pool if this student qualifies.
@@ -593,13 +613,18 @@ export function CheckoutClient({
         {allowCash && (
           <div className="mt-4 flex flex-col gap-2 border-t border-neutral-100 pt-3">
             <p className="text-xs font-semibold text-neutral-600">Or take cash</p>
+            {cashTax > 0 && (
+              <p className="text-xs text-neutral-500">
+                + ${cashTax.toFixed(2)} sales tax = ${cashTotal.toFixed(2)}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
-              disabled={charging || total <= 0}
+              disabled={charging || cashTotal <= 0}
               onClick={chargeCashTender}
             >
-              {charging ? "Recording…" : `Charge $${total.toFixed(2)} in cash`}
+              {charging ? "Recording…" : `Charge $${cashTotal.toFixed(2)} in cash`}
             </Button>
           </div>
         )}

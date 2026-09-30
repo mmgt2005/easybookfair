@@ -17,12 +17,20 @@ export function FairSalesTaxForm({
   initialState,
   initialCountyPct,
   initialCityPct,
+  initialTaxAppliesOnline,
+  initialTaxAppliesInPerson,
+  initialTaxAppliesCash,
+  initialTaxAppliesWallet,
 }: {
   fairId: string;
   rates: StateRate[];
   initialState: string | null;
   initialCountyPct: number | null;
   initialCityPct: number | null;
+  initialTaxAppliesOnline: boolean;
+  initialTaxAppliesInPerson: boolean;
+  initialTaxAppliesCash: boolean;
+  initialTaxAppliesWallet: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +56,10 @@ export function FairSalesTaxForm({
         initialState={initialState}
         initialCountyPct={initialCountyPct}
         initialCityPct={initialCityPct}
+        initialTaxAppliesOnline={initialTaxAppliesOnline}
+        initialTaxAppliesInPerson={initialTaxAppliesInPerson}
+        initialTaxAppliesCash={initialTaxAppliesCash}
+        initialTaxAppliesWallet={initialTaxAppliesWallet}
       />
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={isPending}>

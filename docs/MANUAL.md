@@ -290,16 +290,27 @@ it's the same page either way.
 see its base sales tax rate, then use the "look up your local rate" link
 to find your county's and city's own add-on rates and enter each as its
 own number in the County/City fields — the app adds all three together
-automatically into the combined rate actually applied at checkout, across
-all four payment channels (shown live as you type, so you can always see
-the total before saving). Leave the state and both rate fields blank to
-collect no tax. Collected tax is never part of your payout — see it on
-the sales feed, payout report, and (once closed) the settlement, always
-labeled as money you're responsible for remitting to your own state.
-State base rates are maintained at `/admin/sales-tax-rates` (Setup →
-Sales tax rates in the nav) — correct a row there if a state's rate
-changes. Org staff can also set this themselves, without an admin, from
-`/org/fairs/<id>/sales-tax` — see the Org staff guide below.
+automatically into the combined rate actually applied at checkout (shown
+live as you type, so you can always see the total before saving). Leave
+the state and both rate fields blank to collect no tax. Collected tax is
+never part of your payout — see it on the sales feed, payout report, and
+(once closed) the settlement, always labeled as money you're responsible
+for remitting to your own state. State base rates are maintained at
+`/admin/sales-tax-rates` (Setup → Sales tax rates in the nav) — correct a
+row there if a state's rate changes. Org staff can also set this
+themselves, without an admin, from `/org/fairs/<id>/sales-tax` — see the
+Org staff guide below.
+
+Four checkboxes below the rate fields — "Apply this tax to: Online /
+In-person card / Cash / Wallet spending" — let you turn the tax off for
+specific sale channels, all checked by default so nothing changes unless
+you uncheck one. Some states' nonprofit/school fundraiser exemptions
+apply only to certain kinds of sales (e.g. a direct in-person sale by the
+org itself, but not one routed through an online platform) — the exact
+rule varies by state and isn't something this app knows or claims to
+know. Once a state is selected, a "check your state's rule" link opens a
+search for that state's own guidance — confirm with your state's
+Department of Revenue or a tax advisor before relying on these toggles.
 
 **Terminal setup** (same page): needed once per fair before the checkout
 screen can charge cards with a physical reader. Fill in the venue's
@@ -891,11 +902,14 @@ a member of.
 
 **Sales tax** (`/org/fairs/<id>/sales-tax`): set your own fair's tax
 rate directly — no admin needed. Same state picker + county/city rate
-fields as the admin edit page (see "Sales tax" under Organizations and
-fairs above): pick your state to see its base rate, enter your county's
-and city's own rates from a quick lookup, and the combined rate shown is
-what's actually applied at checkout, across all four payment channels.
-Any staff member can set this, not just an org admin.
+fields, and the same per-channel exemption checkboxes and "check your
+state's rule" link, as the admin edit page (see "Sales tax" under
+Organizations and fairs above): pick your state to see its base rate,
+enter your county's and city's own rates from a quick lookup, the
+combined rate shown is what's actually applied at checkout, and the four
+checkboxes below it decide which of the four sale channels (online,
+in-person, cash, wallet) it's actually charged on. Any staff member can
+set this, not just an org admin.
 
 ### Requesting a fair (`/org/fairs/request`)
 
