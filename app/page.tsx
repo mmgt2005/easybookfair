@@ -14,6 +14,8 @@ type FundraiserFair = {
   is_final: boolean;
 };
 
+type PublicAuthor = { author_user_id: string; name: string };
+
 const STEPS = [
   {
     title: "Tell us about your fundraiser",
@@ -115,13 +117,17 @@ export default async function Home() {
   // reasoning as fair_public_info/fair_storefront_items being the only
   // public read paths onto their own tables.
   const supabase = await createClient();
-  const { data: fundraisers } = await supabase.rpc("fundraiser_fairs_public");
+  const [{ data: fundraisers }, { data: authors }] = await Promise.all([
+    supabase.rpc("fundraiser_fairs_public"),
+    supabase.rpc("authors_public_list"),
+  ]);
   const activeFundraisers = ((fundraisers ?? []) as FundraiserFair[]).filter(
     (f) => f.status !== "closed",
   );
   const closedFundraisers = ((fundraisers ?? []) as FundraiserFair[]).filter(
     (f) => f.status === "closed",
   );
+  const publicAuthors = (authors ?? []) as PublicAuthor[];
 
   return (
     <main className="flex flex-col">
@@ -233,6 +239,29 @@ export default async function Home() {
                   {f.fundraiser_goal_amount.toFixed(2)} goal
                 </p>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Meet the authors */}
+      {publicAuthors.length > 0 && (
+        <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-12">
+          <h2 className="font-heading text-2xl font-extrabold text-neutral-900">
+            Meet the authors
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Authors and vendors selling through EasyBookFair — click a name to see their books.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {publicAuthors.map((a) => (
+              <Link
+                key={a.author_user_id}
+                href={`/authors/${a.author_user_id}`}
+                className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 hover:border-primary-300 hover:text-primary-600"
+              >
+                {a.name}
+              </Link>
             ))}
           </div>
         </div>

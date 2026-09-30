@@ -12,6 +12,28 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Public author profiles — "Meet the Authors"**: the homepage now lists
+  every author who has a real account and at least one approved book,
+  each name linking to a new public page (`/authors/<id>`) showing their
+  bio, website, and books (cover, title, description). Authors write
+  their own bio/website from a new "Your public profile" card on the
+  author dashboard (`/author`), which also shows a live preview of
+  exactly how their public page will look — even before they qualify to
+  be listed publicly. New migration `0069` adds `bio`/`website` to
+  `authors` and three new public RPCs
+  (`authors_public_list`/`author_public_profile`/`author_public_books`),
+  following the same security-definer pattern already used for the
+  storefront and fundraiser carousel.
+
+### Fixed
+
+- **Admin edits to an author's name/email/phone were silently not
+  saving.** `authors` had no UPDATE policy at all (only a read-your-own
+  SELECT policy), so `updateAuthor()` on `/admin/authors/<id>/edit` was
+  quietly matching zero rows every time — the form appeared to succeed
+  but nothing was ever persisted. Fixed by the same migration `0069`
+  above, which adds the missing admin-write policy.
+
 - **Sales tax can now be exempted per sale channel** (online, in-person
   card, cash, wallet spend) instead of always applying uniformly to all
   four — some states' nonprofit/school fundraiser exemptions turn on who

@@ -1,0 +1,41 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { requireAuthor } from "@/lib/auth";
+
+// Next.js redacts a thrown Server Action error's message in production —
+// this returns { error } as ordinary data instead (same pattern as
+// updateFundraiserGoal/updateFairSalesTax), so the caller needs
+// useTransition rather than a bare <form action={...}>.
+export type ActionResult = { error?: string };
+
+function normalizeWebsite(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+// Lets an author edit only their own bio/website — name/email/phone stay
+// admin-only (app/admin/authors/actions.ts). Goes through
+// update_author_profile() (migration 0069), a security-definer RPC scoped
+// to "self or admin", since authors has no author-self UPDATE policy —
+// same reasoning as updateFundraiserGoal()/updateFairSalesTax().
+export async function updateAuthorProfile(formData: FormData): Promise<ActionResult> {
+  const { authorUserId } = await requireAuthor();
+  const supabase = await createClient();
+
+  const bio = String(formData.get("bio") ?? "").trim() || null;
+  const website = normalizeWebsite(String(formData.get("website") ?? ""));
+
+  const { error } = await supabase.rpc("update_author_profile", {
+    p_author_user_id: authorUserId,
+    p_bio: bio,
+    p_website: website,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/author");
+  revalidatePath(`/authors/${authorUserId}`);
+  return {};
+}

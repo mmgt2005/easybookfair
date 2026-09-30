@@ -1000,6 +1000,11 @@ in the **Event requests** table on your dashboard.
 
 ## Buyer guide
 
+The homepage (`/`) lists every author with a real account and at least
+one approved book under "Meet the authors" — click a name to see their
+bio, website, and books (cover, title, description) on their own public
+page at `/authors/<id>`.
+
 The storefront (`/fairs/<id>`) only accepts orders once the fair has
 actually opened, and the wallet page (`/fairs/<id>/wallet`) is available
 from before the fair opens through the end of the sale — see "Fair
@@ -1092,6 +1097,20 @@ if an admin adds you as the author contact directly on a catalog item and
 then creates an account for you from `/admin/authors`. `/author` shows
 those books (and their sales) in their own section, separate from
 anything you've actually submitted yourself.
+
+**Your public author page**: once you have at least one approved book,
+you get a public page at `/authors/<your-id>` — shared on EasyBookFair's
+homepage under "Meet the Authors" so buyers can browse your books.
+Fill in an "About you" bio and an optional website link from the "Your
+public profile" card at the top of `/author` — both are optional, shown
+on your public page once saved, and nowhere else. There's no separate
+opt-in step: any author with a real account and at least one approved
+book is listed automatically. A live preview right below the edit form
+shows exactly how your public page will look, including your book
+covers/descriptions, so you can check it before (or even without ever)
+visiting the real page — the preview works even before your first book
+is approved, since it doesn't require you to already qualify for public
+listing.
 
 ## Not yet supported
 

@@ -257,7 +257,7 @@ export async function requireAuthor() {
     if (adminRow) {
       const { data: authorProfile } = await supabase
         .from("authors")
-        .select("name, email")
+        .select("name, email, bio, website")
         .eq("user_id", viewAsAuthorId)
         .maybeSingle();
 
@@ -266,6 +266,8 @@ export async function requireAuthor() {
         authorUserId: viewAsAuthorId,
         name: authorProfile?.name ?? "Unknown author",
         email: authorProfile?.email ?? null,
+        bio: authorProfile?.bio ?? null,
+        website: authorProfile?.website ?? null,
         viewingAs: true,
         adminId: user.id,
       };
@@ -274,7 +276,7 @@ export async function requireAuthor() {
 
   const { data: authorRow } = await supabase
     .from("authors")
-    .select("user_id, name, email")
+    .select("user_id, name, email, bio, website")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -287,6 +289,8 @@ export async function requireAuthor() {
     authorUserId: authorRow.user_id,
     name: authorRow.name,
     email: authorRow.email,
+    bio: authorRow.bio,
+    website: authorRow.website,
     viewingAs: false,
     adminId: null as string | null,
   };
