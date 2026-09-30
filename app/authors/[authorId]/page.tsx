@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AuthorPublicProfile } from "@/components/AuthorPublicProfile";
 
@@ -38,11 +39,21 @@ export default async function AuthorPublicPage({
   ]);
 
   if (!profile) {
-    return <p className="p-6 text-sm text-red-600">Author not found.</p>;
+    return (
+      <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-12">
+        <Link href="/" className="text-sm font-semibold text-accent-600 hover:underline">
+          ← Back to homepage
+        </Link>
+        <p className="mt-4 text-sm text-red-600">Author not found.</p>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-12">
+      <Link href="/" className="mb-4 inline-block text-sm font-semibold text-accent-600 hover:underline">
+        ← Back to homepage
+      </Link>
       <AuthorPublicProfile
         name={profile.name}
         bio={profile.bio}

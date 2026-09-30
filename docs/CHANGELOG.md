@@ -23,7 +23,9 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   `authors` and three new public RPCs
   (`authors_public_list`/`author_public_profile`/`author_public_books`),
   following the same security-definer pattern already used for the
-  storefront and fundraiser carousel.
+  storefront and fundraiser carousel. Includes a "← Back to homepage"
+  link on the public author page, since it's a standalone route with no
+  shared nav chrome.
 
 ### Fixed
 
