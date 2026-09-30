@@ -7,6 +7,7 @@ import packageJson from "@/package.json";
 const navLinks = [
   { href: "/author", label: "Dashboard" },
   { href: "/author/submit", label: "Submit new item" },
+  { href: "/author/profile", label: "Public profile" },
 ];
 
 const authorTourSteps = [
@@ -22,6 +23,11 @@ const authorTourSteps = [
   {
     title: "Submit new item",
     description: "Already have an account, so this pre-fills your name and email for you.",
+  },
+  {
+    title: "Public profile",
+    description:
+      "Write a bio and add your website — shown on your public author page once you have at least one approved book, with a live preview right on this screen.",
   },
 ];
 

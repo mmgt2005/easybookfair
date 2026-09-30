@@ -1101,9 +1101,10 @@ anything you've actually submitted yourself.
 **Your public author page**: once you have at least one approved book,
 you get a public page at `/authors/<your-id>` — shared on EasyBookFair's
 homepage under "Meet the Authors" so buyers can browse your books.
-Fill in an "About you" bio and an optional website link from the "Your
-public profile" card at the top of `/author` — both are optional, shown
-on your public page once saved, and nowhere else. There's no separate
+Fill in an "About you" bio and an optional website link from "Public
+profile" in the author portal nav (`/author/profile`, alongside "Submit
+new item") — both are optional, shown on your public page once saved,
+and nowhere else. There's no separate
 opt-in step: any author with a real account and at least one approved
 book is listed automatically. A live preview right below the edit form
 shows exactly how your public page will look, including your book

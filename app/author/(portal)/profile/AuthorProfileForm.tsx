@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateAuthorProfile } from "../actions";
+import { updateAuthorProfile } from "../../actions";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 
 // Next.js redacts a thrown Server Action error's message in production —
