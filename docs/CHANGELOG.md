@@ -12,6 +12,19 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Shipping cost estimate for a fair's allocation**: a new "Shipping
+  cost estimate" card on the admin allocations screen generates a
+  possible cost (not a purchased label) to ship a fair's allocated
+  inventory out, and separately to ship back whatever's unsold at close
+  — via EasyPost's free tier (real USPS rates, no separate USPS account
+  needed). Reuses the existing packing-suggestion logic to figure out how
+  many cartons and how much they weigh; catalog items missing a recorded
+  weight fall back to an assumed 1 lb/unit, clearly flagged in the
+  result. Read-only on the org side (`/org/fairs/<id>/inventory`).
+  Optional — disables itself with an explanatory message if
+  `EASYPOST_API_KEY`/`SHIPPING_ORIGIN_ZIP` aren't configured, or if the
+  organization hasn't set a shipping address yet. New migration `0070`
+  adds `shipping_cost_estimates` (one row per fair per direction).
 - **Public author profiles — "Meet the Authors"**: the homepage now lists
   every author who has a real account and at least one approved book,
   each name linking to a new public page (`/authors/<id>`) showing their

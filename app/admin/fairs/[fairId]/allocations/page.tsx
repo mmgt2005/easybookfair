@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   allocate,
@@ -7,8 +8,19 @@ import {
   updateRestockOrder,
   computeCashDrawerSetup,
   updateCashDrawerSetup,
+  computeShippingEstimate,
 } from "./actions";
+import { shippingRatesConfigured } from "@/lib/shippingRates";
 import { Button, Card, Input, Select } from "@/components/ui";
+
+type ShippingCostEstimate = {
+  direction: "outbound" | "return";
+  cartons_count: number;
+  total_weight_oz: number;
+  items_with_assumed_weight: number;
+  estimated_cost: number | null;
+  carrier_service: string | null;
+};
 
 type PackingSuggestion = {
   total_weight_oz: number;
@@ -33,33 +45,46 @@ export default async function AllocationsPage({
 
   const { data: fair } = await supabase
     .from("fairs")
-    .select("id, name, start_date, cash_sales_assumption_pct, organizations(name)")
+    .select(
+      "id, name, start_date, cash_sales_assumption_pct, organizations(name, shipping_postal_code)",
+    )
     .eq("id", fairId)
     .single();
 
-  const [{ data: catalogItems }, { data: allocations }, { data: latestSuggestion }, { data: cashDrawerSetup }] =
-    await Promise.all([
-      supabase
-        .from("catalog_items")
-        .select("id, title, price, stock_on_hand, lead_time_days")
-        .order("title"),
-      supabase
-        .from("allocations")
-        .select("id, catalog_item_id, quantity_allocated")
-        .eq("fair_id", fairId),
-      supabase
-        .from("packing_suggestions")
-        .select("carton_spec_id, suggestion, created_at")
-        .eq("fair_id", fairId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("cash_drawer_setups")
-        .select("suggested_float_total, quarters_count, ones_count, fives_count, tens_count")
-        .eq("fair_id", fairId)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: catalogItems },
+    { data: allocations },
+    { data: latestSuggestion },
+    { data: cashDrawerSetup },
+    { data: shippingEstimateRows },
+  ] = await Promise.all([
+    supabase
+      .from("catalog_items")
+      .select("id, title, price, stock_on_hand, lead_time_days")
+      .order("title"),
+    supabase
+      .from("allocations")
+      .select("id, catalog_item_id, quantity_allocated")
+      .eq("fair_id", fairId),
+    supabase
+      .from("packing_suggestions")
+      .select("carton_spec_id, suggestion, created_at")
+      .eq("fair_id", fairId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("cash_drawer_setups")
+      .select("suggested_float_total, quarters_count, ones_count, fives_count, tens_count")
+      .eq("fair_id", fairId)
+      .maybeSingle(),
+    supabase
+      .from("shipping_cost_estimates")
+      .select(
+        "direction, cartons_count, total_weight_oz, items_with_assumed_weight, estimated_cost, carrier_service",
+      )
+      .eq("fair_id", fairId),
+  ]);
 
   const allocationByItem = new Map((allocations ?? []).map((a) => [a.catalog_item_id, a]));
   const allocationIds = (allocations ?? []).map((a) => a.id);
@@ -92,6 +117,14 @@ export default async function AllocationsPage({
   const computeSuggestionForFair = computePackingSuggestion.bind(null, fairId);
   const computeCashDrawerSetupForFair = computeCashDrawerSetup.bind(null, fairId);
   const updateCashDrawerSetupForFair = updateCashDrawerSetup.bind(null, fairId);
+  const computeOutboundShippingForFair = computeShippingEstimate.bind(null, fairId, "outbound");
+  const computeReturnShippingForFair = computeShippingEstimate.bind(null, fairId, "return");
+  const shippingEstimatesByDirection = new Map(
+    ((shippingEstimateRows ?? []) as ShippingCostEstimate[]).map((row) => [row.direction, row]),
+  );
+  const destinationZip = (
+    fair.organizations as unknown as { shipping_postal_code: string | null } | null
+  )?.shipping_postal_code;
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
   const recommendedCarton = suggestion?.options.find(
     (opt) => opt.carton_spec_id === latestSuggestion?.carton_spec_id,
@@ -369,6 +402,72 @@ export default async function AllocationsPage({
             Recompute suggestion
           </Button>
         </form>
+      </Card>
+
+      <Card className="max-w-lg">
+        <h2 className="font-heading font-bold text-neutral-900">Shipping cost estimate 🚚</h2>
+        <p className="mb-2 text-xs text-neutral-500">
+          A possible cost to ship this fair&apos;s allocation via EasyPost — not a purchased
+          label, just an estimate. Recompute any time as the allocation or catalog weights
+          change.
+        </p>
+        {!shippingRatesConfigured() ? (
+          <p className="text-sm text-neutral-600">
+            Not enabled — set <code>EASYPOST_API_KEY</code> and <code>SHIPPING_ORIGIN_ZIP</code>{" "}
+            to turn this on.
+          </p>
+        ) : !destinationZip ? (
+          <p className="text-sm text-neutral-600">
+            Add this organization&apos;s shipping address first (
+            <Link href="/admin/organizations" className="font-semibold text-accent-600 hover:underline">
+              Organizations
+            </Link>
+            ) before estimating a cost.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {(["outbound", "return"] as const).map((direction) => {
+              const estimate = shippingEstimatesByDirection.get(direction);
+              const label = direction === "outbound" ? "Outbound (to fair)" : "Return (unsold, from fair)";
+              const action =
+                direction === "outbound" ? computeOutboundShippingForFair : computeReturnShippingForFair;
+              return (
+                <div key={direction} className="rounded-lg bg-neutral-50 p-3 text-sm">
+                  <p className="font-semibold text-neutral-800">{label}</p>
+                  {estimate ? (
+                    estimate.estimated_cost !== null ? (
+                      <p className="mt-1 text-neutral-700">
+                        <strong>${estimate.estimated_cost.toFixed(2)}</strong> via{" "}
+                        {estimate.carrier_service} ({estimate.cartons_count} carton
+                        {estimate.cartons_count === 1 ? "" : "s"}, ~
+                        {(estimate.total_weight_oz / 16).toFixed(1)} lb)
+                        {estimate.items_with_assumed_weight > 0 && (
+                          <span className="block text-xs text-neutral-500">
+                            {estimate.items_with_assumed_weight} item
+                            {estimate.items_with_assumed_weight === 1 ? "" : "s"} used an assumed 1
+                            lb/unit weight — fill in real weights on those catalog items for a more
+                            accurate estimate.
+                          </span>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-neutral-700">
+                        Couldn&apos;t get a rate — check the destination address.
+                      </p>
+                    )
+                  ) : (
+                    <p className="mt-1 text-neutral-600">No estimate computed yet.</p>
+                  )}
+                  <form action={action} className="mt-2">
+                    <Button type="submit" size="sm" variant="outline">
+                      Recompute
+                    </Button>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
     </div>
   );

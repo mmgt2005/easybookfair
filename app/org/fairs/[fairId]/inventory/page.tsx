@@ -2,12 +2,13 @@ import { requireFairStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader } from "@/components/ui";
 
-// Read-only mirror of three admin allocations-screen pieces (manifest,
-// packing suggestion, cash drawer setup) — an org can't edit any of
-// these, only see what's been sent and how the admin suggests setting
-// up for it. All three are already RLS-readable by org staff
-// (allocations_select, packing_suggestions_select, and the new
-// cash_drawer_setups_org_select from migration 0058) via
+// Read-only mirror of four admin allocations-screen pieces (manifest,
+// packing suggestion, cash drawer setup, shipping cost estimate) — an
+// org can't edit any of these, only see what's been sent and how the
+// admin suggests setting up for it. All four are already RLS-readable by
+// org staff (allocations_select, packing_suggestions_select,
+// cash_drawer_setups_org_select from migration 0058, and
+// shipping_cost_estimates_org_select from migration 0070) via
 // requireFairStaff()'s membership check, the same authorization
 // boundary every other org fair-scoped page uses.
 type PackingSuggestion = {
@@ -19,6 +20,15 @@ type PackingSuggestion = {
   }[];
 };
 
+type ShippingCostEstimate = {
+  direction: "outbound" | "return";
+  cartons_count: number;
+  total_weight_oz: number;
+  items_with_assumed_weight: number;
+  estimated_cost: number | null;
+  carrier_service: string | null;
+};
+
 export default async function OrgInventoryPage({
   params,
 }: {
@@ -28,26 +38,37 @@ export default async function OrgInventoryPage({
   await requireFairStaff(fairId);
   const supabase = await createClient();
 
-  const [{ data: fair }, { data: allocations }, { data: latestSuggestion }, { data: cashDrawerSetup }] =
-    await Promise.all([
-      supabase.from("fairs").select("id, name").eq("id", fairId).maybeSingle(),
-      supabase
-        .from("allocations")
-        .select("catalog_item_id, quantity_allocated, catalog_items(title, price, sku, isbn)")
-        .eq("fair_id", fairId),
-      supabase
-        .from("packing_suggestions")
-        .select("carton_spec_id, suggestion")
-        .eq("fair_id", fairId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("cash_drawer_setups")
-        .select("suggested_float_total, quarters_count, ones_count, fives_count, tens_count")
-        .eq("fair_id", fairId)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: fair },
+    { data: allocations },
+    { data: latestSuggestion },
+    { data: cashDrawerSetup },
+    { data: shippingEstimateRows },
+  ] = await Promise.all([
+    supabase.from("fairs").select("id, name").eq("id", fairId).maybeSingle(),
+    supabase
+      .from("allocations")
+      .select("catalog_item_id, quantity_allocated, catalog_items(title, price, sku, isbn)")
+      .eq("fair_id", fairId),
+    supabase
+      .from("packing_suggestions")
+      .select("carton_spec_id, suggestion")
+      .eq("fair_id", fairId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("cash_drawer_setups")
+      .select("suggested_float_total, quarters_count, ones_count, fives_count, tens_count")
+      .eq("fair_id", fairId)
+      .maybeSingle(),
+    supabase
+      .from("shipping_cost_estimates")
+      .select(
+        "direction, cartons_count, total_weight_oz, items_with_assumed_weight, estimated_cost, carrier_service",
+      )
+      .eq("fair_id", fairId),
+  ]);
 
   if (!fair) {
     return <p className="text-sm text-red-600">Fair not found.</p>;
@@ -72,6 +93,10 @@ export default async function OrgInventoryPage({
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
   const recommendedCarton = suggestion?.options.find(
     (opt) => opt.carton_spec_id === latestSuggestion?.carton_spec_id,
+  );
+
+  const shippingEstimatesByDirection = new Map(
+    ((shippingEstimateRows ?? []) as ShippingCostEstimate[]).map((row) => [row.direction, row]),
   );
 
   const denominationTotal = cashDrawerSetup
@@ -192,6 +217,39 @@ export default async function OrgInventoryPage({
           <p className="text-sm text-neutral-600">No cash drawer suggestion has been computed yet.</p>
         )}
       </Card>
+
+      {shippingEstimatesByDirection.size > 0 && (
+        <Card className="max-w-lg">
+          <h2 className="font-heading font-bold text-neutral-900">Shipping cost estimate 🚚</h2>
+          <p className="mb-2 text-xs text-neutral-500">
+            A possible cost to ship this fair&apos;s allocation — not a purchased label, just an
+            estimate.
+          </p>
+          <div className="flex flex-col gap-3">
+            {(["outbound", "return"] as const).map((direction) => {
+              const estimate = shippingEstimatesByDirection.get(direction);
+              if (!estimate) return null;
+              const label =
+                direction === "outbound" ? "Outbound (to fair)" : "Return (unsold, from fair)";
+              return (
+                <div key={direction} className="rounded-lg bg-neutral-50 p-3 text-sm">
+                  <p className="font-semibold text-neutral-800">{label}</p>
+                  {estimate.estimated_cost !== null ? (
+                    <p className="mt-1 text-neutral-700">
+                      <strong>${estimate.estimated_cost.toFixed(2)}</strong> via{" "}
+                      {estimate.carrier_service} ({estimate.cartons_count} carton
+                      {estimate.cartons_count === 1 ? "" : "s"}, ~
+                      {(estimate.total_weight_oz / 16).toFixed(1)} lb)
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-neutral-700">Couldn&apos;t get a rate last time.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

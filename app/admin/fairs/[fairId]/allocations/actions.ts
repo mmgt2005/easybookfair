@@ -5,6 +5,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { packCartons, type PackableItem } from "@/lib/packCartons";
 import { computePettyCashSuggestion, type AllocatedPriceLine } from "@/lib/pettyCash";
+import { estimateShippingCost, shippingRatesConfigured } from "@/lib/shippingRates";
+
+// 1 lb — only used when a catalog item has no weight recorded at all, so
+// a shipping estimate can still produce a number rather than silently
+// excluding that item's units. items_with_assumed_weight on the stored
+// row tells the admin how many distinct catalog items this was applied
+// to, so they know which items to go fill in a real weight for.
+const DEFAULT_ITEM_WEIGHT_OZ = 16;
 
 function pagePath(fairId: string) {
   return `/admin/fairs/${fairId}/allocations`;
@@ -313,5 +321,172 @@ export async function updateCashDrawerSetup(fairId: string, formData: FormData) 
 
   revalidatePath(pagePath(fairId));
   if (error) withError(fairId, error.message);
+  redirect(pagePath(fairId));
+}
+
+// Generates a possible shipping cost for this fair's allocated
+// inventory, via EasyPost (lib/shippingRates.ts). Two independent
+// directions, computed separately (one row each in
+// shipping_cost_estimates, migration 0070):
+// - "outbound": the full quantity_allocated, warehouse -> fair.
+// - "return": whatever's still unsold and not yet returned at the time
+//   this is computed (quantity_allocated - quantity_returned - sold,
+//   clamped at 0) — the same "returnable" formula close_fair() and
+//   receive_allocation_return() already use (migration 0055), fair ->
+//   warehouse.
+// Reuses the same "try every carton_specs row via packCartons(), keep
+// whichever needs the fewest cartons" loop computePackingSuggestion
+// already has, duplicated rather than extracted into a shared helper —
+// same "don't touch already-shipped, already-tested code" reasoning
+// used elsewhere in this codebase (e.g. set_fair_sales_tax()'s own
+// comment). Never overwrites/blocks on the existing packing suggestion.
+export async function computeShippingEstimate(
+  fairId: string,
+  direction: "outbound" | "return",
+) {
+  const supabase = await createClient();
+
+  if (!shippingRatesConfigured()) {
+    withError(fairId, "Shipping estimates aren't enabled (no EASYPOST_API_KEY configured)");
+  }
+  const originZip = process.env.SHIPPING_ORIGIN_ZIP;
+  if (!originZip) {
+    withError(fairId, "Shipping estimates aren't enabled (no SHIPPING_ORIGIN_ZIP configured)");
+  }
+
+  const { data: fair, error: fairError } = await supabase
+    .from("fairs")
+    .select("organizations(shipping_postal_code)")
+    .eq("id", fairId)
+    .single();
+  if (fairError) withError(fairId, fairError.message);
+
+  const org = fair?.organizations as unknown as { shipping_postal_code: string | null } | null;
+  const destinationZip = org?.shipping_postal_code;
+  if (!destinationZip) {
+    withError(fairId, "Add this organization's shipping address first");
+  }
+
+  const [{ data: allocations, error: allocError }, { data: cartonSpecs, error: cartonError }] =
+    await Promise.all([
+      supabase
+        .from("allocations")
+        .select(
+          "quantity_allocated, quantity_returned, catalog_items(id, title, weight_oz, length_in, width_in, height_in)",
+        )
+        .eq("fair_id", fairId),
+      supabase.from("carton_specs").select("id, name, max_weight_oz, length_in, width_in, height_in"),
+    ]);
+  if (allocError) withError(fairId, allocError.message);
+  if (cartonError) withError(fairId, cartonError.message);
+  if (!cartonSpecs || cartonSpecs.length === 0) {
+    withError(fairId, "No carton specs configured");
+  }
+
+  const catalogItemIds = (allocations ?? [])
+    .map((a) => (a.catalog_items as unknown as { id: string } | null)?.id)
+    .filter((id): id is string => !!id);
+
+  let soldByItem = new Map<string, number>();
+  if (direction === "return" && catalogItemIds.length > 0) {
+    const { data: sales, error: salesError } = await supabase
+      .from("sales")
+      .select("catalog_item_id")
+      .eq("fair_id", fairId)
+      .eq("status", "completed")
+      .in("catalog_item_id", catalogItemIds);
+    if (salesError) withError(fairId, salesError.message);
+    soldByItem = (sales ?? []).reduce((map, row) => {
+      map.set(row.catalog_item_id, (map.get(row.catalog_item_id) ?? 0) + 1);
+      return map;
+    }, new Map<string, number>());
+  }
+
+  let itemsWithAssumedWeight = 0;
+
+  const packableItems: PackableItem[] = (allocations ?? [])
+    .map((row) => {
+      const item = row.catalog_items as unknown as {
+        id: string;
+        title: string;
+        weight_oz: number | null;
+        length_in: number | null;
+        width_in: number | null;
+        height_in: number | null;
+      } | null;
+      if (!item) return null;
+
+      const quantity =
+        direction === "outbound"
+          ? row.quantity_allocated
+          : Math.max(
+              row.quantity_allocated - row.quantity_returned - (soldByItem.get(item.id) ?? 0),
+              0,
+            );
+      if (quantity <= 0) return null;
+
+      const hasDimensions = item.length_in && item.width_in && item.height_in;
+      const weightOz = item.weight_oz;
+      if (!weightOz) itemsWithAssumedWeight += 1;
+
+      return {
+        catalog_item_id: item.id,
+        title: item.title,
+        weight_oz: weightOz || DEFAULT_ITEM_WEIGHT_OZ,
+        volume_in3: hasDimensions ? item.length_in! * item.width_in! * item.height_in! : 0,
+        quantity,
+      };
+    })
+    .filter((x): x is PackableItem => x !== null);
+
+  if (packableItems.length === 0) {
+    withError(fairId, "Nothing to ship for this direction");
+  }
+
+  const optionsWithCartons = cartonSpecs!.map((spec) => {
+    const capacity = {
+      maxWeightOz: Number(spec.max_weight_oz),
+      maxVolumeIn3: Number(spec.length_in) * Number(spec.width_in) * Number(spec.height_in),
+    };
+    return { spec, cartons: packCartons(packableItems, capacity) };
+  });
+
+  const { spec: wonSpec, cartons } = optionsWithCartons.reduce((best, opt) =>
+    opt.cartons.length < best.cartons.length ? opt : best,
+  );
+
+  const totalWeightOz = cartons.reduce((sum, c) => sum + c.weight_oz, 0);
+
+  const estimate = await estimateShippingCost(
+    originZip!,
+    destinationZip!,
+    cartons.map((c) => ({
+      weightOz: c.weight_oz,
+      lengthIn: Number(wonSpec.length_in),
+      widthIn: Number(wonSpec.width_in),
+      heightIn: Number(wonSpec.height_in),
+    })),
+  );
+
+  const { error: upsertError } = await supabase.from("shipping_cost_estimates").upsert(
+    {
+      fair_id: fairId,
+      direction,
+      carton_spec_id: wonSpec.id,
+      cartons_count: cartons.length,
+      total_weight_oz: totalWeightOz,
+      items_with_assumed_weight: itemsWithAssumedWeight,
+      origin_zip: originZip,
+      destination_zip: destinationZip,
+      estimated_cost: estimate?.totalCost ?? null,
+      carrier_service: estimate?.carrierService ?? null,
+      computed_at: new Date().toISOString(),
+    },
+    { onConflict: "fair_id,direction" },
+  );
+
+  revalidatePath(pagePath(fairId));
+  revalidatePath(`/org/fairs/${fairId}/inventory`);
+  if (upsertError) withError(fairId, upsertError.message);
   redirect(pagePath(fairId));
 }

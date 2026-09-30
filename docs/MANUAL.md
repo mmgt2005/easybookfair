@@ -370,6 +370,21 @@ native mobile SDKs, which a browser can't invoke).
    every count is a plain editable field you can override and save at
    any time; clicking Recompute again overwrites whatever was there
    (suggested or edited) rather than keeping a history.
+5. **Shipping cost estimate**: click Recompute (separately for each
+   direction) to get a real carrier rate via EasyPost — **Outbound** (the
+   full allocated quantity, warehouse → fair) and **Return** (just the
+   unsold quantity, fair → warehouse, the same figure the returns screen
+   tracks). Packs the shipment into cartons the same way the packing
+   suggestion does, then prices the cheapest carrier/service for those
+   cartons between this app's warehouse address and the organization's
+   own shipping address. An item with no recorded weight is assumed to
+   weigh 1 lb for this estimate only — the result notes how many items
+   used that assumption, since filling in real weights makes the number
+   more accurate. If shipping estimates aren't configured (no EasyPost
+   API key set) or the organization hasn't saved a shipping address yet,
+   the card explains what's missing instead of showing a Recompute
+   button. Like the other two suggestions above, this is an estimate
+   only — no label is ever purchased here.
 
 ### Receiving returns (`/admin/fairs/<id>/returns`)
 
@@ -863,10 +878,12 @@ an inventory manifest (every allocated item, quantity, price, and
 SKU/ISBN, with a total-units/total-value line), the admin's carton
 packing suggestion (which box size, how many, what goes in each), and
 the admin's suggested starting cash drawer float and denomination
-breakdown. Nothing here is editable from your side — it's the same
-information the admin sees on their allocation screen, just framed as
-"what to expect and how to prep for it" rather than a place to change
-anything.
+breakdown, and — when computed — a shipping cost estimate for both
+directions (outbound to your fair, return of unsold inventory), based on
+a real EasyPost carrier rate. Nothing here is editable from your side —
+it's the same information the admin sees on their allocation screen,
+just framed as "what to expect and how to prep for it" rather than a
+place to change anything.
 
 ### Staff (`/org/staff`)
 
