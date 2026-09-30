@@ -27,6 +27,9 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Book descriptions on an author's public page were cut off** at 4
+  lines (`line-clamp-4`) — removed so the full description always shows.
+
 - **Admin edits to an author's name/email/phone were silently not
   saving.** `authors` had no UPDATE policy at all (only a read-your-own
   SELECT policy), so `updateAuthor()` on `/admin/authors/<id>/edit` was

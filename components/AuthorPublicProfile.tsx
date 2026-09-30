@@ -53,7 +53,7 @@ export function AuthorPublicProfile({
               )}
               <h3 className="font-heading font-bold text-neutral-900">{book.title}</h3>
               {book.description && (
-                <p className="line-clamp-4 text-sm text-neutral-600">{book.description}</p>
+                <p className="whitespace-pre-line text-sm text-neutral-600">{book.description}</p>
               )}
             </Card>
           ))}
