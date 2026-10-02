@@ -46,7 +46,7 @@ export default async function AllocationsPage({
   const { data: fair } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, cash_sales_assumption_pct, organizations(name, shipping_postal_code)",
+      "id, name, start_date, cash_sales_assumption_pct, organizations(name, shipping_postal_code, shipping_city, shipping_state)",
     )
     .eq("id", fairId)
     .single();
@@ -122,9 +122,15 @@ export default async function AllocationsPage({
   const shippingEstimatesByDirection = new Map(
     ((shippingEstimateRows ?? []) as ShippingCostEstimate[]).map((row) => [row.direction, row]),
   );
-  const destinationZip = (
-    fair.organizations as unknown as { shipping_postal_code: string | null } | null
-  )?.shipping_postal_code;
+  const orgShipping = fair.organizations as unknown as {
+    shipping_postal_code: string | null;
+    shipping_city: string | null;
+    shipping_state: string | null;
+  } | null;
+  const destinationZip =
+    orgShipping?.shipping_postal_code && orgShipping?.shipping_city && orgShipping?.shipping_state
+      ? orgShipping.shipping_postal_code
+      : null;
   const suggestion = latestSuggestion?.suggestion as PackingSuggestion | undefined;
   const recommendedCarton = suggestion?.options.find(
     (opt) => opt.carton_spec_id === latestSuggestion?.carton_spec_id,
@@ -407,18 +413,20 @@ export default async function AllocationsPage({
       <Card className="max-w-lg">
         <h2 className="font-heading font-bold text-neutral-900">Shipping cost estimate 🚚</h2>
         <p className="mb-2 text-xs text-neutral-500">
-          A possible cost to ship this fair&apos;s allocation via EasyPost — not a purchased
+          A possible cost to ship this fair&apos;s allocation via ShipEngine — not a purchased
           label, just an estimate. Recompute any time as the allocation or catalog weights
           change.
         </p>
         {!shippingRatesConfigured() ? (
           <p className="text-sm text-neutral-600">
-            Not enabled — set <code>EASYPOST_API_KEY</code> and <code>SHIPPING_ORIGIN_ZIP</code>{" "}
-            to turn this on.
+            Not enabled — set <code>SHIPENGINE_API_KEY</code>, <code>SHIPENGINE_CARRIER_ID</code>,
+            and <code>SHIPPING_ORIGIN_ZIP</code>/<code>_CITY</code>/<code>_STATE</code> to turn
+            this on.
           </p>
         ) : !destinationZip ? (
           <p className="text-sm text-neutral-600">
-            Add this organization&apos;s shipping address first (
+            Add this organization&apos;s complete shipping address (street, city, state, ZIP)
+            first (
             <Link href="/admin/organizations" className="font-semibold text-accent-600 hover:underline">
               Organizations
             </Link>

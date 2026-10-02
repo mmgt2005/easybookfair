@@ -16,15 +16,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   cost estimate" card on the admin allocations screen generates a
   possible cost (not a purchased label) to ship a fair's allocated
   inventory out, and separately to ship back whatever's unsold at close
-  — via EasyPost's free tier (real USPS rates, no separate USPS account
-  needed). Reuses the existing packing-suggestion logic to figure out how
-  many cartons and how much they weigh; catalog items missing a recorded
-  weight fall back to an assumed 1 lb/unit, clearly flagged in the
-  result. Read-only on the org side (`/org/fairs/<id>/inventory`).
-  Optional — disables itself with an explanatory message if
-  `EASYPOST_API_KEY`/`SHIPPING_ORIGIN_ZIP` aren't configured, or if the
-  organization hasn't set a shipping address yet. New migration `0070`
-  adds `shipping_cost_estimates` (one row per fair per direction).
+  — via ShipEngine's free developer API (real USPS rates, no separate
+  USPS business account needed). Reuses the existing packing-suggestion
+  logic to figure out how many cartons and how much they weigh; catalog
+  items missing a recorded weight fall back to an assumed 1 lb/unit,
+  clearly flagged in the result. Read-only on the org side
+  (`/org/fairs/<id>/inventory`). Optional — disables itself with an
+  explanatory message if `SHIPENGINE_API_KEY`/`SHIPENGINE_CARRIER_ID`/
+  `SHIPPING_ORIGIN_ZIP` aren't configured, or if the organization hasn't
+  set a complete shipping address (street, city, state, ZIP) yet. New
+  migration `0070` adds `shipping_cost_estimates` (one row per fair per
+  direction).
 - **Public author profiles — "Meet the Authors"**: the homepage now lists
   every author who has a real account and at least one approved book,
   each name linking to a new public page (`/authors/<id>`) showing their
@@ -46,12 +48,12 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   lines (`line-clamp-4`) — removed so the full description always shows.
 - **Shipping cost estimate always rated outbound (warehouse → org), even
   for the return direction.** `computeShippingEstimate()` passed the
-  warehouse ZIP as the origin and the org's ZIP as the destination
-  unconditionally, so a "return" estimate (unsold inventory shipping
-  back from the fair) asked EasyPost for a rate going the wrong way and
+  warehouse address as the origin and the org's address as the
+  destination unconditionally, so a "return" estimate (unsold inventory
+  shipping back from the fair) asked for a rate going the wrong way and
   stored a `shipping_cost_estimates` row whose `origin_zip`/
   `destination_zip` didn't match the direction it was labeled with. Now
-  flips the ZIP pair for `direction = 'return'`.
+  flips the address pair for `direction = 'return'`.
 
 - **Admin edits to an author's name/email/phone were silently not
   saving.** `authors` had no UPDATE policy at all (only a read-your-own

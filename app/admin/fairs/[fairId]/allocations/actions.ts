@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { packCartons, type PackableItem } from "@/lib/packCartons";
 import { computePettyCashSuggestion, type AllocatedPriceLine } from "@/lib/pettyCash";
-import { estimateShippingCost, shippingRatesConfigured } from "@/lib/shippingRates";
+import {
+  estimateShippingCost,
+  originAddress,
+  shippingRatesConfigured,
+  type ShippingAddress,
+} from "@/lib/shippingRates";
 
 // 1 lb — only used when a catalog item has no weight recorded at all, so
 // a shipping estimate can still produce a number rather than silently
@@ -325,7 +330,7 @@ export async function updateCashDrawerSetup(fairId: string, formData: FormData) 
 }
 
 // Generates a possible shipping cost for this fair's allocated
-// inventory, via EasyPost (lib/shippingRates.ts). Two independent
+// inventory, via ShipEngine (lib/shippingRates.ts). Two independent
 // directions, computed separately (one row each in
 // shipping_cost_estimates, migration 0070):
 // - "outbound": the full quantity_allocated, warehouse -> fair.
@@ -347,32 +352,48 @@ export async function computeShippingEstimate(
   const supabase = await createClient();
 
   if (!shippingRatesConfigured()) {
-    withError(fairId, "Shipping estimates aren't enabled (no EASYPOST_API_KEY configured)");
+    withError(
+      fairId,
+      "Shipping estimates aren't enabled (no SHIPENGINE_API_KEY/SHIPENGINE_CARRIER_ID configured)",
+    );
   }
-  const originZip = process.env.SHIPPING_ORIGIN_ZIP;
-  if (!originZip) {
-    withError(fairId, "Shipping estimates aren't enabled (no SHIPPING_ORIGIN_ZIP configured)");
+  const origin = originAddress();
+  if (!origin.postalCode || !origin.cityLocality || !origin.stateProvince) {
+    withError(
+      fairId,
+      "Shipping estimates aren't enabled (SHIPPING_ORIGIN_ZIP/_CITY/_STATE not fully configured)",
+    );
   }
 
   const { data: fair, error: fairError } = await supabase
     .from("fairs")
-    .select("organizations(shipping_postal_code)")
+    .select("organizations(shipping_postal_code, shipping_city, shipping_state, shipping_country)")
     .eq("id", fairId)
     .single();
   if (fairError) withError(fairId, fairError.message);
 
-  const org = fair?.organizations as unknown as { shipping_postal_code: string | null } | null;
-  const orgZip = org?.shipping_postal_code;
-  if (!orgZip) {
+  const org = fair?.organizations as unknown as {
+    shipping_postal_code: string | null;
+    shipping_city: string | null;
+    shipping_state: string | null;
+    shipping_country: string | null;
+  } | null;
+  if (!org?.shipping_postal_code || !org?.shipping_city || !org?.shipping_state) {
     withError(fairId, "Add this organization's shipping address first");
   }
+  const orgAddress: ShippingAddress = {
+    countryCode: org!.shipping_country || "US",
+    postalCode: org!.shipping_postal_code!,
+    cityLocality: org!.shipping_city!,
+    stateProvince: org!.shipping_state!,
+  };
 
   // Outbound ships warehouse -> org; return ships the opposite way (org ->
-  // warehouse), so the "from"/"to" pair fed to EasyPost — and the
+  // warehouse), so the "from"/"to" pair fed to ShipEngine — and the
   // origin_zip/destination_zip columns stored below — need to flip with
   // direction rather than always reading warehouse-as-origin.
-  const fromZip = direction === "outbound" ? originZip! : orgZip!;
-  const toZip = direction === "outbound" ? orgZip! : originZip!;
+  const fromAddress = direction === "outbound" ? origin : orgAddress;
+  const toAddress = direction === "outbound" ? orgAddress : origin;
 
   const [{ data: allocations, error: allocError }, { data: cartonSpecs, error: cartonError }] =
     await Promise.all([
@@ -465,8 +486,8 @@ export async function computeShippingEstimate(
   const totalWeightOz = cartons.reduce((sum, c) => sum + c.weight_oz, 0);
 
   const estimate = await estimateShippingCost(
-    fromZip,
-    toZip,
+    fromAddress,
+    toAddress,
     cartons.map((c) => ({
       weightOz: c.weight_oz,
       lengthIn: Number(wonSpec.length_in),
@@ -483,8 +504,8 @@ export async function computeShippingEstimate(
       cartons_count: cartons.length,
       total_weight_oz: totalWeightOz,
       items_with_assumed_weight: itemsWithAssumedWeight,
-      origin_zip: fromZip,
-      destination_zip: toZip,
+      origin_zip: fromAddress.postalCode,
+      destination_zip: toAddress.postalCode,
       estimated_cost: estimate?.totalCost ?? null,
       carrier_service: estimate?.carrierService ?? null,
       computed_at: new Date().toISOString(),
