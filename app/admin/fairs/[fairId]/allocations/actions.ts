@@ -362,10 +362,17 @@ export async function computeShippingEstimate(
   if (fairError) withError(fairId, fairError.message);
 
   const org = fair?.organizations as unknown as { shipping_postal_code: string | null } | null;
-  const destinationZip = org?.shipping_postal_code;
-  if (!destinationZip) {
+  const orgZip = org?.shipping_postal_code;
+  if (!orgZip) {
     withError(fairId, "Add this organization's shipping address first");
   }
+
+  // Outbound ships warehouse -> org; return ships the opposite way (org ->
+  // warehouse), so the "from"/"to" pair fed to EasyPost — and the
+  // origin_zip/destination_zip columns stored below — need to flip with
+  // direction rather than always reading warehouse-as-origin.
+  const fromZip = direction === "outbound" ? originZip! : orgZip!;
+  const toZip = direction === "outbound" ? orgZip! : originZip!;
 
   const [{ data: allocations, error: allocError }, { data: cartonSpecs, error: cartonError }] =
     await Promise.all([
@@ -458,8 +465,8 @@ export async function computeShippingEstimate(
   const totalWeightOz = cartons.reduce((sum, c) => sum + c.weight_oz, 0);
 
   const estimate = await estimateShippingCost(
-    originZip!,
-    destinationZip!,
+    fromZip,
+    toZip,
     cartons.map((c) => ({
       weightOz: c.weight_oz,
       lengthIn: Number(wonSpec.length_in),
@@ -476,8 +483,8 @@ export async function computeShippingEstimate(
       cartons_count: cartons.length,
       total_weight_oz: totalWeightOz,
       items_with_assumed_weight: itemsWithAssumedWeight,
-      origin_zip: originZip,
-      destination_zip: destinationZip,
+      origin_zip: fromZip,
+      destination_zip: toZip,
       estimated_cost: estimate?.totalCost ?? null,
       carrier_service: estimate?.carrierService ?? null,
       computed_at: new Date().toISOString(),

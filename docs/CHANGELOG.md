@@ -44,6 +44,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 - **Book descriptions on an author's public page were cut off** at 4
   lines (`line-clamp-4`) — removed so the full description always shows.
+- **Shipping cost estimate always rated outbound (warehouse → org), even
+  for the return direction.** `computeShippingEstimate()` passed the
+  warehouse ZIP as the origin and the org's ZIP as the destination
+  unconditionally, so a "return" estimate (unsold inventory shipping
+  back from the fair) asked EasyPost for a rate going the wrong way and
+  stored a `shipping_cost_estimates` row whose `origin_zip`/
+  `destination_zip` didn't match the direction it was labeled with. Now
+  flips the ZIP pair for `direction = 'return'`.
 
 - **Admin edits to an author's name/email/phone were silently not
   saving.** `authors` had no UPDATE policy at all (only a read-your-own
