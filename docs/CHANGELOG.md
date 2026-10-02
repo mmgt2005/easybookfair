@@ -54,6 +54,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   stored a `shipping_cost_estimates` row whose `origin_zip`/
   `destination_zip` didn't match the direction it was labeled with. Now
   flips the address pair for `direction = 'return'`.
+- **A "Return" shipping estimate stayed stale once everything was already
+  returned/sold.** Once a direction had nothing left to ship (every unit
+  already physically returned via `/admin/fairs/<id>/returns`, or sold),
+  clicking Recompute errored with "Nothing to ship for this direction"
+  instead of updating anything — so the card kept showing whatever dollar
+  figure had been computed earlier, with no indication it was out of
+  date. Now clears the stored estimate for that direction in this case,
+  so the card correctly falls back to "No estimate computed yet."
 
 - **Admin edits to an author's name/email/phone were silently not
   saving.** `authors` had no UPDATE policy at all (only a read-your-own

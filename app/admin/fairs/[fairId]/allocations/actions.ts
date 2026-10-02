@@ -468,7 +468,19 @@ export async function computeShippingEstimate(
     .filter((x): x is PackableItem => x !== null);
 
   if (packableItems.length === 0) {
-    withError(fairId, "Nothing to ship for this direction");
+    // Nothing left to ship for this direction right now (e.g. every unit
+    // for a "return" estimate has already been physically returned and/or
+    // sold) — clear any stale estimate from a previous compute instead of
+    // erroring out and leaving the old dollar figure displayed forever.
+    const { error: clearError } = await supabase
+      .from("shipping_cost_estimates")
+      .delete()
+      .eq("fair_id", fairId)
+      .eq("direction", direction);
+    revalidatePath(pagePath(fairId));
+    revalidatePath(`/org/fairs/${fairId}/inventory`);
+    if (clearError) withError(fairId, clearError.message);
+    redirect(pagePath(fairId));
   }
 
   const optionsWithCartons = cartonSpecs!.map((spec) => {
