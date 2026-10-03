@@ -9,11 +9,19 @@ type AuthorProfile = {
   website: string | null;
 };
 
+type BookReview = {
+  reviewer_name: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+};
+
 type AuthorBook = {
   catalog_item_id: string;
   title: string;
   description: string | null;
   image_url: string | null;
+  reviews: BookReview[];
 };
 
 // Public, unauthenticated route — mirrors app/fairs/[fairId]/page.tsx's
@@ -49,6 +57,20 @@ export default async function AuthorPublicPage({
     );
   }
 
+  // One book_reviews_public() call per book — no new aggregate RPC needed
+  // for a single book's small review count (see migration 0073's own
+  // comment on why this stays simple rather than a batched query). Done
+  // after the !profile check so an unqualified/made-up author id never
+  // triggers it.
+  const booksWithReviews = await Promise.all(
+    ((books ?? []) as Omit<AuthorBook, "reviews">[]).map(async (book) => {
+      const { data: reviews } = await supabase.rpc("book_reviews_public", {
+        p_catalog_item_id: book.catalog_item_id,
+      });
+      return { ...book, reviews: (reviews ?? []) as BookReview[] };
+    }),
+  );
+
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-12">
       <Link href="/" className="mb-4 inline-block text-sm font-semibold text-accent-600 hover:underline">
@@ -58,7 +80,7 @@ export default async function AuthorPublicPage({
         name={profile.name}
         bio={profile.bio}
         website={profile.website}
-        books={(books ?? []) as AuthorBook[]}
+        books={booksWithReviews}
       />
     </div>
   );

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { setViewAsAuthor } from "@/lib/viewAs";
 import { inviteOrFindAccount } from "@/lib/accounts";
-import { siteUrl } from "@/lib/email";
+import { siteUrl, sendInventoryRequestEmail } from "@/lib/email";
 
 // Edits the authors row itself — name/email/phone shown across the app
 // (event-request review, the author portal's own header). Deliberately
@@ -76,4 +76,168 @@ export async function createAuthorAccountAndViewAs(formData: FormData) {
 
   await setViewAsAuthor(userId);
   redirect("/author");
+}
+
+function inventoryPath(authorUserId: string) {
+  return `/admin/authors/${authorUserId}/inventory`;
+}
+
+// Proposes a restock of an existing catalog item directly to the author
+// who supplies it — wholesale_cost_per_unit is prefilled client-side from
+// catalog_items.cost but stored as its own snapshot (migration 0071's own
+// comment explains why: a later cost change shouldn't retroactively
+// change what was actually proposed). Best-effort email, same posture as
+// every other notification in this app — a failed send never blocks the
+// request from being created.
+export async function createInventoryRequest(authorUserId: string, formData: FormData) {
+  const { user } = await requireAdmin();
+  const supabase = await createClient();
+
+  const catalogItemId = String(formData.get("catalog_item_id") ?? "");
+  const quantityRequested = Number(formData.get("quantity_requested"));
+  const wholesaleCostPerUnit = Number(formData.get("wholesale_cost_per_unit"));
+  const termsText = String(formData.get("terms_text") ?? "").trim() || null;
+
+  if (
+    !catalogItemId ||
+    !Number.isFinite(quantityRequested) ||
+    quantityRequested <= 0 ||
+    !Number.isFinite(wholesaleCostPerUnit) ||
+    wholesaleCostPerUnit < 0
+  ) {
+    redirect(
+      `${inventoryPath(authorUserId)}?error=${encodeURIComponent(
+        "A catalog item, a positive quantity, and a non-negative wholesale cost are required",
+      )}`,
+    );
+  }
+
+  const { data: request, error } = await supabase
+    .from("author_inventory_requests")
+    .insert({
+      author_user_id: authorUserId,
+      catalog_item_id: catalogItemId,
+      quantity_requested: quantityRequested,
+      wholesale_cost_per_unit: wholesaleCostPerUnit,
+      terms_text: termsText,
+      requested_by: user.id,
+    })
+    .select("wholesale_amount_total, catalog_items(title)")
+    .single();
+
+  revalidatePath(inventoryPath(authorUserId));
+  if (error) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  try {
+    const { data: author } = await supabase
+      .from("authors")
+      .select("name, email")
+      .eq("user_id", authorUserId)
+      .single();
+    const book = request?.catalog_items as unknown as { title: string } | null;
+    if (author && book) {
+      await sendInventoryRequestEmail({
+        to: author.email,
+        authorName: author.name,
+        bookTitle: book.title,
+        quantity: quantityRequested,
+        wholesaleAmountTotal: request!.wholesale_amount_total ?? quantityRequested * wholesaleCostPerUnit,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send inventory request email", err);
+  }
+
+  redirect(inventoryPath(authorUserId));
+}
+
+export async function cancelInventoryRequest(authorUserId: string, requestId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("author_inventory_requests")
+    .update({ status: "cancelled" })
+    .eq("id", requestId)
+    .eq("status", "pending");
+
+  revalidatePath(inventoryPath(authorUserId));
+  if (error) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(inventoryPath(authorUserId));
+}
+
+// The books physically arrived — reuses receive_stock() (migration 0009),
+// the same already-tested RPC the catalog screen's own "Restock" action
+// calls, rather than duplicating its atomic increment logic here.
+export async function markInventoryRequestReceived(authorUserId: string, requestId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: request, error: fetchError } = await supabase
+    .from("author_inventory_requests")
+    .select("catalog_item_id, quantity_requested, status")
+    .eq("id", requestId)
+    .single();
+
+  if (fetchError || !request) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent("Request not found")}`);
+  }
+  if (request!.status !== "accepted") {
+    redirect(
+      `${inventoryPath(authorUserId)}?error=${encodeURIComponent("Request must be accepted first")}`,
+    );
+  }
+
+  const { error: receiveError } = await supabase.rpc("receive_stock", {
+    p_catalog_item_id: request!.catalog_item_id,
+    p_quantity: request!.quantity_requested,
+  });
+  if (receiveError) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(receiveError.message)}`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("author_inventory_requests")
+    .update({ status: "received", received_at: new Date().toISOString() })
+    .eq("id", requestId);
+
+  revalidatePath(inventoryPath(authorUserId));
+  revalidatePath("/admin/catalog");
+  if (updateError) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(updateError.message)}`);
+  }
+  redirect(inventoryPath(authorUserId));
+}
+
+// Payment is manual/offline for now (no real money moves here) — this
+// just records that and when the admin paid the author, with an optional
+// reference (e.g. "Check #1234") for their own records.
+export async function markInventoryRequestPaid(
+  authorUserId: string,
+  requestId: string,
+  formData: FormData,
+) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const paymentReference = String(formData.get("payment_reference") ?? "").trim() || null;
+
+  const { error } = await supabase
+    .from("author_inventory_requests")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      payment_reference: paymentReference,
+    })
+    .eq("id", requestId)
+    .eq("status", "received");
+
+  revalidatePath(inventoryPath(authorUserId));
+  if (error) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(inventoryPath(authorUserId));
 }

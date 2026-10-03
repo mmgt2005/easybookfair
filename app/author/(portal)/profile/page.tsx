@@ -5,11 +5,19 @@ import { Card, PageHeader } from "@/components/ui";
 import { AuthorPublicProfile } from "@/components/AuthorPublicProfile";
 import { AuthorProfileForm } from "./AuthorProfileForm";
 
+type BookReview = {
+  reviewer_name: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+};
+
 type PublicBook = {
   catalog_item_id: string;
   title: string;
   description: string | null;
   image_url: string | null;
+  reviews: BookReview[];
 };
 
 // Its own nav page, mirroring "Submit new item" (app/author/submit) —
@@ -29,6 +37,15 @@ export default async function AuthorProfilePage() {
   ]);
 
   const hasPublicBooks = !!publicProfile;
+
+  const booksWithReviews = await Promise.all(
+    ((publicBooks ?? []) as Omit<PublicBook, "reviews">[]).map(async (book) => {
+      const { data: reviews } = await supabase.rpc("book_reviews_public", {
+        p_catalog_item_id: book.catalog_item_id,
+      });
+      return { ...book, reviews: (reviews ?? []) as BookReview[] };
+    }),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,7 +83,7 @@ export default async function AuthorProfilePage() {
             name={name}
             bio={bio}
             website={website}
-            books={(publicBooks ?? []) as PublicBook[]}
+            books={booksWithReviews}
           />
         </Card>
       </div>

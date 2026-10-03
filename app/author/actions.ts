@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthor } from "@/lib/auth";
 
@@ -38,4 +39,31 @@ export async function updateAuthorProfile(formData: FormData): Promise<ActionRes
   revalidatePath("/author");
   revalidatePath(`/authors/${authorUserId}`);
   return {};
+}
+
+// Accept/decline an inventory request — the actual authorization check
+// (only this request's own author, or an admin) lives in
+// respond_to_inventory_request() (migration 0071) itself; requireAuthor()
+// here is the same page-level gate every other author action already has,
+// not a substitute for that RPC-level check.
+export async function respondToInventoryRequest(
+  requestId: string,
+  accept: boolean,
+  formData: FormData,
+) {
+  await requireAuthor();
+  const supabase = await createClient();
+  const authorNote = String(formData.get("author_note") ?? "").trim() || null;
+
+  const { error } = await supabase.rpc("respond_to_inventory_request", {
+    p_request_id: requestId,
+    p_accept: accept,
+    p_author_note: authorNote,
+  });
+
+  revalidatePath("/author");
+  if (error) {
+    redirect(`/author?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect("/author");
 }

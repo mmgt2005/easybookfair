@@ -12,6 +12,37 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Inviting an author directly, author inventory-request proposals,
+  author↔admin chat, and book reviews**: four related additions to the
+  Author screen.
+  - `/admin/authors` now has a visible "Invite a new author" form
+    (name/email/phone) that creates a real account and switches you into
+    `/author` as them — the same existing action a catalog-linked author
+    invite already used, just without requiring a catalog item to exist
+    first.
+  - Admins can propose a restock directly to the author who supplies a
+    book, from a new `/admin/authors/<id>/inventory` screen: quantity,
+    a wholesale cost per unit (prefilled from the item's cost, still
+    editable), and free-text terms (this app doesn't generate or
+    validate legal terms — write whatever applies). The author sees the
+    proposal on their own dashboard and can Accept/Decline it; once
+    accepted, admin marks it Received (adds the quantity straight to
+    stock on hand via the existing `receive_stock()` RPC) and then Paid
+    with an optional payment reference — payment itself stays
+    manual/offline for now, pending a decision on a real payout rail.
+    New migration `0071` adds `author_inventory_requests` +
+    `respond_to_inventory_request()`.
+  - A simple polling-based chat between an author and the admin team,
+    one thread per author, at `/admin/authors/<id>/messages` (with an
+    unread-count badge on the authors list) and `/author/messages`.
+    New migration `0072` adds `author_messages` +
+    `mark_author_messages_read()`.
+  - Anyone can now leave a star rating and review on an author's public
+    page (`/authors/<id>`) for any of their books — no account or
+    purchase required, gated by the same Turnstile/honeypot spam check
+    used on every other public form here. Reviews stay hidden until a
+    platform admin approves them from a new `/admin/book-reviews` queue.
+    New migration `0073` adds `book_reviews` + `book_reviews_public()`.
 - **Shipping cost estimate for a fair's allocation**: a new "Shipping
   cost estimate" card on the admin allocations screen generates a
   possible cost (not a purchased label) to ship a fair's allocated

@@ -261,6 +261,9 @@ code (everything that needs to be unit-tested).
    - `0068_sales_tax_channel_exemptions.sql`
    - `0069_author_public_profile.sql`
    - `0070_shipping_cost_estimates.sql`
+   - `0071_author_inventory_requests.sql`
+   - `0072_author_messages.sql`
+   - `0073_book_reviews.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an

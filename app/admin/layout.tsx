@@ -25,6 +25,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/catalog", label: "Catalog" },
       { href: "/admin/authors", label: "Authors" },
       { href: "/admin/author-submissions", label: "Author submissions" },
+      { href: "/admin/book-reviews", label: "Book reviews" },
     ],
   },
   {
@@ -67,7 +68,7 @@ const adminTourSteps = [
   {
     title: "Authors",
     description:
-      "Accounts created automatically once you approve a submission at Author submissions — no manual invite step. \"View as\" lets you preview an author's own portal.",
+      "Invite a new author directly, or accounts are created automatically once you approve a submission at Author submissions. Propose inventory restocks, message an author directly, and \"view as\" to preview their own portal.",
   },
   {
     title: "Fairs",
@@ -92,6 +93,11 @@ const adminTourSteps = [
     title: "Author submissions",
     description:
       "Books and merchandise submitted from the public form at /author/submit, with a suggested price and wholesale cost computed automatically. Approving invites the author to a real account and adds the item to the catalog.",
+  },
+  {
+    title: "Book reviews",
+    description:
+      "Submitted from an author's public page — no purchase is verified, so every review waits here for approval before it's shown publicly.",
   },
   {
     title: "Carton specs",

@@ -279,6 +279,35 @@ export async function sendWalletFundingEmail(params: {
   });
 }
 
+// Sent when an admin proposes a restock to an author
+// (createInventoryRequest, app/admin/authors/actions.ts) — just gets them
+// logged in to see and respond to it (same "/author, not a deep link"
+// precedent as sendFairApprovedEmail), and explicitly notes the terms are
+// described in the app, not in this email, so nothing here accidentally
+// reads like the binding offer itself.
+export async function sendInventoryRequestEmail(params: {
+  to: string;
+  authorName: string;
+  bookTitle: string;
+  quantity: number;
+  wholesaleAmountTotal: number;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `New inventory request — ${params.bookTitle}`,
+    html: `
+      <p>Hi ${params.authorName},</p>
+      <p>EasyBookFair would like to request <strong>${params.quantity}</strong> more
+      copies of <strong>${params.bookTitle}</strong>, for a total wholesale amount of
+      <strong>$${params.wholesaleAmountTotal.toFixed(2)}</strong>.</p>
+      <p>The full details and terms are shown in your dashboard — nothing in this
+      email is itself a binding offer.</p>
+      <p><a href="${siteUrl()}/author">Sign in to review and respond</a>.</p>
+    `,
+  });
+}
+
 export async function sendPoolDonationEmail(params: {
   to: string;
   fairName: string;

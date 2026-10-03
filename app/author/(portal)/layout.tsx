@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/author", label: "Dashboard" },
   { href: "/author/submit", label: "Submit new item" },
   { href: "/author/profile", label: "Public profile" },
+  { href: "/author/messages", label: "Messages" },
 ];
 
 const authorTourSteps = [
@@ -28,6 +29,10 @@ const authorTourSteps = [
     title: "Public profile",
     description:
       "Write a bio and add your website — shown on your public author page once you have at least one approved book, with a live preview right on this screen.",
+  },
+  {
+    title: "Messages",
+    description: "Quick back-and-forth with the EasyBookFair admin team.",
   },
 ];
 

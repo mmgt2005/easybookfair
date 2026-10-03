@@ -510,6 +510,27 @@ This is the organization-side counterpart to author submissions above —
 the only self-serve way into the platform for either role, both reviewed
 by an admin before anything is created.
 
+### Reviewing book reviews (`/admin/book-reviews`)
+
+Anyone — buyer or not, no purchase required — can leave a star rating and
+a short review from an author's public page (`/authors/<id>`), gated by
+the same Turnstile/honeypot spam check used on every other public form
+in this app. Nothing submitted this way is ever shown until a platform
+admin approves it. Each pending review shows the book title, reviewer
+name, star rating, review text, and submission date, with
+**Approve**/**Decline**:
+
+- **Approve** makes it visible immediately on that book's entry on the
+  author's public page (star average, review count, and the review text
+  itself).
+- **Decline** takes an optional note and the review is never shown.
+
+There's no purchase-verification step by design — review authenticity is
+enforced entirely by admin approval rather than by checking whether the
+reviewer actually bought the book (this app has no reliable way to
+confirm that for in-person/cash/wallet sales anyway, and the product
+owner chose simplicity here over excluding those buyers).
+
 ### Admins (`/admin/platform-admins`)
 
 Only visible to a **super admin** — a regular admin doesn't see this nav
@@ -557,6 +578,36 @@ the email here only updates their profile — it's not the same as their
 Supabase Auth login, so it doesn't affect how they sign in — but it does
 change which catalog items their own `/author` portal matches via
 `author_email`, so double-check it's the one on file there too.
+
+### Managing authors directly (`/admin/authors`)
+
+Besides "View as" and the catalog-linked-author flow above, this screen
+also lets you:
+
+- **Invite a new author from scratch** — a name/email/phone form at the
+  top of the page creates a real account (Supabase's own invite-by-email)
+  and switches you into `/author` as them immediately, the same "Create
+  account & view as" flow already used for a catalog-linked author, just
+  without needing a catalog item to exist first.
+- **Propose a restock** — each row links to
+  `/admin/authors/<id>/inventory`, where you can request more copies of
+  one of that author's existing books: pick the book, a quantity, a
+  wholesale cost per unit (prefilled from the catalog item's current
+  cost, still editable), and free-text terms. **This app doesn't generate
+  or validate legal terms** — write whatever applies to your situation.
+  The author sees the proposal on their own dashboard and can
+  **Accept**/**Decline** it. Once accepted, mark it **Received** when the
+  books physically arrive (this adds the quantity straight to stock on
+  hand, the same as any other restock), then **Mark paid** with an
+  optional reference note (check number, transfer confirmation, etc.)
+  once you've paid the author outside the app — there's no automated
+  payout rail yet; this just keeps a record of what's owed and what's
+  been paid.
+- **Message an author** — each row links to
+  `/admin/authors/<id>/messages`, a simple back-and-forth chat with that
+  author for quick questions (it refreshes every few seconds rather than
+  needing a page reload). A badge next to the link shows how many of
+  their messages you haven't read yet.
 
 ### Payments
 
@@ -1021,7 +1072,11 @@ in the **Event requests** table on your dashboard.
 The homepage (`/`) lists every author with a real account and at least
 one approved book under "Meet the authors" — click a name to see their
 bio, website, and books (cover, title, description) on their own public
-page at `/authors/<id>`.
+page at `/authors/<id>`. Each book shows its star average and reviews
+there too, with a "Write a review" link — no account or purchase needed,
+just a name, email, a star rating, and optional text. A review isn't
+shown until a platform admin approves it (the same spam check used on
+every other public form here is the only other gate).
 
 The storefront (`/fairs/<id>`) only accepts orders once the fair has
 actually opened, and the wallet page (`/fairs/<id>/wallet`) is available
@@ -1115,6 +1170,19 @@ if an admin adds you as the author contact directly on a catalog item and
 then creates an account for you from `/admin/authors`. `/author` shows
 those books (and their sales) in their own section, separate from
 anything you've actually submitted yourself.
+
+Your `/author` dashboard also has two more things once an admin sets them
+up:
+
+- **Inventory requests** — if an admin wants more copies of one of your
+  books, you'll see a proposal right on your dashboard (quantity,
+  wholesale amount, and any terms they've written) with
+  **Accept**/**Decline** buttons. Accepting just tells the admin you're
+  ready to ship; marking it received and paying you happen on their side
+  once the books actually arrive.
+- **Messages** — a simple chat with the admin team for quick questions,
+  at `/author/messages` (linked in the portal nav). It refreshes
+  automatically every few seconds, no need to reload the page.
 
 **Your public author page**: once you have at least one approved book,
 you get a public page at `/authors/<your-id>` — shared on EasyBookFair's
