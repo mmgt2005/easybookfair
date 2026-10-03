@@ -8,6 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { setViewAsAuthor } from "@/lib/viewAs";
 import { inviteOrFindAccount } from "@/lib/accounts";
 import { siteUrl, sendInventoryRequestEmail } from "@/lib/email";
+import { renderInventoryTermsTemplate } from "@/lib/inventoryTerms";
 
 // Edits the authors row itself — name/email/phone shown across the app
 // (event-request review, the author portal's own header). Deliberately
@@ -82,68 +83,137 @@ function inventoryPath(authorUserId: string) {
   return `/admin/authors/${authorUserId}/inventory`;
 }
 
-// Proposes a restock of an existing catalog item directly to the author
-// who supplies it — wholesale_cost_per_unit is prefilled client-side from
-// catalog_items.cost but stored as its own snapshot (migration 0071's own
-// comment explains why: a later cost change shouldn't retroactively
-// change what was actually proposed). Best-effort email, same posture as
-// every other notification in this app — a failed send never blocks the
-// request from being created.
+type RequestedLine = { catalogItemId: string; quantity: number; cost: number };
+
+function parseLines(formData: FormData): RequestedLine[] | null {
+  const raw = String(formData.get("items_json") ?? "");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
+
+  const lines: RequestedLine[] = [];
+  for (const entry of parsed) {
+    if (typeof entry !== "object" || entry === null) return null;
+    const { catalogItemId, quantity, cost } = entry as Record<string, unknown>;
+    const q = Number(quantity);
+    const c = Number(cost);
+    if (
+      typeof catalogItemId !== "string" ||
+      !catalogItemId ||
+      !Number.isFinite(q) ||
+      q <= 0 ||
+      !Number.isFinite(c) ||
+      c < 0
+    ) {
+      return null;
+    }
+    lines.push({ catalogItemId, quantity: q, cost: c });
+  }
+  return lines;
+}
+
+// Proposes a restock of one or more existing catalog items directly to
+// the author who supplies them — one request (one Accept/Decline
+// decision, one legal agreement) can now cover several books at once
+// (author_inventory_request_items, migration 0074). wholesale_cost_per_unit
+// is prefilled client-side from catalog_items.cost but stored as its own
+// snapshot per line (migration 0071's own comment explains why: a later
+// cost change shouldn't retroactively change what was actually proposed).
+// terms_text is now the standardized template (inventory_terms_versions,
+// migration 0075) merged with this request's real line items, not
+// admin-typed free text. Best-effort email, same posture as every other
+// notification in this app — a failed send never blocks the request from
+// being created.
 export async function createInventoryRequest(authorUserId: string, formData: FormData) {
   const { user } = await requireAdmin();
   const supabase = await createClient();
 
-  const catalogItemId = String(formData.get("catalog_item_id") ?? "");
-  const quantityRequested = Number(formData.get("quantity_requested"));
-  const wholesaleCostPerUnit = Number(formData.get("wholesale_cost_per_unit"));
-  const termsText = String(formData.get("terms_text") ?? "").trim() || null;
-
-  if (
-    !catalogItemId ||
-    !Number.isFinite(quantityRequested) ||
-    quantityRequested <= 0 ||
-    !Number.isFinite(wholesaleCostPerUnit) ||
-    wholesaleCostPerUnit < 0
-  ) {
+  const lines = parseLines(formData);
+  if (!lines) {
     redirect(
       `${inventoryPath(authorUserId)}?error=${encodeURIComponent(
-        "A catalog item, a positive quantity, and a non-negative wholesale cost are required",
+        "At least one book, each with a positive quantity and a non-negative wholesale cost, is required",
       )}`,
     );
   }
+
+  const catalogItemIds = lines!.map((l) => l.catalogItemId);
+  const { data: books } = await supabase
+    .from("catalog_items")
+    .select("id, title")
+    .in("id", catalogItemIds);
+  const titleById = new Map((books ?? []).map((b) => [b.id, b.title]));
+
+  const { data: author } = await supabase
+    .from("authors")
+    .select("name, email")
+    .eq("user_id", authorUserId)
+    .single();
+
+  const { data: currentTerms } = await supabase
+    .from("inventory_terms_versions")
+    .select("version, terms_text")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lineItemsForTerms = lines!.map((l) => ({
+    bookTitle: titleById.get(l.catalogItemId) ?? "Unknown book",
+    quantity: l.quantity,
+    wholesaleCostPerUnit: l.cost,
+    wholesaleAmountTotal: l.quantity * l.cost,
+  }));
+
+  const termsText = currentTerms
+    ? renderInventoryTermsTemplate(currentTerms.terms_text, {
+        lineItems: lineItemsForTerms,
+        authorName: author?.name ?? "the author",
+        requestDate: new Date().toLocaleDateString(),
+      })
+    : null;
 
   const { data: request, error } = await supabase
     .from("author_inventory_requests")
     .insert({
       author_user_id: authorUserId,
-      catalog_item_id: catalogItemId,
-      quantity_requested: quantityRequested,
-      wholesale_cost_per_unit: wholesaleCostPerUnit,
       terms_text: termsText,
+      terms_version: currentTerms?.version ?? null,
       requested_by: user.id,
     })
-    .select("wholesale_amount_total, catalog_items(title)")
+    .select("id")
     .single();
 
+  if (error || !request) {
+    redirect(
+      `${inventoryPath(authorUserId)}?error=${encodeURIComponent(error?.message ?? "Failed to create request")}`,
+    );
+  }
+
+  const { error: itemsError } = await supabase.from("author_inventory_request_items").insert(
+    lines!.map((l) => ({
+      request_id: request.id,
+      catalog_item_id: l.catalogItemId,
+      quantity_requested: l.quantity,
+      wholesale_cost_per_unit: l.cost,
+    })),
+  );
+
   revalidatePath(inventoryPath(authorUserId));
-  if (error) {
-    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(error.message)}`);
+  if (itemsError) {
+    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(itemsError.message)}`);
   }
 
   try {
-    const { data: author } = await supabase
-      .from("authors")
-      .select("name, email")
-      .eq("user_id", authorUserId)
-      .single();
-    const book = request?.catalog_items as unknown as { title: string } | null;
-    if (author && book) {
+    if (author) {
       await sendInventoryRequestEmail({
         to: author.email,
         authorName: author.name,
-        bookTitle: book.title,
-        quantity: quantityRequested,
-        wholesaleAmountTotal: request!.wholesale_amount_total ?? quantityRequested * wholesaleCostPerUnit,
+        items: lineItemsForTerms.map((i) => ({ title: i.bookTitle, quantity: i.quantity })),
+        totalWholesaleAmount: lineItemsForTerms.reduce((sum, i) => sum + i.wholesaleAmountTotal, 0),
       });
     }
   } catch (err) {
@@ -172,14 +242,15 @@ export async function cancelInventoryRequest(authorUserId: string, requestId: st
 
 // The books physically arrived — reuses receive_stock() (migration 0009),
 // the same already-tested RPC the catalog screen's own "Restock" action
-// calls, rather than duplicating its atomic increment logic here.
+// calls, once per line item (a multi-book request now has more than one
+// to receive), rather than duplicating its atomic increment logic here.
 export async function markInventoryRequestReceived(authorUserId: string, requestId: string) {
   await requireAdmin();
   const supabase = await createClient();
 
   const { data: request, error: fetchError } = await supabase
     .from("author_inventory_requests")
-    .select("catalog_item_id, quantity_requested, status")
+    .select("status, author_inventory_request_items(catalog_item_id, quantity_requested)")
     .eq("id", requestId)
     .single();
 
@@ -192,12 +263,14 @@ export async function markInventoryRequestReceived(authorUserId: string, request
     );
   }
 
-  const { error: receiveError } = await supabase.rpc("receive_stock", {
-    p_catalog_item_id: request!.catalog_item_id,
-    p_quantity: request!.quantity_requested,
-  });
-  if (receiveError) {
-    redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(receiveError.message)}`);
+  for (const item of request!.author_inventory_request_items) {
+    const { error: receiveError } = await supabase.rpc("receive_stock", {
+      p_catalog_item_id: item.catalog_item_id,
+      p_quantity: item.quantity_requested,
+    });
+    if (receiveError) {
+      redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent(receiveError.message)}`);
+    }
   }
 
   const { error: updateError } = await supabase

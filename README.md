@@ -264,6 +264,8 @@ code (everything that needs to be unit-tested).
    - `0071_author_inventory_requests.sql`
    - `0072_author_messages.sql`
    - `0073_book_reviews.sql`
+   - `0074_author_inventory_request_items.sql`
+   - `0075_inventory_terms_versions.sql`
 4. Make yourself the **first** platform admin — this one bootstrap step
    still has to be a manual SQL insert, since `/admin/platform-admins`
    (the self-serve invite screen, migration `0053`) only lets an

@@ -591,18 +591,33 @@ also lets you:
   without needing a catalog item to exist first.
 - **Propose a restock** — each row links to
   `/admin/authors/<id>/inventory`, where you can request more copies of
-  one of that author's existing books: pick the book, a quantity, a
-  wholesale cost per unit (prefilled from the catalog item's current
-  cost, still editable), and free-text terms. **This app doesn't generate
-  or validate legal terms** — write whatever applies to your situation.
+  one or more of that author's existing books in a single proposal: pick
+  a book, a quantity, and a wholesale cost per unit (prefilled from the
+  catalog item's current cost, still editable), then **+ Add another
+  book** for as many titles as this restock covers. A live preview shows
+  exactly what the author will see, with the standardized terms (see
+  below) already merged in with the real quantities and dollar amounts.
   The author sees the proposal on their own dashboard and can
-  **Accept**/**Decline** it. Once accepted, mark it **Received** when the
-  books physically arrive (this adds the quantity straight to stock on
-  hand, the same as any other restock), then **Mark paid** with an
-  optional reference note (check number, transfer confirmation, etc.)
-  once you've paid the author outside the app — there's no automated
-  payout rail yet; this just keeps a record of what's owed and what's
-  been paid.
+  **Accept**/**Decline** it — accepting requires them to check "I have
+  read and agree to these terms" first. Once accepted, the author can
+  record a shipment **tracking number** from their own dashboard; mark
+  the request **Received** when the books physically arrive (this adds
+  each book's quantity straight to stock on hand, the same as any other
+  restock), then **Mark paid** with an optional reference note (check
+  number, transfer confirmation, etc.) once you've paid the author
+  outside the app — there's no automated payout rail yet; this just keeps
+  a record of what's owed and what's been paid.
+- **Inventory request terms** (`/admin/inventory-terms`) — the standard
+  agreement merged into every new inventory-request proposal above,
+  instead of retyping terms by hand each time. It ships with a generic,
+  clearly-labeled placeholder (not legal advice — review and adjust it
+  for your own situation) using merge tokens like `{{line_items}}` and
+  `{{total_wholesale_amount}}` that get filled in automatically with each
+  request's real books/quantities/amounts. Saving creates a new version
+  rather than editing in place, so a request already sent keeps exactly
+  the wording it was sent with even after you update the standard text —
+  a version history below the editor shows every past version and who
+  saved it.
 - **Message an author** — each row links to
   `/admin/authors/<id>/messages`, a simple back-and-forth chat with that
   author for quick questions (it refreshes every few seconds rather than
@@ -1174,12 +1189,14 @@ anything you've actually submitted yourself.
 Your `/author` dashboard also has two more things once an admin sets them
 up:
 
-- **Inventory requests** — if an admin wants more copies of one of your
-  books, you'll see a proposal right on your dashboard (quantity,
-  wholesale amount, and any terms they've written) with
-  **Accept**/**Decline** buttons. Accepting just tells the admin you're
-  ready to ship; marking it received and paying you happen on their side
-  once the books actually arrive.
+- **Inventory requests** — if an admin wants more copies of one or more of
+  your books, you'll see a proposal right on your dashboard listing every
+  book/quantity/amount in it, plus the standardized agreement, with
+  **Accept**/**Decline** buttons. Accepting requires checking "I have read
+  and agree to these terms" first. Once accepted, you can enter a
+  **tracking number** right on your dashboard once you've shipped the
+  books — marking the request received and paying you happen on the
+  admin's side once the books actually arrive.
 - **Messages** — a simple chat with the admin team for quick questions,
   at `/author/messages` (linked in the portal nav). It refreshes
   automatically every few seconds, no need to reload the page.

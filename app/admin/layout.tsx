@@ -26,6 +26,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/authors", label: "Authors" },
       { href: "/admin/author-submissions", label: "Author submissions" },
       { href: "/admin/book-reviews", label: "Book reviews" },
+      { href: "/admin/inventory-terms", label: "Inventory request terms" },
     ],
   },
   {
@@ -98,6 +99,11 @@ const adminTourSteps = [
     title: "Book reviews",
     description:
       "Submitted from an author's public page — no purchase is verified, so every review waits here for approval before it's shown publicly.",
+  },
+  {
+    title: "Inventory request terms",
+    description:
+      "The standardized agreement merged into every new author inventory request. Not legal advice — review and adjust it, and note that editing it creates a new version; past requests keep whatever version was current when they were sent.",
   },
   {
     title: "Carton specs",

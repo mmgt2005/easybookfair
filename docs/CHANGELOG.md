@@ -12,6 +12,28 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Multi-book inventory requests, shipment tracking numbers, and
+  standardized legal terms**: three follow-ups to the author
+  inventory-request feature below.
+  - A single inventory-request proposal can now cover more than one book
+    at once (`author_inventory_request_items`, migration `0074`) —
+    `/admin/authors/<id>/inventory`'s form lets an admin add as many
+    book/quantity/cost rows as the restock covers, still one
+    Accept/Decline decision and one shipment for the whole proposal.
+  - Authors can record a shipment **tracking number** on their own
+    dashboard once a request is accepted (migration `0074`'s
+    `set_inventory_request_tracking_number()`), visible to the admin on
+    the same request.
+  - The free-text "terms" field is replaced by a single standardized
+    agreement, editable from a new `/admin/inventory-terms` screen
+    (migration `0075`). It ships with a generic, clearly-labeled
+    non-legal-advice placeholder, merges in each request's real books/
+    quantities/amounts automatically via `{{line_items}}`/
+    `{{total_wholesale_amount}}` tokens, and is versioned — editing it
+    creates a new version rather than rewriting history, so an
+    already-sent request keeps exactly the wording it was sent with.
+    Accepting a request now requires the author to check "I have read
+    and agree to these terms."
 - **Inviting an author directly, author inventory-request proposals,
   author↔admin chat, and book reviews**: four related additions to the
   Author screen.

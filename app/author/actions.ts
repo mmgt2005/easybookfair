@@ -45,7 +45,10 @@ export async function updateAuthorProfile(formData: FormData): Promise<ActionRes
 // (only this request's own author, or an admin) lives in
 // respond_to_inventory_request() (migration 0071) itself; requireAuthor()
 // here is the same page-level gate every other author action already has,
-// not a substitute for that RPC-level check.
+// not a substitute for that RPC-level check. Accepting without the terms
+// checkbox checked (RespondToRequestButtons.tsx) still gets rejected
+// server-side by that RPC (migration 0075) — the disabled Accept button
+// is convenience, not the boundary.
 export async function respondToInventoryRequest(
   requestId: string,
   accept: boolean,
@@ -54,11 +57,34 @@ export async function respondToInventoryRequest(
   await requireAuthor();
   const supabase = await createClient();
   const authorNote = String(formData.get("author_note") ?? "").trim() || null;
+  const termsAcknowledged = String(formData.get("terms_acknowledged") ?? "") === "true";
 
   const { error } = await supabase.rpc("respond_to_inventory_request", {
     p_request_id: requestId,
     p_accept: accept,
     p_author_note: authorNote,
+    p_terms_acknowledged: termsAcknowledged,
+  });
+
+  revalidatePath("/author");
+  if (error) {
+    redirect(`/author?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect("/author");
+}
+
+// Lets the author (or admin) record/update the shipment tracking number
+// once a request has been accepted — mirrors respondToInventoryRequest's
+// shape exactly; the real "accepted or later" enforcement lives in
+// set_inventory_request_tracking_number() (migration 0074) itself.
+export async function setInventoryRequestTrackingNumber(requestId: string, formData: FormData) {
+  await requireAuthor();
+  const supabase = await createClient();
+  const trackingNumber = String(formData.get("tracking_number") ?? "").trim() || null;
+
+  const { error } = await supabase.rpc("set_inventory_request_tracking_number", {
+    p_request_id: requestId,
+    p_tracking_number: trackingNumber,
   });
 
   revalidatePath("/author");

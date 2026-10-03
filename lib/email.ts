@@ -288,19 +288,21 @@ export async function sendWalletFundingEmail(params: {
 export async function sendInventoryRequestEmail(params: {
   to: string;
   authorName: string;
-  bookTitle: string;
-  quantity: number;
-  wholesaleAmountTotal: number;
+  items: { title: string; quantity: number }[];
+  totalWholesaleAmount: number;
 }) {
+  const itemsList = params.items
+    .map((i) => `<li>${i.quantity} &times; ${i.title}</li>`)
+    .join("");
   await getResend().emails.send({
     from: emailFrom(),
     to: params.to,
-    subject: `New inventory request — ${params.bookTitle}`,
+    subject: `New inventory request — ${params.items.length === 1 ? params.items[0].title : `${params.items.length} books`}`,
     html: `
       <p>Hi ${params.authorName},</p>
-      <p>EasyBookFair would like to request <strong>${params.quantity}</strong> more
-      copies of <strong>${params.bookTitle}</strong>, for a total wholesale amount of
-      <strong>$${params.wholesaleAmountTotal.toFixed(2)}</strong>.</p>
+      <p>EasyBookFair would like to request more copies of the following:</p>
+      <ul>${itemsList}</ul>
+      <p>Total wholesale amount: <strong>$${params.totalWholesaleAmount.toFixed(2)}</strong>.</p>
       <p>The full details and terms are shown in your dashboard — nothing in this
       email is itself a binding offer.</p>
       <p><a href="${siteUrl()}/author">Sign in to review and respond</a>.</p>

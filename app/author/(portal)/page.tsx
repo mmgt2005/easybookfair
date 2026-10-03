@@ -1,8 +1,8 @@
 import { requireAuthor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { respondToInventoryRequest } from "../actions";
+import { respondToInventoryRequest, setInventoryRequestTrackingNumber } from "../actions";
 import { RespondToRequestButtons } from "./RespondToRequestButtons";
-import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
+import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
 
 export default async function AuthorDashboard({
   searchParams,
@@ -16,7 +16,7 @@ export default async function AuthorDashboard({
   const { data: inventoryRequests } = await supabase
     .from("author_inventory_requests")
     .select(
-      "id, quantity_requested, wholesale_cost_per_unit, wholesale_amount_total, terms_text, status, admin_note, payment_reference, created_at, catalog_items(title)",
+      "id, terms_text, status, admin_note, payment_reference, tracking_number, created_at, author_inventory_request_items(quantity_requested, wholesale_cost_per_unit, wholesale_amount_total, catalog_items(title))",
     )
     .eq("author_user_id", authorUserId)
     .order("created_at", { ascending: false });
@@ -104,32 +104,68 @@ export default async function AuthorDashboard({
             Inventory requests
           </h2>
           {inventoryRequests.map((r) => {
-            const book = r.catalog_items as unknown as { title: string } | null;
+            const items = r.author_inventory_request_items as unknown as {
+              quantity_requested: number;
+              wholesale_cost_per_unit: number;
+              wholesale_amount_total: number;
+              catalog_items: { title: string } | null;
+            }[];
+            const total = items.reduce((sum, i) => sum + i.wholesale_amount_total, 0);
             return (
               <Card key={r.id} className="max-w-lg">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-heading font-bold text-neutral-900">
-                      {book?.title ?? "Unknown book"}
+                      {items.length === 1
+                        ? (items[0].catalog_items?.title ?? "Unknown book")
+                        : `${items.length} books`}
                     </h3>
-                    <p className="text-sm text-neutral-600">
-                      {r.quantity_requested} units — $
-                      {r.wholesale_cost_per_unit.toFixed(2)}/unit — $
-                      {r.wholesale_amount_total.toFixed(2)} total
+                    <ul className="mt-1 text-sm text-neutral-600">
+                      {items.map((item, i) => (
+                        <li key={i}>
+                          {item.quantity_requested} x {item.catalog_items?.title ?? "Unknown book"}{" "}
+                          @ ${item.wholesale_cost_per_unit.toFixed(2)}/unit = $
+                          {item.wholesale_amount_total.toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-sm font-semibold text-neutral-700">
+                      Total: ${total.toFixed(2)}
                     </p>
                   </div>
                   <Badge tone={statusTone(r.status)}>{r.status}</Badge>
                 </div>
                 {r.terms_text && (
-                  <p className="mt-2 whitespace-pre-line text-sm text-neutral-600">
-                    {r.terms_text}
-                  </p>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm font-semibold text-neutral-600">
+                      Terms
+                    </summary>
+                    <p className="mt-1 whitespace-pre-line text-sm text-neutral-600">
+                      {r.terms_text}
+                    </p>
+                  </details>
                 )}
                 {r.status === "pending" && (
                   <RespondToRequestButtons
                     acceptAction={respondToInventoryRequest.bind(null, r.id, true)}
                     declineAction={respondToInventoryRequest.bind(null, r.id, false)}
                   />
+                )}
+                {(r.status === "accepted" || r.status === "received" || r.status === "paid") && (
+                  <form
+                    action={setInventoryRequestTrackingNumber.bind(null, r.id)}
+                    className="mt-3 flex gap-2"
+                  >
+                    <Input
+                      name="tracking_number"
+                      placeholder="Tracking number"
+                      defaultValue={r.tracking_number ?? ""}
+                      className="flex-1"
+                    />
+                    <Button type="submit" size="sm" variant="outline">
+                      Save
+                    </Button>
+                  </form>
                 )}
                 {r.status === "paid" && r.payment_reference && (
                   <p className="mt-2 text-xs text-neutral-500">Paid — {r.payment_reference}</p>

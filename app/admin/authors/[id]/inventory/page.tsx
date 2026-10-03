@@ -10,18 +10,24 @@ import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components
 
 type EligibleCatalogItem = { id: string; title: string; cost: number; stock_on_hand: number };
 
-type InventoryRequest = {
-  id: string;
-  catalog_item_id: string;
+type RequestItem = {
   quantity_requested: number;
   wholesale_cost_per_unit: number;
   wholesale_amount_total: number;
+  catalog_items: { title: string } | null;
+};
+
+type InventoryRequest = {
+  id: string;
   terms_text: string | null;
+  terms_version: number | null;
+  terms_acknowledged: boolean;
+  tracking_number: string | null;
   status: string;
   author_note: string | null;
   payment_reference: string | null;
   created_at: string;
-  catalog_items: { title: string } | null;
+  author_inventory_request_items: RequestItem[];
 };
 
 export default async function AuthorInventoryRequestsPage({
@@ -51,7 +57,7 @@ export default async function AuthorInventoryRequestsPage({
   // contact field. Done as a plain .select() here (not that RPC) since
   // this screen also needs cost/stock_on_hand, which the public RPC
   // deliberately doesn't expose.
-  const [{ data: approvedSubmissions }, { data: catalogMatches }, { data: requests }] =
+  const [{ data: approvedSubmissions }, { data: catalogMatches }, { data: requests }, { data: currentTerms }] =
     await Promise.all([
       supabase
         .from("author_submissions")
@@ -63,10 +69,16 @@ export default async function AuthorInventoryRequestsPage({
       supabase
         .from("author_inventory_requests")
         .select(
-          "id, catalog_item_id, quantity_requested, wholesale_cost_per_unit, wholesale_amount_total, terms_text, status, author_note, payment_reference, created_at, catalog_items(title)",
+          "id, terms_text, terms_version, terms_acknowledged, tracking_number, status, author_note, payment_reference, created_at, author_inventory_request_items(quantity_requested, wholesale_cost_per_unit, wholesale_amount_total, catalog_items(title))",
         )
         .eq("author_user_id", authorUserId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("inventory_terms_versions")
+        .select("terms_text")
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const eligibleIds = Array.from(
@@ -94,7 +106,7 @@ export default async function AuthorInventoryRequestsPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={`Inventory requests — ${author.name} 📦`}
-        description="Propose a restock of one of this author's existing books, directly to them — quantity, wholesale amount, and whatever terms you want to include."
+        description="Propose a restock of one or more of this author's existing books, directly to them — the standardized terms (editable from Inventory request terms in the nav) are merged in automatically with the real quantities and amounts."
         backHref="/admin/authors"
       />
 
@@ -112,6 +124,8 @@ export default async function AuthorInventoryRequestsPage({
           <InventoryRequestForm
             action={createForAuthor}
             items={(eligibleItems ?? []) as EligibleCatalogItem[]}
+            authorName={author.name}
+            termsTemplate={currentTerms?.terms_text ?? ""}
           />
         )}
       </Card>
@@ -119,28 +133,58 @@ export default async function AuthorInventoryRequestsPage({
       <div className="flex flex-col gap-4">
         {(requests ?? []).map((r) => {
           const req = r as unknown as InventoryRequest;
+          const total = req.author_inventory_request_items.reduce(
+            (sum, i) => sum + i.wholesale_amount_total,
+            0,
+          );
           return (
             <Card key={req.id} className="max-w-lg">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-heading font-bold text-neutral-900">
-                    {req.catalog_items?.title ?? "Unknown book"}
+                    {req.author_inventory_request_items.length === 1
+                      ? (req.author_inventory_request_items[0].catalog_items?.title ?? "Unknown book")
+                      : `${req.author_inventory_request_items.length} books`}
                   </h3>
-                  <p className="text-sm text-neutral-600">
-                    {req.quantity_requested} units — ${req.wholesale_cost_per_unit.toFixed(2)}/unit
-                    — ${req.wholesale_amount_total.toFixed(2)} total
+                  <ul className="mt-1 text-sm text-neutral-600">
+                    {req.author_inventory_request_items.map((item, i) => (
+                      <li key={i}>
+                        {item.quantity_requested} x {item.catalog_items?.title ?? "Unknown book"} @ $
+                        {item.wholesale_cost_per_unit.toFixed(2)}/unit = $
+                        {item.wholesale_amount_total.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-sm font-semibold text-neutral-700">
+                    Total: ${total.toFixed(2)}
                   </p>
                 </div>
-                <Badge tone={statusTone(req.status)}>{req.status}</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge tone={statusTone(req.status)}>{req.status}</Badge>
+                  {req.terms_version !== null && (
+                    <span className="text-xs text-neutral-400">Terms v{req.terms_version}</span>
+                  )}
+                </div>
               </div>
+              {req.terms_acknowledged && (
+                <p className="mt-2 text-xs text-green-700">✅ Terms acknowledged at acceptance</p>
+              )}
               {req.terms_text && (
-                <p className="mt-2 whitespace-pre-line text-sm text-neutral-600">
-                  {req.terms_text}
-                </p>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm font-semibold text-neutral-600">
+                    Terms sent
+                  </summary>
+                  <p className="mt-1 whitespace-pre-line text-sm text-neutral-600">
+                    {req.terms_text}
+                  </p>
+                </details>
               )}
               {req.author_note && (
+                <p className="mt-2 text-sm text-neutral-600">Author note: {req.author_note}</p>
+              )}
+              {req.tracking_number && (
                 <p className="mt-2 text-sm text-neutral-600">
-                  Author note: {req.author_note}
+                  Tracking number: <span className="font-semibold">{req.tracking_number}</span>
                 </p>
               )}
 
@@ -155,8 +199,7 @@ export default async function AuthorInventoryRequestsPage({
               {req.status === "accepted" && (
                 <form action={receivedForAuthor.bind(null, req.id)} className="mt-3">
                   <p className="mb-2 text-xs text-neutral-500">
-                    Marking received adds {req.quantity_requested} units to this book&apos;s stock
-                    on hand.
+                    Marking received adds each book&apos;s requested quantity to its stock on hand.
                   </p>
                   <Button type="submit" size="sm">
                     Mark received
