@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { approveOrgSignup, declineOrgSignup } from "./actions";
 import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
@@ -5,9 +6,10 @@ import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components
 export default async function OrgSignupsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; show_declined?: string }>;
 }) {
-  const { error: errorMessage } = await searchParams;
+  const { error: errorMessage, show_declined } = await searchParams;
+  const showDeclined = show_declined === "1";
   const supabase = await createClient();
 
   const { data: signups } = await supabase
@@ -16,6 +18,18 @@ export default async function OrgSignupsPage({
       "id, org_name, contact_name, contact_email, is_school, message, status, admin_note, created_at, shipping_contact_name, shipping_contact_phone, shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_postal_code, shipping_country",
     )
     .order("created_at", { ascending: false });
+
+  // Declined signups stay in the table forever (nothing here deletes
+  // them) but are hidden from the default view once reviewed, same as
+  // this app's other "resolved, out of the way" conventions elsewhere
+  // (e.g. a closed fair) — a plain query-param toggle (no client
+  // component needed) reveals them again, mirroring the FairPicker/
+  // TemplatePicker "server round trip via searchParams" pattern already
+  // used for pickers in this app.
+  const declinedSignups = (signups ?? []).filter((s) => s.status === "declined");
+  const visibleSignups = showDeclined
+    ? (signups ?? [])
+    : (signups ?? []).filter((s) => s.status !== "declined");
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,8 +42,17 @@ export default async function OrgSignupsPage({
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
 
+      {declinedSignups.length > 0 && (
+        <Link
+          href={showDeclined ? "/admin/org-signups" : "/admin/org-signups?show_declined=1"}
+          className="text-sm font-semibold text-accent-600 hover:underline"
+        >
+          {showDeclined ? "Hide declined" : `Show declined (${declinedSignups.length})`}
+        </Link>
+      )}
+
       <div className="flex flex-col gap-4">
-        {(signups ?? []).map((s) => {
+        {visibleSignups.map((s) => {
           const approveForSignup = approveOrgSignup.bind(null, s.id);
           const declineForSignup = declineOrgSignup.bind(null, s.id);
           return (
@@ -78,8 +101,12 @@ export default async function OrgSignupsPage({
             </Card>
           );
         })}
-        {(signups ?? []).length === 0 && (
-          <p className="text-sm text-neutral-500">No organization signups yet.</p>
+        {visibleSignups.length === 0 && (
+          <p className="text-sm text-neutral-500">
+            {showDeclined || declinedSignups.length === 0
+              ? "No organization signups yet."
+              : "No pending or approved signups — all existing signups are declined."}
+          </p>
         )}
       </div>
     </div>

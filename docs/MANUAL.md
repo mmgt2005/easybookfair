@@ -506,6 +506,12 @@ message. Each pending signup shows the shipping address inline, plus
   their first fair, with no separate database step needed.
 - **Decline** takes an optional note and creates nothing.
 
+Declined signups stay recorded but are hidden from this list by default
+once you act on them, so only pending and approved ones clutter the
+view — a **"Show declined (N)"** link above the list brings them back
+into view (with their decline reason) whenever you need to double-check
+one.
+
 This is the organization-side counterpart to author submissions above —
 the only self-serve way into the platform for either role, both reviewed
 by an admin before anything is created.

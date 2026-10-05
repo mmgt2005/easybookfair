@@ -12,6 +12,11 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Declined organization signups are now hidden by default** on
+  `/admin/org-signups` — the list shows only pending and approved
+  signups, with a **"Show declined (N)"** link to bring them back into
+  view when needed. Nothing is deleted; declined rows are just filtered
+  out of the default view.
 - **Multi-book inventory requests, shipment tracking numbers, and
   standardized legal terms**: three follow-ups to the author
   inventory-request feature below.
