@@ -79,6 +79,39 @@ export async function createAuthorAccountAndViewAs(formData: FormData) {
   redirect("/author");
 }
 
+// Unlinks an author's account from the author portal — deletes only
+// their `authors` row, never the underlying Supabase Auth user. If a
+// catalog item still lists this person's email as its author contact,
+// they'll reappear under "From catalog items — no account yet" on the
+// next page load, same as before an account ever existed for them.
+// Re-inviting them later still works normally: inviteOrFindAccount's
+// existing-user fallback (lib/accounts.ts) finds and reuses that same
+// Supabase Auth account rather than erroring, since it was never
+// deleted — only unlinked from this table. Blocked by a foreign-key
+// violation (23503) if they already have inventory requests, messages,
+// or submissions tied to their account_user_id; surfaced as a clear
+// message instead of a raw Postgres error. Called directly from a
+// client component (not a <form action>), so it throws on failure
+// rather than redirecting with ?error=, matching setDemoEnabled's shape
+// (app/admin/demo/actions.ts).
+export async function removeAuthorAccount(authorUserId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("authors").delete().eq("user_id", authorUserId);
+
+  if (error) {
+    if (error.code === "23503") {
+      throw new Error(
+        "Can't remove — this author already has inventory requests, messages, or submissions tied to their account. Those would need to be resolved first.",
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/authors");
+}
+
 function inventoryPath(authorUserId: string) {
   return `/admin/authors/${authorUserId}/inventory`;
 }

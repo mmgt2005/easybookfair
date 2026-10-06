@@ -21,6 +21,12 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **"Remove account" for an author** on `/admin/authors` — undoes a real
+  account back to "From catalog items — no account yet" (if a catalog
+  item still lists them), without deleting the underlying Supabase
+  login, so re-inviting them later just reuses the same account instead
+  of erroring. Blocked with a clear message if they already have
+  inventory requests, messages, or submissions tied to their account.
 - **Optional vendor-payment-portal link on inventory requests**: once a
   request is **accepted**, a "Pay \<author\> via ..." link can appear
   next to Mark paid, opening whatever external banking/payment site the

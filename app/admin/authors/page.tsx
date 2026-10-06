@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { startViewAsAuthor } from "../view-as/actions";
 import { createAuthorAccountAndViewAs } from "./actions";
+import { RemoveAuthorAccountButton } from "./RemoveAuthorAccountButton";
 import { Badge, Button, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export default async function AuthorsPage({
@@ -134,6 +135,10 @@ export default async function AuthorsPage({
                         View as
                       </button>
                     </form>
+                    <RemoveAuthorAccountButton
+                      authorUserId={author.user_id}
+                      authorName={author.name}
+                    />
                   </td>
                 </tr>
               );

@@ -643,6 +643,15 @@ also lets you:
   author for quick questions (it refreshes every few seconds rather than
   needing a page reload). A badge next to the link shows how many of
   their messages you haven't read yet.
+- **Remove account** — undoes a real account, moving them back to
+  "From catalog items — no account yet" if a catalog item still lists
+  their contact info (or just removing them from this screen entirely if
+  not). This only unlinks their `authors` row — it does **not** delete
+  their actual Supabase login, so re-inviting them later (via "Create
+  account & view as" or approving a new submission) finds and reuses that
+  same account rather than erroring. Blocked with a clear message if
+  they already have inventory requests, messages, or submissions tied to
+  their account — those would need to be resolved first.
 
 ### Payments
 
