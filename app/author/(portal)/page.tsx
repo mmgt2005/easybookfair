@@ -167,7 +167,7 @@ export default async function AuthorDashboard({
                     </Button>
                   </form>
                 )}
-                {r.status === "paid" && r.payment_reference && (
+                {(r.status === "paid" || r.status === "received") && r.payment_reference && (
                   <p className="mt-2 text-xs text-neutral-500">Paid — {r.payment_reference}</p>
                 )}
               </Card>

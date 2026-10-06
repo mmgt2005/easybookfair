@@ -605,19 +605,20 @@ also lets you:
   below) already merged in with the real quantities and dollar amounts.
   The author sees the proposal on their own dashboard and can
   **Accept**/**Decline** it — accepting requires them to check "I have
-  read and agree to these terms" first. Once accepted, the author can
-  record a shipment **tracking number** from their own dashboard; mark
-  the request **Received** when the books physically arrive (this adds
-  each book's quantity straight to stock on hand, the same as any other
-  restock), then **Mark paid** with an optional reference note (check
-  number, transfer confirmation, etc.) once you've paid the author
-  outside the app — there's no automated payout rail yet; this just keeps
-  a record of what's owed and what's been paid. If `VENDOR_PAYMENT_PORTAL_URL`
-  is set (see `.env.example`), a "Pay \<author\> via ..." link appears next
-  to Mark paid once a request is received, opening whatever external
-  banking/payment site you actually use (e.g. Found's "Pay a contractor"
-  feature) in a new tab — purely a convenience link, since this app has
-  no payment-API integration for paying authors.
+  read and agree to these terms" first. **Once accepted, pay the author
+  first** — a "Pay \<author\> via ..." link appears alongside **Mark paid**
+  if `VENDOR_PAYMENT_PORTAL_URL` is set (see `.env.example`), opening
+  whatever external banking/payment site you actually use (e.g. Found's
+  "Pay a contractor" feature) in a new tab, purely a convenience link
+  since this app has no payment-API integration for paying authors. Mark
+  it paid with an optional reference note (check number, transfer
+  confirmation, etc.) once you have; there's no automated payout rail
+  yet, this just keeps a record of what's owed and what's been paid.
+  The author can record a shipment **tracking number** from their own
+  dashboard any time after accepting. Once the books physically arrive,
+  mark the request **Received** (this adds each book's quantity straight
+  to stock on hand, the same as any other restock) — this step now only
+  unlocks after the request has been marked paid.
 - **Inventory request terms** (`/admin/inventory-terms`) — the standard
   agreement merged into every new inventory-request proposal above,
   instead of retyping terms by hand each time. It ships with a generic,
@@ -1204,10 +1205,10 @@ up:
   your books, you'll see a proposal right on your dashboard listing every
   book/quantity/amount in it, plus the standardized agreement, with
   **Accept**/**Decline** buttons. Accepting requires checking "I have read
-  and agree to these terms" first. Once accepted, you can enter a
-  **tracking number** right on your dashboard once you've shipped the
-  books — marking the request received and paying you happen on the
-  admin's side once the books actually arrive.
+  and agree to these terms" first. You're paid once you've accepted and
+  before you ship — once that happens you can enter a **tracking number**
+  right on your dashboard. Marking the request received as fully
+  complete happens on the admin's side once the books actually arrive.
 - **Messages** — a simple chat with the admin team for quick questions,
   at `/author/messages` (linked in the portal nav). It refreshes
   automatically every few seconds, no need to reload the page.

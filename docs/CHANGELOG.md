@@ -10,10 +10,19 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Changed
+
+- **Author inventory requests: pay before receiving, not after.** The
+  order flipped — once a request is accepted, mark it **paid** first;
+  **Mark received** (which bumps stock on hand) only unlocks after
+  that, instead of the other way around. No schema change — the old
+  ordering was only ever enforced in the admin actions, not the
+  database.
+
 ### Added
 
 - **Optional vendor-payment-portal link on inventory requests**: once a
-  request is marked "received," a "Pay \<author\> via ..." link can appear
+  request is **accepted**, a "Pay \<author\> via ..." link can appear
   next to Mark paid, opening whatever external banking/payment site the
   deployment actually uses (e.g. Found's "Pay a contractor" feature) in a
   new tab. Configured via `VENDOR_PAYMENT_PORTAL_URL`/

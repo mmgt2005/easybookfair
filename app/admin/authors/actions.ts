@@ -244,6 +244,8 @@ export async function cancelInventoryRequest(authorUserId: string, requestId: st
 // the same already-tested RPC the catalog screen's own "Restock" action
 // calls, once per line item (a multi-book request now has more than one
 // to receive), rather than duplicating its atomic increment logic here.
+// The author is paid before shipping (see markInventoryRequestPaid), so
+// this now requires status = 'paid', not 'accepted'.
 export async function markInventoryRequestReceived(authorUserId: string, requestId: string) {
   await requireAdmin();
   const supabase = await createClient();
@@ -257,9 +259,9 @@ export async function markInventoryRequestReceived(authorUserId: string, request
   if (fetchError || !request) {
     redirect(`${inventoryPath(authorUserId)}?error=${encodeURIComponent("Request not found")}`);
   }
-  if (request!.status !== "accepted") {
+  if (request!.status !== "paid") {
     redirect(
-      `${inventoryPath(authorUserId)}?error=${encodeURIComponent("Request must be accepted first")}`,
+      `${inventoryPath(authorUserId)}?error=${encodeURIComponent("Request must be paid first")}`,
     );
   }
 
@@ -288,7 +290,9 @@ export async function markInventoryRequestReceived(authorUserId: string, request
 
 // Payment is manual/offline for now (no real money moves here) — this
 // just records that and when the admin paid the author, with an optional
-// reference (e.g. "Check #1234") for their own records.
+// reference (e.g. "Check #1234") for their own records. The author is
+// paid once they've accepted, before the books ship — mark received
+// (above) now requires this to have happened first.
 export async function markInventoryRequestPaid(
   authorUserId: string,
   requestId: string,
@@ -306,7 +310,7 @@ export async function markInventoryRequestPaid(
       payment_reference: paymentReference,
     })
     .eq("id", requestId)
-    .eq("status", "received");
+    .eq("status", "accepted");
 
   revalidatePath(inventoryPath(authorUserId));
   if (error) {

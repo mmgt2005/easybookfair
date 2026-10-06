@@ -202,18 +202,13 @@ export default async function AuthorInventoryRequestsPage({
                 </form>
               )}
 
-              {req.status === "accepted" && (
-                <form action={receivedForAuthor.bind(null, req.id)} className="mt-3">
-                  <p className="mb-2 text-xs text-neutral-500">
-                    Marking received adds each book&apos;s requested quantity to its stock on hand.
-                  </p>
-                  <Button type="submit" size="sm">
-                    Mark received
-                  </Button>
-                </form>
+              {(req.status === "paid" || req.status === "received") && req.payment_reference && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  Paid — {req.payment_reference}
+                </p>
               )}
 
-              {req.status === "received" && (
+              {req.status === "accepted" && (
                 <div className="mt-3 flex flex-col gap-2">
                   {vendorPortalUrl && (
                     <a
@@ -238,10 +233,15 @@ export default async function AuthorInventoryRequestsPage({
                 </div>
               )}
 
-              {req.status === "paid" && req.payment_reference && (
-                <p className="mt-2 text-xs text-neutral-500">
-                  Paid — {req.payment_reference}
-                </p>
+              {req.status === "paid" && (
+                <form action={receivedForAuthor.bind(null, req.id)} className="mt-3">
+                  <p className="mb-2 text-xs text-neutral-500">
+                    Marking received adds each book&apos;s requested quantity to its stock on hand.
+                  </p>
+                  <Button type="submit" size="sm">
+                    Mark received
+                  </Button>
+                </form>
               )}
             </Card>
           );
