@@ -10,6 +10,21 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every invite flow (author, author-submission approval, org-signup
+  approval, platform-admin invite, org-staff invite) sent people straight
+  to their destination page instead of through `/auth/callback`** —
+  meaning the invite link's one-time code was never actually exchanged
+  for a session, and whatever session (or lack of one) the browser
+  already had is what the destination page saw. This is why an invited
+  author could land on `/unauthorized` ("account isn't set up") right
+  after accepting an invite: the browser kept using its existing
+  session instead of becoming the newly-invited account. All five
+  `inviteOrFindAccount(...)` call sites now route through
+  `/auth/callback?next=<destination>`, matching `/login`'s magic-link
+  flow, which already worked correctly this same way.
+
 ### Changed
 
 - **Author inventory requests: pay before receiving, not after.** The

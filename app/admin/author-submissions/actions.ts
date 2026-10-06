@@ -40,7 +40,7 @@ export async function approveAuthorSubmission(submissionId: string) {
     authorUserId = await inviteOrFindAccount(
       service,
       submission!.author_email,
-      `${siteUrl()}/author`,
+      `${siteUrl()}/auth/callback?next=/author`,
     );
   } catch (err) {
     redirect(

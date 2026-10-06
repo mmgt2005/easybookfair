@@ -39,7 +39,7 @@ export async function inviteOrgStaff(orgId: string, formData: FormData) {
   const service = createServiceClient();
   let userId: string;
   try {
-    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/org`);
+    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/callback?next=/org`);
   } catch (err) {
     redirect(
       `/org/staff?error=${encodeURIComponent(

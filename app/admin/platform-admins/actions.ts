@@ -30,7 +30,7 @@ export async function inviteAdmin(formData: FormData) {
   const service = createServiceClient();
   let userId: string;
   try {
-    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/admin`);
+    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/callback?next=/admin`);
   } catch (err) {
     redirect(
       `/admin/platform-admins?error=${encodeURIComponent(
