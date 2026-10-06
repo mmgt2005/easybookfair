@@ -61,7 +61,9 @@ export async function createAuthorAccountAndViewAs(formData: FormData) {
   const service = createServiceClient();
   let userId: string;
   try {
-    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/invite?next=/author`);
+    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/invite?next=/author`, {
+      kind: "author",
+    });
   } catch (err) {
     redirect(
       `/admin/authors?error=${encodeURIComponent(

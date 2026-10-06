@@ -10,6 +10,24 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Changed
+
+- **Invite emails now carry real EasyBookFair branding and explain what
+  the person is actually being invited to**, instead of Supabase's own
+  generic built-in "You've been invited... follow the link below to
+  accept." All five invite flows (author invite, an author's submission
+  being approved, an org's founding-contact invite, an org-staff invite,
+  a platform-admin invite) now say something specific to that context —
+  e.g. an org invite names the actual organization, an author-submission
+  approval names the approved book. Mechanically: every invite now goes
+  through `generateLink()` (Admin API) instead of `inviteUserByEmail()`,
+  with the actual email sent via this app's own Resend integration
+  (`sendInviteEmail`, `lib/email.ts`) rather than Supabase's own email
+  service — which also means invites no longer compete with Supabase's
+  own restrictive built-in email-sending rate limit. Supabase's
+  dashboard "Invite user" template is no longer used by this app at all
+  (harmless to leave as-is, or blank out).
+
 ### Fixed
 
 - **Self-serve sign-in with no prior context (e.g. the landing page's

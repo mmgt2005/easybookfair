@@ -63,6 +63,7 @@ export async function approveOrgSignup(signupId: string) {
       service,
       signup!.contact_email,
       `${siteUrl()}/auth/invite?next=/org`,
+      { kind: "org_founder", orgName: signup!.org_name },
     );
   } catch (err) {
     redirect(

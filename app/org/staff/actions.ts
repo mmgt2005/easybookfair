@@ -37,9 +37,15 @@ export async function inviteOrgStaff(orgId: string, formData: FormData) {
   }
 
   const service = createServiceClient();
+  const { data: org } = await service.from("organizations").select("name").eq("id", orgId).single();
+
   let userId: string;
   try {
-    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/invite?next=/org`);
+    userId = await inviteOrFindAccount(service, email, `${siteUrl()}/auth/invite?next=/org`, {
+      kind: "org_staff",
+      orgName: org?.name ?? "your organization",
+      role,
+    });
   } catch (err) {
     redirect(
       `/org/staff?error=${encodeURIComponent(

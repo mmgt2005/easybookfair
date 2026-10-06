@@ -81,23 +81,132 @@ export async function sendOrderConfirmationEmail(params: {
 // /org rather than /login: middleware sends an unauthenticated visitor to
 // /login?next=/org automatically, and an already-signed-in one goes right
 // through — either way this is the correct link, not a login-flow one.
+// Shared visual treatment for every invite-related email — the only emails
+// in this file carrying any branding at all (every other one here is
+// deliberately plain HTML). Brand colors from tailwind.config.ts:
+// primary-600 (#F04E12, used for CTAs elsewhere in the app) and accent-600
+// (#6633E0, used for links) — not applied to every email in this file,
+// scoped to invites specifically since that's what was asked for.
+function brandedEmailShell(bodyHtml: string): string {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <p style="font-size: 20px; font-weight: bold; color: #F04E12; margin-bottom: 4px;">
+        📚 EasyBookFair
+      </p>
+      ${bodyHtml}
+      <p style="margin-top: 32px; font-size: 12px; color: #888;">
+        This link is one-time use and expires after a while — ask whoever
+        invited you to send a fresh one if it's stopped working.
+      </p>
+    </div>
+  `;
+}
+
+function inviteButton(actionLink: string, label: string): string {
+  return `
+    <p style="margin: 24px 0;">
+      <a href="${actionLink}" style="
+        display: inline-block; background: #F04E12; color: #fff;
+        padding: 10px 20px; border-radius: 8px; text-decoration: none;
+        font-weight: bold;">
+        ${label}
+      </a>
+    </p>
+  `;
+}
+
 // Sent only from inviteOrFindAccount's (lib/accounts.ts) fallback path —
-// when the email was already registered, Supabase's own inviteUserByEmail()
-// fails before sending anything, so this is the only notification that
-// account ever gets. actionLink is a real Supabase Admin API-generated
-// magic link (generateLink, type "magiclink"), not built here — using it
-// as-is rather than constructing our own link out of a token.
+// when the email was already registered, generateLink() (Admin API) never
+// sends anything itself, so this is the only notification that account
+// ever gets. actionLink is a real Supabase Admin API-generated magic link
+// (generateLink, type "magiclink"), not built here — using it as-is rather
+// than constructing our own link out of a token.
 export async function sendAccountSignInEmail(params: { to: string; actionLink: string }) {
   await getResend().emails.send({
     from: emailFrom(),
     to: params.to,
     subject: "Sign in to your EasyBookFair account",
-    html: `
+    html: brandedEmailShell(`
       <p>An account already exists for this email address.</p>
-      <p><a href="${params.actionLink}">Click here to sign in</a> — this
-      link is one-time use and expires after a while, so request a fresh
-      one from the sign-in page if it's stopped working.</p>
-    `,
+      ${inviteButton(params.actionLink, "Sign in →")}
+    `),
+  });
+}
+
+// The actual message depends on which of the five invite flows in this app
+// triggered it (author invite, an author's submission being approved, an
+// org's founding-contact invite, an org-staff invite, a platform-admin
+// invite) — each call site in lib/accounts.ts supplies only what it
+// already has on hand, and all the copy itself lives centrally here,
+// matching every other function in this file (callers never pass in raw
+// HTML, only typed data).
+export type InviteContext =
+  | { kind: "author" }
+  | { kind: "author_submission_approved"; bookTitle: string }
+  | { kind: "org_founder"; orgName: string }
+  | { kind: "org_staff"; orgName: string; role: "org_admin" | "org_staff" }
+  | { kind: "platform_admin"; role: "admin" | "super_admin" };
+
+function inviteCopy(context: InviteContext): { subject: string; intro: string } {
+  switch (context.kind) {
+    case "author":
+      return {
+        subject: "You're invited to the EasyBookFair Author Portal",
+        intro:
+          "You've been invited to the <strong>EasyBookFair Author Portal</strong>, " +
+          "where you can see how your books are selling, respond to inventory " +
+          "restock requests, and message the team running your book fair.",
+      };
+    case "author_submission_approved":
+      return {
+        subject: "Your book was approved — join EasyBookFair",
+        intro:
+          `Good news — your book <strong>"${context.bookTitle}"</strong> has been ` +
+          "approved and added to the catalog! Accept your invite below to reach " +
+          "the <strong>Author Portal</strong>, where you can track sales and " +
+          "respond to restock requests.",
+      };
+    case "org_founder":
+      return {
+        subject: `${context.orgName} is approved on EasyBookFair`,
+        intro:
+          `<strong>${context.orgName}</strong> has been approved as a book fair ` +
+          "host on EasyBookFair. Accept your invite below to reach your " +
+          "organization's dashboard, where you can request your first fair, " +
+          "invite your own staff, and share buyer links with your community.",
+      };
+    case "org_staff":
+      return {
+        subject: `You're invited to join ${context.orgName} on EasyBookFair`,
+        intro:
+          `You've been invited to join <strong>${context.orgName}</strong>'s team ` +
+          `on EasyBookFair as ${context.role === "org_admin" ? "an admin" : "a staff member"}, ` +
+          "helping run book fairs, track sales, and manage the organization's dashboard.",
+      };
+    case "platform_admin":
+      return {
+        subject: "You're invited to administer EasyBookFair",
+        intro:
+          "You've been invited to help administer EasyBookFair as " +
+          `${context.role === "super_admin" ? "a super admin" : "an admin"}.`,
+      };
+  }
+}
+
+export async function sendInviteEmail(params: {
+  to: string;
+  actionLink: string;
+  context: InviteContext;
+}) {
+  const { subject, intro } = inviteCopy(params.context);
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject,
+    html: brandedEmailShell(`
+      <p>${intro}</p>
+      ${inviteButton(params.actionLink, "Accept your invite →")}
+    `),
   });
 }
 

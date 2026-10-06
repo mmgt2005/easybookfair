@@ -41,6 +41,7 @@ export async function approveAuthorSubmission(submissionId: string) {
       service,
       submission!.author_email,
       `${siteUrl()}/auth/invite?next=/author`,
+      { kind: "author_submission_approved", bookTitle: submission!.title },
     );
   } catch (err) {
     redirect(
