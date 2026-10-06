@@ -104,7 +104,10 @@ export default async function AuthorDashboard({
             Inventory requests
           </h2>
           {inventoryRequests.map((r) => {
-            const items = r.author_inventory_request_items as unknown as {
+            // PostgREST normally returns [] (never null) for an empty
+            // to-many embed, but this guards against it regardless — a
+            // null here would otherwise crash this whole page's render.
+            const items = (r.author_inventory_request_items ?? []) as unknown as {
               quantity_requested: number;
               wholesale_cost_per_unit: number;
               wholesale_amount_total: number;

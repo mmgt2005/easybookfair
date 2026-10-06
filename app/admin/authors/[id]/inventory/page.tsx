@@ -139,21 +139,22 @@ export default async function AuthorInventoryRequestsPage({
       <div className="flex flex-col gap-4">
         {(requests ?? []).map((r) => {
           const req = r as unknown as InventoryRequest;
-          const total = req.author_inventory_request_items.reduce(
-            (sum, i) => sum + i.wholesale_amount_total,
-            0,
-          );
+          // PostgREST normally returns [] (never null) for an empty
+          // to-many embed, but this guards against it regardless — a
+          // null here would otherwise crash this whole page's render.
+          const items = req.author_inventory_request_items ?? [];
+          const total = items.reduce((sum, i) => sum + i.wholesale_amount_total, 0);
           return (
             <Card key={req.id} className="max-w-lg">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-heading font-bold text-neutral-900">
-                    {req.author_inventory_request_items.length === 1
-                      ? (req.author_inventory_request_items[0].catalog_items?.title ?? "Unknown book")
-                      : `${req.author_inventory_request_items.length} books`}
+                    {items.length === 1
+                      ? (items[0].catalog_items?.title ?? "Unknown book")
+                      : `${items.length} books`}
                   </h3>
                   <ul className="mt-1 text-sm text-neutral-600">
-                    {req.author_inventory_request_items.map((item, i) => (
+                    {items.map((item, i) => (
                       <li key={i}>
                         {item.quantity_requested} x {item.catalog_items?.title ?? "Unknown book"} @ $
                         {item.wholesale_cost_per_unit.toFixed(2)}/unit = $
