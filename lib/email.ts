@@ -81,6 +81,26 @@ export async function sendOrderConfirmationEmail(params: {
 // /org rather than /login: middleware sends an unauthenticated visitor to
 // /login?next=/org automatically, and an already-signed-in one goes right
 // through — either way this is the correct link, not a login-flow one.
+// Sent only from inviteOrFindAccount's (lib/accounts.ts) fallback path —
+// when the email was already registered, Supabase's own inviteUserByEmail()
+// fails before sending anything, so this is the only notification that
+// account ever gets. actionLink is a real Supabase Admin API-generated
+// magic link (generateLink, type "magiclink"), not built here — using it
+// as-is rather than constructing our own link out of a token.
+export async function sendAccountSignInEmail(params: { to: string; actionLink: string }) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: "Sign in to your EasyBookFair account",
+    html: `
+      <p>An account already exists for this email address.</p>
+      <p><a href="${params.actionLink}">Click here to sign in</a> — this
+      link is one-time use and expires after a while, so request a fresh
+      one from the sign-in page if it's stopped working.</p>
+    `,
+  });
+}
+
 export async function sendFairApprovedEmail(params: {
   to: string;
   fairName: string;

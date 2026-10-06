@@ -12,6 +12,20 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Re-inviting an email that already had an account (e.g. after "Remove
+  account" on `/admin/authors`, which only unlinks the `authors` row,
+  never the underlying login) silently sent no email at all.**
+  `inviteUserByEmail()` fails fast once an address is already
+  registered, and `inviteOrFindAccount`'s (`lib/accounts.ts`) fallback
+  just reused the existing account id without ever notifying the
+  person — the admin would see "Create account & view as" succeed with
+  no error, but the invited person never got anything to click. Now
+  generates a fresh magic link via the Admin API
+  (`generateLink({type: "magiclink"})`, works regardless of whether the
+  account was ever confirmed) and sends it through a new
+  `sendAccountSignInEmail` (best-effort, same never-block-the-caller
+  posture as every other email in this app). Affects every flow built
+  on `inviteOrFindAccount`, not just authors.
 - **Admin-generated invite links (every flow built on `inviteOrFindAccount`
   — author invites, author-submission approval, org-signup approval,
   platform-admin invites, org-staff invites) never actually logged the
