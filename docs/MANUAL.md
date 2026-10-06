@@ -34,9 +34,17 @@ request is approved, the requester gets an email pointing them at
 `/org` — signing in there works the same magic-link way.
 
 Author screens live under `/author` and are different from the other
-two: there's no manual database insert — your account is created
-automatically the first time an admin approves something you submitted
-at `/author/submit` (see "Author guide" below).
+two: there's no manual database insert — your account is created either
+the first time an admin approves something you submitted at
+`/author/submit`, or directly by an admin inviting you from
+`/admin/authors` (see "Author guide" below and "Managing authors
+directly" above).
+
+`/login`'s sign-in link only works for an email that already has an
+account — it won't create one for you. If you try to sign in before an
+admin has actually invited you (or approved your submission), you'll see
+"No account found for that email yet" right there instead of a magic
+link that would otherwise lead nowhere.
 
 Everywhere a portal exists, a **"🎓 Take the tour"** link sits in its nav
 — a short walkthrough of that portal's own screens. It shows itself

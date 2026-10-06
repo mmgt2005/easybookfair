@@ -12,7 +12,8 @@ export default function UnauthorizedPage() {
           ask a platform admin to add you to <code>org_members</code> for
           your organization. The author portal is different — it&apos;s
           unlocked automatically once an admin approves something you
-          submitted at <code>/author/submit</code>.
+          submitted at <code>/author/submit</code>, or once an admin
+          invites you directly from <code>/admin/authors</code>.
         </p>
       </Card>
     </main>

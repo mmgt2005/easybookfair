@@ -120,6 +120,16 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Signing in at `/login` could silently create a dead-end account.**
+  The sign-in form's `signInWithOtp` call had no `shouldCreateUser: false`,
+  so typing any email — even one nobody had invited yet (e.g. an author
+  whose contact info was added to a catalog item, but who an admin
+  hadn't yet clicked "Create account & view as" for) — created a brand
+  new account and emailed a magic link, which led to a confusing
+  "not authorized" page only after clicking it. Now a never-invited
+  email gets a clear "No account found for that email yet" message right
+  on `/login` instead. `/unauthorized`'s own text also now mentions the
+  direct-admin-invite path for authors, not just `/author/submit`.
 - **Book descriptions on an author's public page were cut off** at 4
   lines (`line-clamp-4`) — removed so the full description always shows.
 - **Shipping cost estimate always rated outbound (warehouse → org), even

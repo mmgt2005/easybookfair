@@ -17,10 +17,25 @@ export default function LoginPage() {
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Without this, signInWithOtp happily creates a brand-new account
+        // for any email typed here, even one nobody invited — that account
+        // then has no row in platform_admins/org_members/authors, so the
+        // person gets a confusing "not authorized" page *after* already
+        // receiving and clicking a sign-in email. Setting this to false
+        // surfaces that as a clear error right here instead. Every real
+        // account in this app is created by an admin invite (or an
+        // approved /author/submit submission) before anyone ever reaches
+        // this page, so there's no legitimate first-time-signup case this
+        // would block.
+        shouldCreateUser: false,
       },
     });
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(
+        /signup/i.test(error.message)
+          ? "No account found for that email yet. Ask an admin to invite you first, then try again."
+          : error.message,
+      );
       setStatus("error");
     } else {
       setStatus("sent");
