@@ -12,6 +12,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Admin-generated invite links (`inviteUserByEmail`) delivered the
+  session via a URL fragment (`#access_token=...`) instead of a `?code=`
+  query param** — invisible to `/auth/callback/route.ts`'s server-side
+  `exchangeCodeForSession()`, since URL fragments are never sent to a
+  server at all. Confirmed directly from Supabase's own Auth Logs: an
+  invite link logged in with `"login_method":"implicit"` while `/login`'s
+  own magic link logged in with `"login_method":"pkce"` — only the
+  latter actually works with this app's callback route. Fixed by adding
+  `flowType: "pkce"` to the service-role client (`lib/supabase/service.ts`)
+  so every admin-generated link (invites, and anything else issued
+  through that client) now matches `/login`'s working flow.
 - **Every invite flow (author, author-submission approval, org-signup
   approval, platform-admin invite, org-staff invite) sent people straight
   to their destination page instead of through `/auth/callback`** —
