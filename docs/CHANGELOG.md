@@ -12,6 +12,19 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **Self-serve sign-in with no prior context (e.g. the landing page's
+  "Sign in →" link) always landed on `/admin` after a successful magic
+  link, regardless of whether the person was an admin, org staff member,
+  or author.** `/auth/callback/route.ts` defaulted an absent `next` param
+  to `/admin` unconditionally, and `/login/page.tsx` never read or
+  forwarded a `next` param at all — so an author (or an org staff member
+  redirected here by `middleware.ts` from `/org`) who signed back in
+  through this page got bounced to `/unauthorized` immediately after a
+  fully valid, successful login, since they're not a platform admin.
+  `/login` now forwards whatever `next` it was given; `/auth/callback`
+  now looks up which of `platform_admins`/`org_members`/`authors` the
+  signed-in account actually belongs to when no `next` is given, instead
+  of assuming `/admin`.
 - **Re-inviting an email that already had an account (e.g. after "Remove
   account" on `/admin/authors`, which only unlinks the `authors` row,
   never the underlying login) silently sent no email at all.**
