@@ -438,9 +438,20 @@ If that fallback still points at `localhost` or an old preview domain (or
 if the Site URL itself is just the bare domain with no path), a magic
 link click lands on `/` with no session ever established — indistinguishable
 from "the sign-in link didn't work." Add `<your-domain>/auth/callback`
-(and `http://localhost:3000/auth/callback` for local dev) to Redirect
-URLs, and set Site URL to your real production domain, whenever the
-domain changes.
+**and `<your-domain>/auth/invite`** (plus both's `http://localhost:3000`
+equivalents for local dev) to Redirect URLs, and set Site URL to your
+real production domain, whenever the domain changes. `/auth/invite`
+(`app/auth/invite/page.tsx`) is a second, separate callback used only by
+every admin-generated invite link (authors, org-signup approval,
+platform-admin/org-staff invites — anything created via
+`inviteOrFindAccount`, `lib/accounts.ts`) — it exists because
+`inviteUserByEmail()` always delivers its session as a URL fragment
+(`#access_token=...`), never as `/auth/callback`'s `?code=...`, so it
+needs its own client-side page to read that fragment instead of a server
+Route Handler (confirmed directly from Supabase's Auth Logs: an invite
+link's `login_method` is `"implicit"`, while `/login`'s own magic link is
+`"pkce"`). Both routes need to be allow-listed for invites and magic
+links to work at all.
 
 **Watch for a `www` vs. bare-domain mismatch** — a real case that hit
 this exact failure mode: the site was reachable at both

@@ -62,7 +62,7 @@ export async function approveOrgSignup(signupId: string) {
     contactUserId = await inviteOrFindAccount(
       service,
       signup!.contact_email,
-      `${siteUrl()}/auth/callback?next=/org`,
+      `${siteUrl()}/auth/invite?next=/org`,
     );
   } catch (err) {
     redirect(

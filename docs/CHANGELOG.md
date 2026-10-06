@@ -12,29 +12,35 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
-- **Admin-generated invite links (`inviteUserByEmail`) delivered the
-  session via a URL fragment (`#access_token=...`) instead of a `?code=`
-  query param** — invisible to `/auth/callback/route.ts`'s server-side
-  `exchangeCodeForSession()`, since URL fragments are never sent to a
-  server at all. Confirmed directly from Supabase's own Auth Logs: an
-  invite link logged in with `"login_method":"implicit"` while `/login`'s
-  own magic link logged in with `"login_method":"pkce"` — only the
-  latter actually works with this app's callback route. Fixed by adding
-  `flowType: "pkce"` to the service-role client (`lib/supabase/service.ts`)
-  so every admin-generated link (invites, and anything else issued
-  through that client) now matches `/login`'s working flow.
-- **Every invite flow (author, author-submission approval, org-signup
-  approval, platform-admin invite, org-staff invite) sent people straight
-  to their destination page instead of through `/auth/callback`** —
-  meaning the invite link's one-time code was never actually exchanged
-  for a session, and whatever session (or lack of one) the browser
-  already had is what the destination page saw. This is why an invited
-  author could land on `/unauthorized` ("account isn't set up") right
-  after accepting an invite: the browser kept using its existing
-  session instead of becoming the newly-invited account. All five
-  `inviteOrFindAccount(...)` call sites now route through
-  `/auth/callback?next=<destination>`, matching `/login`'s magic-link
-  flow, which already worked correctly this same way.
+- **Admin-generated invite links (every flow built on `inviteOrFindAccount`
+  — author invites, author-submission approval, org-signup approval,
+  platform-admin invites, org-staff invites) never actually logged the
+  invited person in**, landing on `/unauthorized` ("account isn't set
+  up") instead. Root cause, confirmed directly from Supabase's own Auth
+  Logs: `inviteUserByEmail()` always delivers its session as a URL
+  fragment (`#access_token=...`), never as a `?code=...` query param —
+  `login_method` was `"implicit"` for every invite link, vs. `"pkce"` for
+  `/login`'s own magic link. A fragment is never sent to a server at all
+  (standard HTTP behavior), so `/auth/callback/route.ts`'s server-side
+  `exchangeCodeForSession()` — which only ever worked for `/login`'s PKCE
+  flow — had nothing to exchange and silently fell through to its
+  `/login` fallback every time, regardless of whether the link was fresh
+  or already used. (An earlier attempt at this fix added `flowType:
+  "pkce"` to the service-role client, assuming that would change how
+  `inviteUserByEmail()` delivers its links — confirmed via a second,
+  clean test that it does not; that change has been reverted.) Fixed
+  properly this time: a new client-side page, `app/auth/invite/page.tsx`,
+  reads the `access_token`/`refresh_token` straight out of
+  `window.location.hash` and calls `setSession()` directly (which
+  `@supabase/ssr`'s browser client syncs into cookies for the server to
+  see), then redirects on to the real destination. All five
+  `inviteOrFindAccount(...)` call sites now point at
+  `/auth/invite?next=<destination>` instead of `/auth/callback` — the
+  two routes serve genuinely different delivery mechanisms and both need
+  to exist. **`/auth/invite` also needs adding to Supabase's Redirect
+  URLs allowlist** (Authentication → URL Configuration), same as
+  `/auth/callback` already is — see `README.md`'s "Watch for a `www` vs.
+  bare-domain mismatch" section, now updated to cover both routes.
 
 ### Changed
 
