@@ -12,6 +12,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Optional vendor-payment-portal link on inventory requests**: once a
+  request is marked "received," a "Pay \<author\> via ..." link can appear
+  next to Mark paid, opening whatever external banking/payment site the
+  deployment actually uses (e.g. Found's "Pay a contractor" feature) in a
+  new tab. Configured via `VENDOR_PAYMENT_PORTAL_URL`/
+  `VENDOR_PAYMENT_PORTAL_LABEL` (both optional; the link is hidden
+  entirely when unset) — purely a convenience link, never an automated
+  payout, since this app has no payment-API integration for paying
+  authors (confirmed Found itself has no public API for this either).
 - **Declined organization signups are now hidden by default** on
   `/admin/org-signups` — the list shows only pending and approved
   signups, with a **"Show declined (N)"** link to bring them back into

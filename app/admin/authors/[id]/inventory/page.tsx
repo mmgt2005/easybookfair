@@ -97,6 +97,12 @@ export default async function AuthorInventoryRequestsPage({
           .order("title")
       : { data: [] as EligibleCatalogItem[] };
 
+  // Optional convenience link only, not a payment integration — this app
+  // has no payment API for paying authors, and neither does most banking
+  // software (confirmed for Found specifically: no public developer API).
+  const vendorPortalUrl = process.env.VENDOR_PAYMENT_PORTAL_URL;
+  const vendorPortalLabel = process.env.VENDOR_PAYMENT_PORTAL_LABEL || "your payment portal";
+
   const cancelForAuthor = cancelInventoryRequest.bind(null, authorUserId);
   const receivedForAuthor = markInventoryRequestReceived.bind(null, authorUserId);
   const paidForAuthor = markInventoryRequestPaid.bind(null, authorUserId);
@@ -208,16 +214,28 @@ export default async function AuthorInventoryRequestsPage({
               )}
 
               {req.status === "received" && (
-                <form action={paidForAuthor.bind(null, req.id)} className="mt-3 flex gap-2">
-                  <Input
-                    name="payment_reference"
-                    placeholder="Payment reference (optional)"
-                    className="flex-1"
-                  />
-                  <Button type="submit" size="sm">
-                    Mark paid
-                  </Button>
-                </form>
+                <div className="mt-3 flex flex-col gap-2">
+                  {vendorPortalUrl && (
+                    <a
+                      href={vendorPortalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-accent-600 hover:underline"
+                    >
+                      Pay {author.name} via {vendorPortalLabel} →
+                    </a>
+                  )}
+                  <form action={paidForAuthor.bind(null, req.id)} className="flex gap-2">
+                    <Input
+                      name="payment_reference"
+                      placeholder="Payment reference (optional)"
+                      className="flex-1"
+                    />
+                    <Button type="submit" size="sm">
+                      Mark paid
+                    </Button>
+                  </form>
+                </div>
               )}
 
               {req.status === "paid" && req.payment_reference && (

@@ -612,7 +612,12 @@ also lets you:
   restock), then **Mark paid** with an optional reference note (check
   number, transfer confirmation, etc.) once you've paid the author
   outside the app — there's no automated payout rail yet; this just keeps
-  a record of what's owed and what's been paid.
+  a record of what's owed and what's been paid. If `VENDOR_PAYMENT_PORTAL_URL`
+  is set (see `.env.example`), a "Pay \<author\> via ..." link appears next
+  to Mark paid once a request is received, opening whatever external
+  banking/payment site you actually use (e.g. Found's "Pay a contractor"
+  feature) in a new tab — purely a convenience link, since this app has
+  no payment-API integration for paying authors.
 - **Inventory request terms** (`/admin/inventory-terms`) — the standard
   agreement merged into every new inventory-request proposal above,
   instead of retyping terms by hand each time. It ships with a generic,
