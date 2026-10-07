@@ -10,6 +10,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ## [Unreleased]
 
+### Added
+
+- **Image/PDF attachments on author↔admin messages** — either side can
+  attach a single image or PDF to a chat message (📎 button next to the
+  composer, at `/author/messages` and `/admin/authors/<id>/messages`).
+  Images render inline in the thread; PDFs show as a clickable link. A
+  message can now be attachment-only (no text required). Uploads go
+  through a new public `message-attachments` Storage bucket, same
+  convention as every other upload in this app (random-filename
+  obscurity, no signed URLs).
+
 ### Changed
 
 - **Invite emails now carry real EasyBookFair branding and explain what

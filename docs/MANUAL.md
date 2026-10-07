@@ -642,7 +642,9 @@ also lets you:
   `/admin/authors/<id>/messages`, a simple back-and-forth chat with that
   author for quick questions (it refreshes every few seconds rather than
   needing a page reload). A badge next to the link shows how many of
-  their messages you haven't read yet.
+  their messages you haven't read yet. Either side can attach a single
+  image or PDF to a message (📎 button next to the composer) — images
+  show inline in the thread, PDFs show as a clickable link.
 - **Remove account** — undoes a real account, moving them back to
   "From catalog items — no account yet" if a catalog item still lists
   their contact info (or just removing them from this screen entirely if
@@ -1228,7 +1230,9 @@ up:
   complete happens on the admin's side once the books actually arrive.
 - **Messages** — a simple chat with the admin team for quick questions,
   at `/author/messages` (linked in the portal nav). It refreshes
-  automatically every few seconds, no need to reload the page.
+  automatically every few seconds, no need to reload the page. You can
+  attach a single image or PDF to a message using the 📎 button next to
+  the composer — handy for sharing a photo or a signed form.
 
 **Your public author page**: once you have at least one approved book,
 you get a public page at `/authors/<your-id>` — shared on EasyBookFair's

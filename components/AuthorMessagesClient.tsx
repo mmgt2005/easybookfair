@@ -27,6 +27,7 @@ export function AuthorMessagesClient({
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const seenCount = useRef(initialMessages.length);
   const listRef = useRef<HTMLDivElement>(null);
@@ -72,10 +73,12 @@ export function AuthorMessagesClient({
 
   function handleSend() {
     const body = draft.trim();
-    if (!body) return;
+    if (!body && !attachment) return;
     const formData = new FormData();
     formData.set("body", body);
+    if (attachment) formData.set("attachment", attachment);
     setDraft("");
+    setAttachment(null);
     startTransition(async () => {
       await sendAuthorMessage(authorUserId, formData);
       const fresh = await getAuthorMessages(authorUserId);
@@ -99,7 +102,25 @@ export function AuthorMessagesClient({
                   isMine ? "bg-accent-100 text-accent-900" : "bg-white text-neutral-800"
                 }`}
               >
-                <p className="whitespace-pre-line">{m.body}</p>
+                {m.body && <p className="whitespace-pre-line">{m.body}</p>}
+                {m.attachment_url &&
+                  (m.attachment_content_type?.startsWith("image/") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.attachment_url}
+                      alt={m.attachment_filename ?? "attachment"}
+                      className="mt-2 max-h-48 rounded-lg"
+                    />
+                  ) : (
+                    <a
+                      href={m.attachment_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs font-semibold underline"
+                    >
+                      📎 {m.attachment_filename ?? "Attachment"}
+                    </a>
+                  ))}
                 <p className="mt-1 text-[11px] text-neutral-400">
                   {new Date(m.created_at).toLocaleString()}
                 </p>
@@ -111,6 +132,19 @@ export function AuthorMessagesClient({
           <p className="text-sm text-neutral-500">No messages yet — say hello.</p>
         )}
       </div>
+      {attachment && (
+        <div className="flex items-center gap-2 text-xs text-neutral-600">
+          <span>📎 {attachment.name}</span>
+          <button
+            type="button"
+            onClick={() => setAttachment(null)}
+            className="font-bold text-neutral-400 hover:text-neutral-600"
+            aria-label="Remove attachment"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="flex gap-2">
         <textarea
           value={draft}
@@ -125,6 +159,15 @@ export function AuthorMessagesClient({
           placeholder="Type a message…"
           className="w-full flex-1 rounded-xl border-2 border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:border-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-100"
         />
+        <label className="flex cursor-pointer items-center rounded-xl border-2 border-neutral-200 bg-white px-2 text-sm text-neutral-500 hover:border-accent-400">
+          📎
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+            className="hidden"
+          />
+        </label>
         <Button type="button" size="sm" disabled={isPending} onClick={handleSend}>
           Send
         </Button>

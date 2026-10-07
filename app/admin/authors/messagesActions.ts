@@ -7,6 +7,9 @@ export type AuthorMessage = {
   sender_role: "author" | "admin";
   body: string;
   created_at: string;
+  attachment_url: string | null;
+  attachment_filename: string | null;
+  attachment_content_type: string | null;
 };
 
 // Shared by both sides of the thread (app/author/(portal)/messages and
@@ -22,7 +25,9 @@ export async function getAuthorMessages(authorUserId: string): Promise<AuthorMes
   const supabase = await createClient();
   const { data } = await supabase
     .from("author_messages")
-    .select("id, sender_role, body, created_at")
+    .select(
+      "id, sender_role, body, created_at, attachment_url, attachment_filename, attachment_content_type",
+    )
     .eq("author_user_id", authorUserId)
     .order("created_at", { ascending: true });
   return (data ?? []) as AuthorMessage[];
@@ -53,13 +58,29 @@ export async function sendAuthorMessage(authorUserId: string, formData: FormData
   }
 
   const body = String(formData.get("body") ?? "").trim();
-  if (!body) return;
+  const file = formData.get("attachment") as File | null;
+  const hasFile = !!file && file.size > 0;
+  if (!body && !hasFile) return;
+
+  let attachmentUrl: string | null = null;
+  if (hasFile) {
+    const extension = file!.name.split(".").pop() || "bin";
+    const path = `${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("message-attachments")
+      .upload(path, file!, { contentType: file!.type });
+    if (uploadError) throw new Error(`Attachment upload failed: ${uploadError.message}`);
+    attachmentUrl = supabase.storage.from("message-attachments").getPublicUrl(path).data.publicUrl;
+  }
 
   const { error } = await supabase.from("author_messages").insert({
     author_user_id: authorUserId,
     sender_role: senderRole,
     sender_user_id: user.id,
     body,
+    attachment_url: attachmentUrl,
+    attachment_filename: hasFile ? file!.name : null,
+    attachment_content_type: hasFile ? file!.type : null,
   });
   if (error) throw new Error(error.message);
 }
