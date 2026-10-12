@@ -797,6 +797,38 @@ marketing flyer). Also available to that fair's own org staff
 the fair list's **Payout report** link, or from the Settlement card on
 the fair's edit page once it's closed.
 
+### General ledger & accounting exports (`/admin/ledger`)
+
+The real double-entry books behind every number shown elsewhere in the
+app — current balances for every account in the chart (Stripe Clearing,
+Inventory, Org Payable, Sales Tax Payable, and so on), and every posted
+debit/credit transaction, across every fair and organization at once
+(not just one fair, unlike the sales feed/payout report above). Filter
+by date range, organization, or fair, then click any account code to see
+its own transaction list with a running balance. The totals row always
+shows total debits equal to total credits platform-wide — that's the
+ledger's own built-in integrity check, not something that can drift.
+
+Four CSV downloads are available from this screen, each reflecting
+whatever filters are currently set — hand these to a bookkeeper or
+accountant as-is:
+
+- **Trial balance** — one row per account, with its total debits,
+  credits, and net balance.
+- **General ledger** — every posted transaction line, in chronological
+  order, with its date, account, fair, organization, description, and
+  reference.
+- **Itemized sales** — every completed sale across every matching fair,
+  not capped at 30 like the sales feed and not limited to one fair like
+  the payout report.
+- **Sales tax summary** — sales tax collected per fair, alongside that
+  fair's configured state/rate, so a jurisdiction-by-jurisdiction total
+  doesn't have to be hand-tallied fair by fair.
+
+Each account's own page also has its own "download this account's
+transactions" link, scoped to just that account and whatever filters are
+set.
+
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an
@@ -1252,8 +1284,9 @@ listing.
 ## Not yet supported
 
 - Sales tax remittance/filing automation (calculating and tracking it at
-  checkout is built — see the fair edit page and the Sales feed/Payout
-  report — but actually paying it to the state stays manual).
+  checkout is built — see the fair edit page, the Sales feed/Payout
+  report, and the General ledger's sales tax summary export — but
+  actually paying it to the state stays manual).
 - Chargeback/dispute reconciliation beyond a basic refund.
 - Tap to Pay (iPhone/Android) and Bluetooth readers (M2, Chipper) — both
   need Stripe's native mobile Terminal SDK, which this web app can't

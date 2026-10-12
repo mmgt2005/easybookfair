@@ -45,6 +45,10 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Accounting",
+    links: [{ href: "/admin/ledger", label: "General ledger" }],
+  },
+  {
     label: "Settings",
     links: [{ href: "/admin/manual", label: "Manual" }],
   },
@@ -119,6 +123,11 @@ const adminTourSteps = [
     title: "Sales tax rates",
     description:
       "Each state's base sales tax rate, suggested when org staff set a fair's tax rate — correct a row here if a state's rate changes via legislation.",
+  },
+  {
+    title: "General ledger",
+    description:
+      "Current balances for every account in the chart, drill into any one for its transactions, and download CSVs (trial balance, full general ledger, itemized sales, sales tax by fair) to hand to a bookkeeper or accountant.",
   },
   {
     title: "Demo fair",

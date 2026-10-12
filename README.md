@@ -168,6 +168,19 @@ A big batch pulling several later-phase pieces forward at once:
   on the resulting row) alongside the org/author it was made on behalf
   of, rather than forging who physically clicked submit.
 
+- **General ledger & accounting exports** (`/admin/ledger`): a real
+  trial balance (current debit/credit totals and net balance for every
+  account in the chart) plus a drill-down into any account's own
+  transactions, filterable by date range/organization/fair, with four
+  CSV downloads — trial balance, the full general ledger, itemized sales
+  across every fair, and a sales-tax-collected-by-fair summary — meant
+  to be handed to a bookkeeper or accountant as-is. Pure read of the
+  existing `accounts`/`journal_entries`/`journal_lines` ledger (no new
+  schema); the CSV export route (`/api/admin/ledger-export`) inlines its
+  own admin check rather than reusing `requireAdmin()`, since that
+  helper redirects via `next/navigation`, which doesn't make sense for a
+  direct-download `<a href>` caller.
+
 Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
 companion app — not reachable from a browser), and missing-inventory
 cost as part of closing a fair (needs a real returns-recording feature

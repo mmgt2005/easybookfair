@@ -12,6 +12,23 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **General ledger viewer & CSV accounting exports** (`/admin/ledger`) —
+  a real trial balance (every account in the chart with its current
+  debit/credit totals and net balance), filterable by date range,
+  organization, or fair, with a drill-down into any account's own
+  transaction history and a running balance. Four CSV downloads, each
+  honoring the current filters: trial balance, the full general ledger
+  (every posted transaction), itemized sales across every matching fair
+  (not capped at 30 like the sales feed, not pinned to one fair like the
+  payout report), and a sales-tax-collected-by-fair summary — meant to
+  be handed to a bookkeeper or accountant directly. No schema change —
+  reads the existing `accounts`/`journal_entries`/`journal_lines`
+  ledger, which an admin already has full RLS read access to. The new
+  export route (`/api/admin/ledger-export`) is this app's first
+  authenticated Route Handler that isn't JSON-only — it inlines its own
+  admin check rather than calling `requireAdmin()`, since that helper
+  redirects via `next/navigation`, which doesn't work for a direct
+  download link.
 - **Image/PDF attachments on author↔admin messages** — either side can
   attach a single image or PDF to a chat message (📎 button next to the
   composer, at `/author/messages` and `/admin/authors/<id>/messages`).
