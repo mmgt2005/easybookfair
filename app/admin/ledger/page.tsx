@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getTrialBalance, type LedgerFilters } from "@/lib/ledger";
-import { Card, PageHeader } from "@/components/ui";
+import { Card, PageHeader, PrintButton } from "@/components/ui";
 import { FilterBar } from "./FilterBar";
 
 function filtersToQuery(filters: LedgerFilters): string {
@@ -12,6 +12,26 @@ function filtersToQuery(filters: LedgerFilters): string {
   if (filters.orgId) params.set("org_id", filters.orgId);
   if (filters.fairId) params.set("fair_id", filters.fairId);
   return params.toString();
+}
+
+// Human-readable stand-in for the filter form, shown only when printing
+// (the interactive form itself is print:hidden) — so a printed/saved
+// trial balance says what date range and scope it actually covers.
+function filterSummary(
+  filters: LedgerFilters,
+  orgName: string | null,
+  fairName: string | null,
+): string {
+  const dateRange =
+    filters.start || filters.end
+      ? `${filters.start ?? "the beginning"} through ${filters.end ?? "now"}`
+      : "All time";
+  const scope = fairName
+    ? `Fair: ${fairName}`
+    : orgName
+      ? `Organization: ${orgName}`
+      : "All organizations and fairs";
+  return `${dateRange} · ${scope}`;
 }
 
 export default async function LedgerPage({
@@ -51,6 +71,9 @@ export default async function LedgerPage({
   // out-of-balance ledger.
   const balances = Math.round(totalDebit * 100) === Math.round(totalCredit * 100);
 
+  const orgName = orgs?.find((o) => o.id === orgId)?.name ?? null;
+  const fairName = fairs.find((f) => f.id === fairId)?.name ?? null;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -58,7 +81,14 @@ export default async function LedgerPage({
         description="Current account balances across every fair and organization. Filter by date range, organization, or fair, then click an account to see its transactions."
       />
 
-      <Card>
+      <div className="print:hidden">
+        <PrintButton />
+      </div>
+      <p className="hidden text-sm text-neutral-600 print:block">
+        {filterSummary(filters, orgName, fairName)}
+      </p>
+
+      <Card className="print:hidden">
         <FilterBar
           action="/admin/ledger"
           start={start}
@@ -121,7 +151,7 @@ export default async function LedgerPage({
         </table>
       </Card>
 
-      <Card>
+      <Card className="print:hidden">
         <h2 className="mb-3 font-heading font-bold text-neutral-900">Download CSV</h2>
         <p className="mb-3 text-sm text-neutral-600">
           Each download reflects the filters above. Hand these to a bookkeeper or accountant as-is.

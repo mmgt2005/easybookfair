@@ -2,10 +2,31 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLedgerTransactions, type LedgerFilters } from "@/lib/ledger";
-import { Card, PageHeader } from "@/components/ui";
+import { Card, PageHeader, PrintButton } from "@/components/ui";
 import { FilterBar } from "../FilterBar";
+import { TransactionsTable } from "../TransactionsTable";
 
 const PAGE_SIZE = 100;
+
+// Human-readable stand-in for the filter form, shown only when printing
+// (the interactive form itself is print:hidden) — so a printed/saved
+// page says what date range and scope it actually covers.
+function filterSummary(
+  filters: { start?: string; end?: string },
+  orgName: string | null,
+  fairName: string | null,
+): string {
+  const dateRange =
+    filters.start || filters.end
+      ? `${filters.start ?? "the beginning"} through ${filters.end ?? "now"}`
+      : "All time";
+  const scope = fairName
+    ? `Fair: ${fairName}`
+    : orgName
+      ? `Organization: ${orgName}`
+      : "All organizations and fairs";
+  return `${dateRange} · ${scope}`;
+}
 
 export default async function LedgerAccountPage({
   params,
@@ -55,14 +76,16 @@ export default async function LedgerAccountPage({
   // getLedgerTransactions() returns ascending (chronological) order — a
   // running balance only makes sense computed in that order, so it's
   // calculated here before reversing for the on-screen most-recent-first
-  // display.
+  // display. The print view below uses this chronological order directly
+  // (matching the CSV export's own "report-reading order" convention),
+  // not the reversed on-screen order.
   let running = 0;
   const isDebitNormal = account.type === "asset" || account.type === "expense";
-  const withRunningBalance = allRows.map((r) => {
+  const chronological = allRows.map((r) => {
     running += isDebitNormal ? r.debit - r.credit : r.credit - r.debit;
     return { ...r, runningBalance: running };
   });
-  const displayRows = [...withRunningBalance].reverse();
+  const displayRows = [...chronological].reverse();
 
   const page = Math.max(Number(pageParam ?? "1") || 1, 1);
   const offset = (page - 1) * PAGE_SIZE;
@@ -81,6 +104,9 @@ export default async function LedgerAccountPage({
     queryString ? `&${queryString}` : ""
   }`;
 
+  const orgName = orgs?.find((o) => o.id === orgId)?.name ?? null;
+  const fairName = fairs.find((f) => f.id === fairId)?.name ?? null;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -92,7 +118,14 @@ export default async function LedgerAccountPage({
         backLabel="Back to general ledger"
       />
 
-      <Card>
+      <div className="print:hidden">
+        <PrintButton />
+      </div>
+      <p className="hidden text-sm text-neutral-600 print:block">
+        {filterSummary(filters, orgName, fairName)}
+      </p>
+
+      <Card className="print:hidden">
         <FilterBar
           action={`/admin/ledger/${accountCode}`}
           start={start}
@@ -104,71 +137,45 @@ export default async function LedgerAccountPage({
         />
       </Card>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-neutral-100 bg-neutral-50 text-left">
-              <th className="py-2 pl-4 pr-4">Date</th>
-              <th className="py-2 pr-4">Entry type</th>
-              <th className="py-2 pr-4">Description</th>
-              <th className="py-2 pr-4">Fair</th>
-              <th className="py-2 pr-4">Organization</th>
-              <th className="py-2 pr-4 text-right">Debit</th>
-              <th className="py-2 pr-4 text-right">Credit</th>
-              <th className="py-2 pr-4 text-right">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((r) => (
-              <tr key={r.id} className="border-b border-neutral-50 last:border-0">
-                <td className="py-2 pl-4 pr-4 text-neutral-600">
-                  {new Date(r.postedAt).toLocaleString()}
-                </td>
-                <td className="py-2 pr-4 text-neutral-600">{r.entryType}</td>
-                <td className="py-2 pr-4 text-neutral-800">{r.description ?? ""}</td>
-                <td className="py-2 pr-4 text-neutral-600">{r.fairName ?? "—"}</td>
-                <td className="py-2 pr-4 text-neutral-600">{r.orgName ?? "—"}</td>
-                <td className="py-2 pr-4 text-right">{r.debit > 0 ? `$${r.debit.toFixed(2)}` : ""}</td>
-                <td className="py-2 pr-4 text-right">
-                  {r.credit > 0 ? `$${r.credit.toFixed(2)}` : ""}
-                </td>
-                <td className="py-2 pr-4 text-right font-semibold">
-                  ${r.runningBalance.toFixed(2)}
-                </td>
-              </tr>
-            ))}
-            {pageRows.length === 0 && (
-              <tr>
-                <td colSpan={8} className="py-4 pl-4 text-neutral-500">
-                  No transactions match the current filters.
-                </td>
-              </tr>
+      {/* On-screen: paginated, most-recent-first. */}
+      <div className="print:hidden">
+        <Card className="overflow-x-auto p-0">
+          <TransactionsTable rows={pageRows} />
+        </Card>
+
+        {totalPages > 1 && (
+          <div className="mt-3 flex items-center gap-3 text-sm">
+            {page > 1 && (
+              <Link href={pageHref(page - 1)} className="font-semibold text-accent-600 hover:underline">
+                ← Newer
+              </Link>
             )}
-          </tbody>
-        </table>
-      </Card>
+            <span className="text-neutral-500">
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link href={pageHref(page + 1)} className="font-semibold text-accent-600 hover:underline">
+                Older →
+              </Link>
+            )}
+          </div>
+        )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center gap-3 text-sm">
-          {page > 1 && (
-            <Link href={pageHref(page - 1)} className="font-semibold text-accent-600 hover:underline">
-              ← Newer
-            </Link>
-          )}
-          <span className="text-neutral-500">
-            Page {page} of {totalPages}
-          </span>
-          {page < totalPages && (
-            <Link href={pageHref(page + 1)} className="font-semibold text-accent-600 hover:underline">
-              Older →
-            </Link>
-          )}
-        </div>
-      )}
+        <a
+          href={exportHref}
+          className="mt-3 inline-block text-sm font-semibold text-accent-600 hover:underline"
+        >
+          Download this account&apos;s transactions (CSV)
+        </a>
+      </div>
 
-      <a href={exportHref} className="text-sm font-semibold text-accent-600 hover:underline">
-        Download this account&apos;s transactions (CSV)
-      </a>
+      {/* Print only: every matching transaction, chronological — not just
+          whatever page happens to be open on screen. */}
+      <div className="hidden print:block">
+        <Card className="overflow-x-auto p-0">
+          <TransactionsTable rows={chronological} />
+        </Card>
+      </div>
     </div>
   );
 }

@@ -829,6 +829,15 @@ Each account's own page also has its own "download this account's
 transactions" link, scoped to just that account and whatever filters are
 set.
 
+Both the trial balance and an account's transaction list also have a
+**Print / save as PDF** button, same browser print-to-PDF pattern used
+elsewhere in the app (the payout report, wallet receipts, the marketing
+flyer) — nothing to configure, just print and choose "Save as PDF" in
+the browser's print dialog. The printed page shows the filters in plain
+text (since the interactive filter form itself doesn't print) and, for
+an account's transactions, always includes **every** matching
+transaction regardless of which page is currently shown on screen.
+
 ### Student wallets (`/admin/fairs/<id>/wallets`, schools only)
 
 Only available for organizations marked "a school" (see "Editing an

@@ -12,6 +12,13 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Print / save as PDF on the general ledger** — both the trial balance
+  and an account's transaction list now have a Print button (same
+  browser print-to-PDF pattern as the payout report/wallet receipts). The
+  printed page shows the active filters as plain text and, for an
+  account's transactions, always includes every matching row regardless
+  of which on-screen page is currently open — not just whatever page
+  happens to be paginated into view.
 - **General ledger viewer & CSV accounting exports** (`/admin/ledger`) —
   a real trial balance (every account in the chart with its current
   debit/credit totals and net balance), filterable by date range,
