@@ -20,7 +20,7 @@ export function PageHeader({
         {backHref && (
           <Link
             href={backHref}
-            className="mb-1 inline-block text-sm font-semibold text-accent-600 hover:underline"
+            className="mb-1 inline-block text-sm font-semibold text-accent-600 hover:underline print:hidden"
           >
             ← {backLabel}
           </Link>
