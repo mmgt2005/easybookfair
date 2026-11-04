@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { getRecentSales, type SaleRow } from "./actions";
 import { Card } from "@/components/ui";
 
-const POLL_MS = 4000;
+// Each tick calls getRecentSales(), which internally runs
+// getPayoutEstimate() too (up to 8 Supabase round-trips total while the
+// fair's still open, including a journal_lines join) — halved from the
+// original 4000ms to cut steady-state query volume for every open admin
+// tab, while staying responsive enough for "a human glances at a screen
+// during a live fair."
+const POLL_MS = 8000;
 const HIGHLIGHT_MS = 2500;
 
 const CHANNEL_LABELS: Record<string, string> = {

@@ -9,7 +9,7 @@ import {
 } from "@/app/admin/authors/messagesActions";
 import { Button } from "@/components/ui";
 
-const POLL_MS = 4000;
+const POLL_MS = 8000;
 
 // Mirrors SalesFeedClient's exact polling shape (the established pattern
 // in this app, chosen over Supabase Realtime for this app's actual

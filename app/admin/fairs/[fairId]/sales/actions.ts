@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { requireFairStaff } from "@/lib/auth";
+import { accumulateLedgerTotals } from "@/lib/ledgerMath";
 
 export type SaleRow = {
   id: string;
@@ -86,24 +87,11 @@ async function getPayoutEstimate(
         .eq("status", "completed"),
     ]);
 
-  let payoutDue = 0;
-  let cashWholesaleOwed = 0;
   // 2100 (Sales Tax Payable) is accumulated here purely for visibility —
   // never mixed into payoutDue/cashWholesaleOwed, matching
   // record_sales_tax_collected()'s own comment on why tax is excluded
   // from payout math entirely (migration 0064).
-  let salesTaxCollected = 0;
-  for (const line of lines ?? []) {
-    if (line.account_code === "2000") {
-      payoutDue += line.credit - line.debit;
-    } else if (line.account_code === "1300") {
-      cashWholesaleOwed += line.debit - line.credit;
-    } else if (line.account_code === "2100") {
-      salesTaxCollected += line.credit - line.debit;
-    }
-  }
-  payoutDue = Math.max(payoutDue, 0);
-  cashWholesaleOwed = Math.max(cashWholesaleOwed, 0);
+  const { payoutDue, cashWholesaleOwed, salesTaxCollected } = accumulateLedgerTotals(lines ?? []);
 
   const soldByItem = new Map<string, number>();
   for (const sale of soldRows ?? []) {
@@ -127,7 +115,7 @@ async function getPayoutEstimate(
     payoutIsFinal: false,
     missingInventoryCost,
     missingInventoryUnits,
-    salesTaxCollected: Math.max(salesTaxCollected, 0),
+    salesTaxCollected,
   };
 }
 

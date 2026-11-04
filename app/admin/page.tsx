@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader, statusTone } from "@/components/ui";
+import { accumulateLedgerTotals, type LedgerLine } from "@/lib/ledgerMath";
 
 const pendingQueues = [
   { table: "fair_requests", label: "Fair requests", href: "/admin/fair-requests" },
@@ -56,10 +57,8 @@ export default async function AdminHome() {
 
   const unitsByFair = new Map<string, number>();
   const revenueByFair = new Map<string, number>();
-  const payoutDueByFair = new Map<string, number>();
-  const cashWholesaleOwedByFair = new Map<string, number>();
+  const linesByFair = new Map<string, LedgerLine[]>();
   const missingInventoryCostByFair = new Map<string, number>();
-  const salesTaxCollectedByFair = new Map<string, number>();
 
   if (fairIds.length > 0) {
     const [{ data: sales }, { data: lines }, { data: allocations }] = await Promise.all([
@@ -90,19 +89,9 @@ export default async function AdminHome() {
     for (const line of lines ?? []) {
       const fairId = (line.journal_entries as unknown as { fair_id: string } | null)?.fair_id;
       if (!fairId) continue;
-      if (line.account_code === "2000") {
-        payoutDueByFair.set(fairId, (payoutDueByFair.get(fairId) ?? 0) + (line.credit - line.debit));
-      } else if (line.account_code === "1300") {
-        cashWholesaleOwedByFair.set(
-          fairId,
-          (cashWholesaleOwedByFair.get(fairId) ?? 0) + (line.debit - line.credit),
-        );
-      } else if (line.account_code === "2100") {
-        salesTaxCollectedByFair.set(
-          fairId,
-          (salesTaxCollectedByFair.get(fairId) ?? 0) + (line.credit - line.debit),
-        );
-      }
+      const bucket = linesByFair.get(fairId) ?? [];
+      bucket.push({ account_code: line.account_code, debit: line.debit, credit: line.credit });
+      linesByFair.set(fairId, bucket);
     }
 
     for (const a of allocations ?? []) {
@@ -135,12 +124,12 @@ export default async function AdminHome() {
     totalUnits += units;
     totalRevenue += revenue;
 
-    const payoutDue = Math.max(payoutDueByFair.get(fair.id) ?? 0, 0);
-    const cashWholesaleOwed = Math.max(cashWholesaleOwedByFair.get(fair.id) ?? 0, 0);
+    const { payoutDue, cashWholesaleOwed, salesTaxCollected } = accumulateLedgerTotals(
+      linesByFair.get(fair.id) ?? [],
+    );
     const missingInventoryCost = missingInventoryCostByFair.get(fair.id) ?? 0;
     totalMissingInventoryCost += missingInventoryCost;
     const payout = payoutDue - (cashWholesaleOwed + fair.equipment_rental_fee);
-    const salesTaxCollected = Math.max(salesTaxCollectedByFair.get(fair.id) ?? 0, 0);
     totalSalesTaxCollected += salesTaxCollected;
 
     return { fair, units, revenue, payout, missingInventoryCost, salesTaxCollected };
