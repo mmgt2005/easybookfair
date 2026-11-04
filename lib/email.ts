@@ -458,3 +458,70 @@ export async function sendPoolDonationEmail(params: {
     `,
   });
 }
+
+// Sent once per fair by the daily cron (app/api/cron/transition-fairs/
+// route.ts) when a fair's return deadline is within a few days —
+// docs/spec.md promised this and it was never built until now. Goes to
+// the org's registered contact_email (not a specific person who
+// requested anything, unlike sendFairApprovedEmail) since any staff
+// member could be the one physically returning inventory.
+export async function sendReturnDeadlineReminderEmail(params: {
+  to: string;
+  orgName: string;
+  fairName: string;
+  returnDeadline: string;
+}) {
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: `Return deadline approaching for ${params.fairName}`,
+    html: `
+      <p>Hi ${params.orgName},</p>
+      <p><strong>${params.fairName}</strong>'s return deadline is
+      <strong>${params.returnDeadline}</strong> — unsold inventory not received back by
+      then gets charged to your settlement as missing inventory.</p>
+      <p><a href="${siteUrl()}/org">Sign in to your dashboard</a> to see what's still
+      outstanding, or have an admin receive it from the fair's returns screen.</p>
+    `,
+  });
+}
+
+// Sent once a day (same cron) to every platform admin when at least one
+// review queue has a pending item older than the stale-pending threshold
+// (lib/email.ts caller defines it) — deliberately re-fires every day the
+// condition still holds, since a persistent nag until the queue is
+// actually cleared is the intended behavior, not a bug to fix with a
+// "already sent" flag.
+export async function sendPendingApplicationsDigestEmail(params: {
+  to: string;
+  counts: {
+    fairRequests: number;
+    orgSignups: number;
+    authorSubmissions: number;
+    eventRequests: number;
+    bookReviews: number;
+  };
+}) {
+  const allRows: { label: string; count: number }[] = [
+    { label: "Fair requests", count: params.counts.fairRequests },
+    { label: "Org signups", count: params.counts.orgSignups },
+    { label: "Author submissions", count: params.counts.authorSubmissions },
+    { label: "Event requests", count: params.counts.eventRequests },
+    { label: "Book reviews", count: params.counts.bookReviews },
+  ];
+  const listItems = allRows
+    .filter((row) => row.count > 0)
+    .map((row) => `<li>${row.label}: ${row.count}</li>`)
+    .join("");
+
+  await getResend().emails.send({
+    from: emailFrom(),
+    to: params.to,
+    subject: "Pending applications need review",
+    html: `
+      <p>These queues have items that have been pending for a few days:</p>
+      <ul>${listItems}</ul>
+      <p><a href="${siteUrl()}/admin">Sign in to review them</a>.</p>
+    `,
+  });
+}

@@ -12,6 +12,41 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Bulk actions on every review queue + returns receiving** — fair
+  requests, org signups, author submissions, event requests, and book
+  reviews all support selecting multiple pending rows (a "Select all
+  pending" checkbox) and approving or declining them in one submit,
+  instead of one row at a time. Decline is always a single batched SQL
+  update (no side effects on any queue); approve varies by queue — a
+  pure status flip for book reviews, a batched update plus a per-row
+  best-effort email for event requests, and a sequential loop calling
+  the same account-invite/row-creation procedure once per selected id
+  for fair requests/org signups/author submissions (never aborts the
+  batch on one failure; the result says how many succeeded). The
+  returns screen gets a "Receive all returnable" button that submits
+  every line item at its full current returnable quantity in one click.
+  Checkboxes associate with the bulk `<form>` via the HTML `form`
+  attribute rather than nesting forms, so every existing single-item
+  approve/decline form is completely untouched.
+- **Allocation shortcuts** (`/admin/fairs/<id>/allocations`) — a new
+  "Quick-start this allocation" card: **"Copy allocations from"**
+  another fair re-applies that fair's own exact per-item quantities
+  (no new template table — a past fair's real allocation already is
+  the template), or **"Allocate N% of stock on hand across every item"**
+  gives every catalog item with stock a starting quantity to fine-tune.
+  Both just loop the existing `allocate_inventory` RPC, skipping and
+  naming any item that fails (insufficient stock, etc.) rather than
+  aborting.
+- **Two reminder emails `docs/spec.md` always called for but never
+  built** — both ride the existing daily cron
+  (`app/api/cron/transition-fairs/route.ts`) rather than a new schedule:
+  a one-time return-deadline reminder to the org's contact email once a
+  fair's return deadline is within 3 days (migration `0077` adds
+  `fairs.return_reminder_sent_at` so it never repeats for the same fair),
+  and a daily digest to every platform admin listing any review-queue
+  item (any of the five queues) that's been pending 3+ days — the digest
+  deliberately keeps arriving every day the condition holds, stopping on
+  its own once the queue is actually cleared.
 - **Print / save as PDF on the general ledger** — both the trial balance
   and an account's transaction list now have a Print button (same
   browser print-to-PDF pattern as the payout report/wallet receipts). The
@@ -47,6 +82,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Changed
 
+- **Sales feed polling halved (4s → 8s)** — `SalesFeedClient` and
+  `AuthorMessagesClient` both polled every 4 seconds; each sales-feed
+  tick runs up to 8 Supabase round-trips while a fair is still open
+  (`getRecentSales()`'s own queries plus `getPayoutEstimate()`'s), so
+  doubling the interval roughly halves steady-state query volume for
+  every open admin tab without changing anything a human glancing at the
+  screen would notice. Also extracted the payout-math formula
+  `getPayoutEstimate()` and the admin dashboard had each separately
+  reimplemented into one shared, pure function (`lib/ledgerMath.ts`,
+  `accumulateLedgerTotals()`) — same inputs, same outputs, just no
+  longer two copies of the same arithmetic that could silently drift
+  apart if one were ever edited without the other.
 - **Invite emails now carry real EasyBookFair branding and explain what
   the person is actually being invited to**, instead of Supabase's own
   generic built-in "You've been invited... follow the link below to

@@ -180,6 +180,24 @@ A big batch pulling several later-phase pieces forward at once:
   own admin check rather than reusing `requireAdmin()`, since that
   helper redirects via `next/navigation`, which doesn't make sense for a
   direct-download `<a href>` caller.
+- **Efficiency pass — bulk actions, allocation shortcuts, reminder
+  emails, and a performance tweak**: every review queue (fair requests,
+  org signups, author submissions, event requests, book reviews) and the
+  returns screen now support selecting multiple rows and approving/
+  declining/receiving them in one submit, instead of one row at a time —
+  checkboxes associate with a shared `<form>` via the HTML `form`
+  attribute rather than nesting forms, so each row's existing single-item
+  form stays untouched. Allocating a new fair can copy another fair's
+  allocation outright or allocate a flat percentage of stock across
+  every item, instead of starting from a blank table. Two reminder
+  emails that `docs/spec.md` always called for but were never built now
+  ride the existing daily cron: one when a fair's return deadline is
+  within 3 days (sent once per fair), and a daily digest to every admin
+  while any review-queue item has sat pending 3+ days. The live sales
+  feed's poll interval doubled (4s → 8s) to roughly halve its background
+  query volume, and the payout-math formula that both `getPayoutEstimate()`
+  and the admin dashboard had separately reimplemented is now one shared
+  function (`lib/ledgerMath.ts`) so the two can't drift apart.
 
 Still ahead: Tap to Pay/Bluetooth-reader support (needs a native mobile
 companion app — not reachable from a browser), and missing-inventory

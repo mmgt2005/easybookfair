@@ -89,7 +89,11 @@ it (no click-through needed):
   review queues that can have something waiting — fair requests, org
   signups, author submissions, and event requests. A queue is only listed
   when it has at least one pending item; "No pending applications" shows
-  when all four are clear.
+  when all four are clear. If any pending item (including book reviews)
+  has sat for 3+ days, every platform admin also gets a daily email
+  digest listing the stale counts — it keeps arriving once a day for as
+  long as something stays stale, stopping on its own once the queue is
+  actually cleared.
 - **Active fairs**: every fair that isn't closed yet (scheduled, active,
   or in its return window), with units sold, revenue, an estimated
   payout so far, and a **"Missing inventory if not returned"** column,
@@ -249,6 +253,14 @@ one) instead. A request submitted by an admin "viewing as" that org (see
 below) is flagged inline so it's never mistaken for something the org
 submitted themselves.
 
+**Bulk approve/decline**: when there's more than one pending request, a
+"Select all pending" checkbox plus Approve/Decline-selected buttons
+appear above the list — check the ones you want, set a shared rental fee
+and/or decline reason if needed, and submit once. Each selected request
+still gets its own real fair created (or declined) individually; if one
+fails partway through (e.g. a duplicate), the rest still go through and
+the result tells you how many succeeded.
+
 ### Reviewing event requests (`/admin/event-requests`)
 
 An org can ask for an author reading or book signing tied to a specific
@@ -266,6 +278,11 @@ just marks it approved and emails the org (not the author) to let them
 know; there's no automatic fair or catalog change, since coordinating the
 actual reading/signing with the author is on you. **Decline** takes an
 optional note shown back to the org.
+
+**Bulk approve/decline**: same "Select all pending" bar as fair requests
+appears above the list when there's more than one pending request —
+approving in bulk still sends the org notification email for each one
+individually.
 
 ### Editing a fair (`/admin/fairs/<id>/edit`, via the **Edit** link)
 
@@ -333,6 +350,15 @@ native mobile SDKs, which a browser can't invoke).
 
 ### Allocating a fair (`/admin/fairs/<id>/allocations`)
 
+0. **Quick-start this allocation**: don't start from a blank table for
+   every fair — **"Copy allocations from"** another fair re-applies that
+   fair's exact per-item quantities to this one (useful for a recurring
+   fair with a similar catalog mix), or **"Allocate N% of stock on hand
+   across every item"** gives every catalog item with stock a quick
+   starting quantity to fine-tune from. Either one just calls the same
+   `allocate_inventory` function the per-item form below does, once per
+   item — an item that's out of stock or already allocated is skipped
+   and named in the result, the rest still go through.
 1. Each catalog item's row shows current `stock_on_hand` and how much is
    already allocated to this fair. Enter a quantity and **Allocate** —
    this calls the `allocate_inventory` database function, which locks
@@ -406,7 +432,10 @@ returnable and click **Receive** — this calls
 `stock_on_hand` (so it's available to allocate to a future fair again)
 and posts the same Unallocated/Consigned ledger entry a deallocation
 posts, since it's the same real event either way: a book comes back into
-the warehouse.
+the warehouse. A **"Receive all returnable"** button above the table
+does this for every line item at once, at its full current returnable
+quantity — the per-item quantity field stays available afterward for
+partial or corrected receives.
 
 Whatever's still unaccounted for when you actually close the fair — not
 sold, not returned — gets billed to the org at that item's current cost,
@@ -415,6 +444,11 @@ billing pass). This screen shows a live, non-final preview of that
 number as you go, so you know what to expect before closing. Once the
 fair is closed, this screen becomes read-only and shows the real,
 final number from the settlement instead.
+
+Once a fair's return deadline is within 3 days (or already passed), the
+org's registered contact email gets a one-time reminder pointing at this
+screen — sent automatically, no admin action needed, and never repeated
+for the same fair.
 
 ### Promotions (`/admin/fairs/<id>/promotions`)
 
@@ -498,6 +532,12 @@ their account immediately, without waiting for another approval. A
 submission made by an admin "viewing as" that author (see below) is
 flagged inline the same way an admin-submitted fair request is.
 
+**Bulk approve/decline**: same "Select all pending" bar as the other
+queues, once there's more than one pending submission — each selected
+submission still gets its own account invite and catalog item created
+individually, so one bad email address only fails that one submission,
+not the batch.
+
 ### Reviewing organization signups (`/admin/org-signups`)
 
 A school or organization can express interest with no account at all from
@@ -513,6 +553,11 @@ message. Each pending signup shows the shipping address inline, plus
   (`org_members`) — they can sign in to `/org` immediately and request
   their first fair, with no separate database step needed.
 - **Decline** takes an optional note and creates nothing.
+
+**Bulk approve/decline**: same "Select all pending" bar as the other
+queues, once there's more than one pending signup — each approval still
+runs its own account invite individually, so one failure doesn't block
+the rest.
 
 Declined signups stay recorded but are hidden from this list by default
 once you act on them, so only pending and approved ones clutter the
@@ -538,6 +583,10 @@ name, star rating, review text, and submission date, with
   author's public page (star average, review count, and the review text
   itself).
 - **Decline** takes an optional note and the review is never shown.
+
+**Bulk approve/decline**: same "Select all pending" bar as the other
+queues, once there's more than one pending review — this one's a plain
+status flip either way, so a batch approves or declines in one query.
 
 There's no purchase-verification step by design — review authenticity is
 enforced entirely by admin approval rather than by checking whether the

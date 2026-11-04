@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendReturnDeadlineReminderEmail, sendPendingApplicationsDigestEmail } from "@/lib/email";
+
+// How many days before a fair's return deadline the reminder fires, and
+// how many days a review-queue item must sit pending before it counts
+// as "stale" for the digest below — both fixed constants for this pass,
+// same "a specific chosen number, not configurable" posture already
+// used elsewhere in this app (e.g. the wallet assistance pool's $10/$20
+// thresholds).
+const RETURN_REMINDER_DAYS = 3;
+const STALE_PENDING_DAYS = 3;
 
 // Runs once a day via Vercel Cron (see vercel.json) and drives fairs.status
 // through its full automatic lifecycle: scheduled -> active on the start
@@ -59,10 +69,119 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: transitionError.message }, { status: 500 });
   }
 
+  // Return-deadline reminder — docs/spec.md promised this ("reminder
+  // notifications fire before the return deadline") but it was never
+  // built. return_deadline <= threshold catches both "within
+  // RETURN_REMINDER_DAYS" and "already overdue" in one check, since an
+  // overdue deadline is also <= the threshold. return_reminder_sent_at
+  // is only stamped on a successful send, so a failure retries the next
+  // day this job runs rather than silently never sending.
+  const reminderThreshold = new Date();
+  reminderThreshold.setDate(reminderThreshold.getDate() + RETURN_REMINDER_DAYS);
+  const reminderThresholdIso = reminderThreshold.toISOString().slice(0, 10);
+
+  const { data: fairsNeedingReminder } = await supabase
+    .from("fairs")
+    .select("id, name, return_deadline, organizations(name, contact_email)")
+    .eq("status", "return_window")
+    .is("return_reminder_sent_at", null)
+    .lte("return_deadline", reminderThresholdIso);
+
+  let remindersSent = 0;
+  for (const fair of fairsNeedingReminder ?? []) {
+    const org = fair.organizations as unknown as { name: string; contact_email: string | null } | null;
+    if (!org?.contact_email) continue;
+    try {
+      await sendReturnDeadlineReminderEmail({
+        to: org.contact_email,
+        orgName: org.name,
+        fairName: fair.name,
+        returnDeadline: fair.return_deadline,
+      });
+      await supabase
+        .from("fairs")
+        .update({ return_reminder_sent_at: new Date().toISOString() })
+        .eq("id", fair.id);
+      remindersSent += 1;
+    } catch (emailError) {
+      console.error(`Failed to send return-deadline reminder for fair ${fair.id}`, emailError);
+    }
+  }
+
+  // Stale-pending digest — same count-query shape app/admin/page.tsx's
+  // dashboard already runs for its "Pending applications" card, with an
+  // added created_at filter. Deliberately re-fires every day something
+  // stays stale (no "already sent" flag) — a persistent nag until the
+  // admin actually clears the queue is the intended behavior.
+  const staleThreshold = new Date();
+  staleThreshold.setDate(staleThreshold.getDate() - STALE_PENDING_DAYS);
+  const staleThresholdIso = staleThreshold.toISOString();
+
+  const [
+    { count: staleFairRequests },
+    { count: staleOrgSignups },
+    { count: staleAuthorSubmissions },
+    { count: staleEventRequests },
+    { count: staleBookReviews },
+  ] = await Promise.all([
+    supabase
+      .from("fair_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", staleThresholdIso),
+    supabase
+      .from("org_signups")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", staleThresholdIso),
+    supabase
+      .from("author_submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", staleThresholdIso),
+    supabase
+      .from("event_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", staleThresholdIso),
+    supabase
+      .from("book_reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("created_at", staleThresholdIso),
+  ]);
+
+  const staleCounts = {
+    fairRequests: staleFairRequests ?? 0,
+    orgSignups: staleOrgSignups ?? 0,
+    authorSubmissions: staleAuthorSubmissions ?? 0,
+    eventRequests: staleEventRequests ?? 0,
+    bookReviews: staleBookReviews ?? 0,
+  };
+  const totalStale = Object.values(staleCounts).reduce((sum, n) => sum + n, 0);
+
+  let digestsSent = 0;
+  if (totalStale > 0) {
+    const { data: admins } = await supabase.from("platform_admins").select("user_id");
+    for (const admin of admins ?? []) {
+      const { data } = await supabase.auth.admin.getUserById(admin.user_id);
+      const email = data.user?.email;
+      if (!email) continue;
+      try {
+        await sendPendingApplicationsDigestEmail({ to: email, counts: staleCounts });
+        digestsSent += 1;
+      } catch (emailError) {
+        console.error(`Failed to send pending-applications digest to admin ${admin.user_id}`, emailError);
+      }
+    }
+  }
+
   return NextResponse.json({
     activated: activated?.length ?? 0,
     activatedFairs: activated ?? [],
     transitioned: transitioned?.length ?? 0,
     transitionedFairs: transitioned ?? [],
+    remindersSent,
+    digestsSent,
   });
 }
