@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { receiveReturn } from "./actions";
+import { receiveReturn, receiveAllReturns } from "./actions";
 import { CloseFairButton } from "../edit/FairLifecycleButtons";
 import { Button, Card, Input, PageHeader } from "@/components/ui";
 
@@ -76,6 +76,14 @@ export default async function FairReturnsPage({
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
+
+      {!isClosed && liveMissingUnits > 0 && (
+        <form action={receiveAllReturns.bind(null, fairId)}>
+          <Button type="submit" size="sm" variant="outline">
+            Receive all returnable ({liveMissingUnits} unit{liveMissingUnits === 1 ? "" : "s"})
+          </Button>
+        </form>
       )}
 
       <Card className="overflow-x-auto p-0">

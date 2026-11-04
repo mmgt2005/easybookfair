@@ -1,6 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
-import { approveEventRequest, declineEventRequest } from "./actions";
-import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import {
+  approveEventRequest,
+  declineEventRequest,
+  approveManyEventRequests,
+  declineManyEventRequests,
+} from "./actions";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  SelectAllCheckbox,
+  statusTone,
+} from "@/components/ui";
 
 export default async function EventRequestsPage({
   searchParams,
@@ -27,6 +40,7 @@ export default async function EventRequestsPage({
           .eq("status", "approved")
       : { data: [] };
   const authorByItem = new Map((authorRows ?? []).map((a) => [a.catalog_item_id, a]));
+  const pendingCount = (requests ?? []).filter((r) => r.status === "pending").length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -37,6 +51,31 @@ export default async function EventRequestsPage({
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
+
+      {pendingCount > 1 && (
+        <Card>
+          <form
+            id="bulk-form"
+            action={approveManyEventRequests}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <SelectAllCheckbox formId="bulk-form" />
+            <span className="text-sm text-neutral-600">Select all pending</span>
+            <Button type="submit" size="sm">
+              Approve selected
+            </Button>
+            <Input name="admin_note" placeholder="Decline reason (optional)" className="w-56" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              formAction={declineManyEventRequests}
+            >
+              Decline selected
+            </Button>
+          </form>
+        </Card>
       )}
 
       <div className="flex flex-col gap-4">
@@ -63,7 +102,18 @@ export default async function EventRequestsPage({
           return (
             <Card key={request.id} className="max-w-2xl">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex items-start gap-2">
+                  {request.status === "pending" && pendingCount > 1 && (
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={request.id}
+                      form="bulk-form"
+                      aria-label={`Select ${book?.title ?? "request"}`}
+                      className="mt-1.5"
+                    />
+                  )}
+                  <div>
                   <h2 className="font-heading font-bold text-neutral-900">
                     {book?.title} —{" "}
                     {request.event_type === "author_reading" ? "Author reading" : "Book signing"}
@@ -89,6 +139,7 @@ export default async function EventRequestsPage({
                       👁️ Submitted by an admin viewing as this org, not the org itself.
                     </p>
                   )}
+                  </div>
                 </div>
                 <Badge tone={statusTone(request.status)}>{request.status}</Badge>
               </div>

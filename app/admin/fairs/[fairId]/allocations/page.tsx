@@ -9,6 +9,8 @@ import {
   computeCashDrawerSetup,
   updateCashDrawerSetup,
   computeShippingEstimate,
+  copyAllocationsFromFair,
+  bulkAllocateByPercentage,
 } from "./actions";
 import { shippingRatesConfigured } from "@/lib/shippingRates";
 import { Button, Card, Input, Select } from "@/components/ui";
@@ -57,6 +59,7 @@ export default async function AllocationsPage({
     { data: latestSuggestion },
     { data: cashDrawerSetup },
     { data: shippingEstimateRows },
+    { data: otherFairsData },
   ] = await Promise.all([
     supabase
       .from("catalog_items")
@@ -84,7 +87,18 @@ export default async function AllocationsPage({
         "direction, cartons_count, total_weight_oz, items_with_assumed_weight, estimated_cost, carrier_service",
       )
       .eq("fair_id", fairId),
+    supabase
+      .from("fairs")
+      .select("id, name, organizations(name)")
+      .neq("id", fairId)
+      .order("start_date", { ascending: false }),
   ]);
+
+  const otherFairs = (otherFairsData ?? []).map((f) => ({
+    id: f.id,
+    name: f.name,
+    orgName: (f.organizations as unknown as { name: string } | null)?.name ?? "",
+  }));
 
   const allocationByItem = new Map((allocations ?? []).map((a) => [a.catalog_item_id, a]));
   const allocationIds = (allocations ?? []).map((a) => a.id);
@@ -157,6 +171,56 @@ export default async function AllocationsPage({
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
+
+      <Card className="max-w-lg">
+        <h2 className="font-heading font-bold text-neutral-900">Quick-start this allocation</h2>
+        <p className="mb-2 text-xs text-neutral-500">
+          Don&apos;t start from a blank table — copy a past fair&apos;s allocation, or allocate a
+          percentage of stock across every item, then fine-tune with the per-item forms below.
+        </p>
+        <div className="flex flex-col gap-3">
+          {otherFairs.length > 0 && (
+            <form
+              action={copyAllocationsFromFair.bind(null, fairId)}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="text-sm text-neutral-700">Copy allocations from</span>
+              <Select name="source_fair_id" className="w-56" required defaultValue="">
+                <option value="" disabled>
+                  Pick a fair…
+                </option>
+                {otherFairs.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.orgName} — {f.name}
+                  </option>
+                ))}
+              </Select>
+              <Button type="submit" size="sm" variant="outline">
+                Copy
+              </Button>
+            </form>
+          )}
+          <form
+            action={bulkAllocateByPercentage.bind(null, fairId)}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span className="text-sm text-neutral-700">Allocate</span>
+            <Input
+              name="percentage"
+              type="number"
+              min={1}
+              max={100}
+              step="1"
+              required
+              className="w-16 px-2 py-1"
+            />
+            <span className="text-sm text-neutral-700">% of stock on hand across every item</span>
+            <Button type="submit" size="sm" variant="outline">
+              Allocate
+            </Button>
+          </form>
+        </div>
+      </Card>
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full max-w-4xl text-sm">

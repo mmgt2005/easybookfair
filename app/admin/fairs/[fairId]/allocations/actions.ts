@@ -43,6 +43,104 @@ export async function allocate(fairId: string, formData: FormData) {
   redirect(pagePath(fairId));
 }
 
+// Uses another fair's own allocations as the "template" — no separate
+// template table/save step needed, since a past fair's real allocation
+// already is one. Loops the same already-tested allocate_inventory RPC
+// the per-item manual form already calls, never aborting on one item's
+// failure (e.g. insufficient stock_on_hand for that title); summarizes
+// skipped items in the redirect message instead.
+export async function copyAllocationsFromFair(fairId: string, formData: FormData) {
+  const sourceFairId = String(formData.get("source_fair_id"));
+  if (!sourceFairId) {
+    withError(fairId, "Pick a fair to copy from");
+  }
+  const supabase = await createClient();
+
+  const { data: source, error: sourceError } = await supabase
+    .from("allocations")
+    .select("catalog_item_id, quantity_allocated, catalog_items(title)")
+    .eq("fair_id", sourceFairId);
+  if (sourceError) withError(fairId, sourceError.message);
+
+  const failures: string[] = [];
+  let copiedCount = 0;
+  for (const row of source ?? []) {
+    if (row.quantity_allocated <= 0) continue;
+    const { error } = await supabase.rpc("allocate_inventory", {
+      p_fair_id: fairId,
+      p_catalog_item_id: row.catalog_item_id,
+      p_quantity: row.quantity_allocated,
+    });
+    const title = (row.catalog_items as unknown as { title: string } | null)?.title ?? "Unknown item";
+    if (error) {
+      failures.push(`${title} (${error.message})`);
+    } else {
+      copiedCount += 1;
+    }
+  }
+
+  revalidatePath(pagePath(fairId));
+  if (copiedCount === 0 && failures.length === 0) {
+    withError(fairId, "That fair has no allocations to copy");
+  }
+  if (failures.length > 0) {
+    withError(
+      fairId,
+      `Copied ${copiedCount} item(s); ${failures.length} skipped (insufficient stock or already allocated): ${failures.join("; ")}`,
+    );
+  }
+  redirect(pagePath(fairId));
+}
+
+// A quick starting point for a brand-new fair instead of typing every
+// item's quantity from a blank table — allocates round(stock_on_hand *
+// pct / 100) of every catalog item that has stock, skipping any item
+// that would round to 0. Still just loops allocate_inventory per item,
+// same resilience posture as copyAllocationsFromFair above; fine-tuning
+// afterward uses the existing per-item manual forms, unchanged.
+export async function bulkAllocateByPercentage(fairId: string, formData: FormData) {
+  const pct = Number(formData.get("percentage"));
+  if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+    withError(fairId, "Percentage must be between 1 and 100");
+  }
+  const supabase = await createClient();
+
+  const { data: items, error: itemsError } = await supabase
+    .from("catalog_items")
+    .select("id, title, stock_on_hand")
+    .gt("stock_on_hand", 0);
+  if (itemsError) withError(fairId, itemsError.message);
+
+  const failures: string[] = [];
+  let allocatedCount = 0;
+  for (const item of items ?? []) {
+    const quantity = Math.round((item.stock_on_hand * pct) / 100);
+    if (quantity <= 0) continue;
+    const { error } = await supabase.rpc("allocate_inventory", {
+      p_fair_id: fairId,
+      p_catalog_item_id: item.id,
+      p_quantity: quantity,
+    });
+    if (error) {
+      failures.push(`${item.title} (${error.message})`);
+    } else {
+      allocatedCount += 1;
+    }
+  }
+
+  revalidatePath(pagePath(fairId));
+  if (allocatedCount === 0 && failures.length === 0) {
+    withError(fairId, "No catalog items have stock on hand");
+  }
+  if (failures.length > 0) {
+    withError(
+      fairId,
+      `Allocated ${allocatedCount} item(s); ${failures.length} failed: ${failures.join("; ")}`,
+    );
+  }
+  redirect(pagePath(fairId));
+}
+
 // Reduces an over-allocation and returns the units to stock_on_hand.
 // Refuses to pull back units already sold — deallocate_inventory checks
 // completed sales for this fair/item and rejects if the requested amount

@@ -10,3 +10,4 @@ export { CopyButton } from "./CopyButton";
 export { PrintButton } from "./PrintButton";
 export { TurnstileWidget } from "./TurnstileWidget";
 export { Honeypot } from "./Honeypot";
+export { SelectAllCheckbox } from "./SelectAllCheckbox";

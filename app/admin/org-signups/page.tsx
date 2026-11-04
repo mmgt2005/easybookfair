@@ -1,7 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { approveOrgSignup, declineOrgSignup } from "./actions";
-import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import {
+  approveOrgSignup,
+  declineOrgSignup,
+  approveManyOrgSignups,
+  declineManyOrgSignups,
+} from "./actions";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  SelectAllCheckbox,
+  statusTone,
+} from "@/components/ui";
 
 export default async function OrgSignupsPage({
   searchParams,
@@ -30,6 +43,7 @@ export default async function OrgSignupsPage({
   const visibleSignups = showDeclined
     ? (signups ?? [])
     : (signups ?? []).filter((s) => s.status !== "declined");
+  const pendingCount = (signups ?? []).filter((s) => s.status === "pending").length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,6 +54,26 @@ export default async function OrgSignupsPage({
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
+
+      {pendingCount > 1 && (
+        <Card>
+          <form
+            id="bulk-form"
+            action={approveManyOrgSignups}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <SelectAllCheckbox formId="bulk-form" />
+            <span className="text-sm text-neutral-600">Select all pending</span>
+            <Button type="submit" size="sm">
+              Approve selected
+            </Button>
+            <Input name="admin_note" placeholder="Decline reason (optional)" className="w-56" />
+            <Button type="submit" size="sm" variant="outline" formAction={declineManyOrgSignups}>
+              Decline selected
+            </Button>
+          </form>
+        </Card>
       )}
 
       {declinedSignups.length > 0 && (
@@ -58,23 +92,36 @@ export default async function OrgSignupsPage({
           return (
             <Card key={s.id} className="max-w-2xl">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-heading font-bold text-neutral-900">
-                    {s.org_name} {s.is_school && <span className="text-xs">🎓 school</span>}
-                  </h2>
-                  <p className="text-sm text-neutral-600">
-                    {s.contact_name} — {s.contact_email}
-                  </p>
-                  {s.message && <p className="mt-1 text-sm text-neutral-600">{s.message}</p>}
-                  {s.shipping_address_line1 && (
-                    <p className="mt-1 text-xs text-neutral-500">
-                      📦 {s.shipping_contact_name && `Attn: ${s.shipping_contact_name} — `}
-                      {s.shipping_address_line1}
-                      {s.shipping_address_line2 && `, ${s.shipping_address_line2}`}, {s.shipping_city},{" "}
-                      {s.shipping_state} {s.shipping_postal_code}, {s.shipping_country}
-                      {s.shipping_contact_phone && ` — ${s.shipping_contact_phone}`}
-                    </p>
+                <div className="flex items-start gap-2">
+                  {s.status === "pending" && pendingCount > 1 && (
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={s.id}
+                      form="bulk-form"
+                      aria-label={`Select ${s.org_name}`}
+                      className="mt-1.5"
+                    />
                   )}
+                  <div>
+                    <h2 className="font-heading font-bold text-neutral-900">
+                      {s.org_name} {s.is_school && <span className="text-xs">🎓 school</span>}
+                    </h2>
+                    <p className="text-sm text-neutral-600">
+                      {s.contact_name} — {s.contact_email}
+                    </p>
+                    {s.message && <p className="mt-1 text-sm text-neutral-600">{s.message}</p>}
+                    {s.shipping_address_line1 && (
+                      <p className="mt-1 text-xs text-neutral-500">
+                        📦 {s.shipping_contact_name && `Attn: ${s.shipping_contact_name} — `}
+                        {s.shipping_address_line1}
+                        {s.shipping_address_line2 && `, ${s.shipping_address_line2}`},{" "}
+                        {s.shipping_city}, {s.shipping_state} {s.shipping_postal_code},{" "}
+                        {s.shipping_country}
+                        {s.shipping_contact_phone && ` — ${s.shipping_contact_phone}`}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <Badge tone={statusTone(s.status)}>{s.status}</Badge>
               </div>

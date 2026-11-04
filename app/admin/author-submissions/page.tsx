@@ -1,6 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
-import { approveAuthorSubmission, declineAuthorSubmission } from "./actions";
-import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import {
+  approveAuthorSubmission,
+  declineAuthorSubmission,
+  approveManyAuthorSubmissions,
+  declineManyAuthorSubmissions,
+} from "./actions";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  SelectAllCheckbox,
+  statusTone,
+} from "@/components/ui";
 
 export default async function AuthorSubmissionsPage({
   searchParams,
@@ -17,6 +30,8 @@ export default async function AuthorSubmissionsPage({
     )
     .order("created_at", { ascending: false });
 
+  const pendingCount = (submissions ?? []).filter((s) => s.status === "pending").length;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -28,6 +43,31 @@ export default async function AuthorSubmissionsPage({
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
 
+      {pendingCount > 1 && (
+        <Card>
+          <form
+            id="bulk-form"
+            action={approveManyAuthorSubmissions}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <SelectAllCheckbox formId="bulk-form" />
+            <span className="text-sm text-neutral-600">Select all pending</span>
+            <Button type="submit" size="sm">
+              Approve selected
+            </Button>
+            <Input name="admin_note" placeholder="Decline reason (optional)" className="w-56" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              formAction={declineManyAuthorSubmissions}
+            >
+              Decline selected
+            </Button>
+          </form>
+        </Card>
+      )}
+
       <div className="flex flex-col gap-4">
         {(submissions ?? []).map((s) => {
           const approveForSubmission = approveAuthorSubmission.bind(null, s.id);
@@ -35,7 +75,18 @@ export default async function AuthorSubmissionsPage({
           return (
             <Card key={s.id} className="max-w-2xl">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex gap-3">
+                <div className="flex items-start gap-2">
+                  {s.status === "pending" && pendingCount > 1 && (
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={s.id}
+                      form="bulk-form"
+                      aria-label={`Select ${s.title}`}
+                      className="mt-1.5"
+                    />
+                  )}
+                  <div className="flex gap-3">
                   {(s.front_cover_image_url || s.back_cover_image_url) && (
                     <div className="flex gap-1.5">
                       {s.front_cover_image_url && (
@@ -82,6 +133,7 @@ export default async function AuthorSubmissionsPage({
                         👁️ Submitted by an admin viewing as this author.
                       </p>
                     )}
+                  </div>
                   </div>
                 </div>
                 <Badge tone={statusTone(s.status)}>{s.status}</Badge>

@@ -1,6 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
-import { approveFairRequest, declineFairRequest } from "./actions";
-import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import {
+  approveFairRequest,
+  declineFairRequest,
+  approveManyFairRequests,
+  declineManyFairRequests,
+} from "./actions";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  SelectAllCheckbox,
+  statusTone,
+} from "@/components/ui";
 
 export default async function FairRequestsPage({
   searchParams,
@@ -17,6 +30,8 @@ export default async function FairRequestsPage({
     )
     .order("created_at", { ascending: false });
 
+  const pendingCount = (requests ?? []).filter((r) => r.status === "pending").length;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -26,6 +41,42 @@ export default async function FairRequestsPage({
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      )}
+
+      {pendingCount > 1 && (
+        <Card>
+          <form
+            id="bulk-form"
+            action={approveManyFairRequests}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <SelectAllCheckbox formId="bulk-form" />
+            <span className="text-sm text-neutral-600">Select all pending</span>
+            <label className="flex items-center gap-1 text-xs text-neutral-600">
+              Reader rental fee (for selected, if in-person) $
+              <Input
+                name="equipment_rental_fee"
+                type="number"
+                step="0.01"
+                min={0}
+                defaultValue="25.00"
+                className="w-20"
+              />
+            </label>
+            <Button type="submit" size="sm">
+              Approve selected
+            </Button>
+            <Input name="admin_note" placeholder="Decline reason (optional)" className="w-56" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              formAction={declineManyFairRequests}
+            >
+              Decline selected
+            </Button>
+          </form>
+        </Card>
       )}
 
       <div className="flex flex-col gap-4">
@@ -43,22 +94,34 @@ export default async function FairRequestsPage({
           return (
             <Card key={request.id} className="max-w-2xl">
               <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-heading font-bold text-neutral-900">
-                    {request.requested_name}
-                  </h2>
-                  <p className="text-sm text-neutral-600">{org?.name}</p>
-                  <p className="text-sm text-neutral-600">
-                    {request.requested_start_date} – {request.requested_end_date}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Payment options requested: {channels.join(", ") || "none"}
-                  </p>
-                  {request.submitted_by_admin_id && (
-                    <p className="mt-1 text-xs text-amber-700">
-                      👁️ Submitted by an admin viewing as this org, not the org itself.
-                    </p>
+                <div className="flex items-start gap-2">
+                  {request.status === "pending" && pendingCount > 1 && (
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={request.id}
+                      form="bulk-form"
+                      aria-label={`Select ${request.requested_name}`}
+                      className="mt-1.5"
+                    />
                   )}
+                  <div>
+                    <h2 className="font-heading font-bold text-neutral-900">
+                      {request.requested_name}
+                    </h2>
+                    <p className="text-sm text-neutral-600">{org?.name}</p>
+                    <p className="text-sm text-neutral-600">
+                      {request.requested_start_date} – {request.requested_end_date}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Payment options requested: {channels.join(", ") || "none"}
+                    </p>
+                    {request.submitted_by_admin_id && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        👁️ Submitted by an admin viewing as this org, not the org itself.
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <Badge tone={statusTone(request.status)}>{request.status}</Badge>
               </div>

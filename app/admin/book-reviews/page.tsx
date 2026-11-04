@@ -1,6 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
-import { approveBookReview, declineBookReview } from "./actions";
-import { Badge, Button, Card, Input, PageHeader, statusTone } from "@/components/ui";
+import {
+  approveBookReview,
+  declineBookReview,
+  approveManyBookReviews,
+  declineManyBookReviews,
+} from "./actions";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  SelectAllCheckbox,
+  statusTone,
+} from "@/components/ui";
 
 export default async function BookReviewsPage({
   searchParams,
@@ -17,6 +30,8 @@ export default async function BookReviewsPage({
     )
     .order("created_at", { ascending: false });
 
+  const pendingCount = (reviews ?? []).filter((r) => r.status === "pending").length;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -28,6 +43,26 @@ export default async function BookReviewsPage({
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
 
+      {pendingCount > 1 && (
+        <Card>
+          <form
+            id="bulk-form"
+            action={approveManyBookReviews}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <SelectAllCheckbox formId="bulk-form" />
+            <span className="text-sm text-neutral-600">Select all pending</span>
+            <Button type="submit" size="sm">
+              Approve selected
+            </Button>
+            <Input name="admin_note" placeholder="Decline reason (optional)" className="w-56" />
+            <Button type="submit" size="sm" variant="outline" formAction={declineManyBookReviews}>
+              Decline selected
+            </Button>
+          </form>
+        </Card>
+      )}
+
       <div className="flex flex-col gap-4">
         {(reviews ?? []).map((r) => {
           const book = r.catalog_items as unknown as { title: string } | null;
@@ -36,20 +71,32 @@ export default async function BookReviewsPage({
           return (
             <Card key={r.id} className="max-w-2xl">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-heading font-bold text-neutral-900">
-                    {book?.title ?? "Unknown book"}
-                  </h2>
-                  <p className="text-sm text-amber-500">
-                    {"★".repeat(r.rating)}
-                    {"☆".repeat(5 - r.rating)}{" "}
-                    <span className="text-neutral-600">
-                      {r.reviewer_name} — {r.reviewer_email}
-                    </span>
-                  </p>
-                  {r.review_text && (
-                    <p className="mt-1 text-sm text-neutral-700">{r.review_text}</p>
+                <div className="flex items-start gap-2">
+                  {r.status === "pending" && pendingCount > 1 && (
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={r.id}
+                      form="bulk-form"
+                      aria-label={`Select ${book?.title ?? "review"}`}
+                      className="mt-1.5"
+                    />
                   )}
+                  <div>
+                    <h2 className="font-heading font-bold text-neutral-900">
+                      {book?.title ?? "Unknown book"}
+                    </h2>
+                    <p className="text-sm text-amber-500">
+                      {"★".repeat(r.rating)}
+                      {"☆".repeat(5 - r.rating)}{" "}
+                      <span className="text-neutral-600">
+                        {r.reviewer_name} — {r.reviewer_email}
+                      </span>
+                    </p>
+                    {r.review_text && (
+                      <p className="mt-1 text-sm text-neutral-700">{r.review_text}</p>
+                    )}
+                  </div>
                 </div>
                 <Badge tone={statusTone(r.status)}>{r.status}</Badge>
               </div>
