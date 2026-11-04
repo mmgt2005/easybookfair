@@ -16,7 +16,7 @@ export default async function OrganizationsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Organizations 🏫"
-        description="Scaffolding for Phase 2 — creates an already-approved org directly. The real application review (approve/decline, Stripe Connect onboarding) is Phase 3."
+        description="Create an organization directly, already approved — for a one-off case outside the normal self-serve flow. Most organizations should go through /join and get reviewed at Admin → Org signups instead."
       />
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
