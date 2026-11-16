@@ -233,14 +233,18 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
                 <img
                   src={book.image_url}
                   alt={book.title}
-                  className="h-16 w-12 shrink-0 rounded-md border-2 border-white object-cover shadow-[0_4px_8px_rgba(43,33,24,0.2)]"
+                  className="h-24 w-16 shrink-0 rounded-md border-2 border-white object-cover shadow-[0_4px_8px_rgba(43,33,24,0.2)]"
                   style={{ transform: `rotate(${COVER_ROTATIONS[i % COVER_ROTATIONS.length]}deg)` }}
                 />
                 <div className="min-w-0">
                   <p className="line-clamp-1 text-xs font-bold text-neutral-900">{book.title}</p>
-                  <p className="text-xs font-semibold text-accent-600">${book.price.toFixed(2)}</p>
+                  <span className="mt-0.5 inline-block rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    ${book.price.toFixed(2)}
+                  </span>
                   {book.description && (
-                    <p className="line-clamp-2 text-[10px] text-neutral-500">{book.description}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-tight text-neutral-400">
+                      {book.description}
+                    </p>
                   )}
                 </div>
               </div>
