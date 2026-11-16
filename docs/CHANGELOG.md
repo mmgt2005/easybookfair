@@ -100,7 +100,10 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   stars, both freeing room for the book grid. Dates show as
   month/day/year (e.g. `11/05/2026`), and the QR badge no longer
   repeats the storefront URL as text underneath it (the code itself
-  already encodes the link).
+  already encodes the link). The bottom band now sits exactly a
+  quarter-inch above the true bottom of the printed page on the
+  common single-page case, instead of wherever the book grid happened
+  to end.
 
 ### Changed
 

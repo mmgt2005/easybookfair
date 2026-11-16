@@ -202,12 +202,19 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
         </Card>
       </div>
 
-      <div className="hidden flex-col overflow-hidden print:flex print:w-[816px]">
+      <div className="hidden flex-col overflow-hidden print:flex print:w-[816px] print:min-h-[11in]">
         {/* Without an explicit @page rule, this prints under the
             browser's default page margins instead of the full
             816x1056px (8.5in x 11in @ 96dpi) canvas this layout
             assumes, which is what pushed the bottom band onto a
-            second page. */}
+            second page. print:min-h-[11in] gives the bottom band's
+            mt-auto real free space to push into on the common
+            single-page case, so it lands at the bottom of the actual
+            page rather than wherever the content happens to end; on a
+            fair with enough books to span multiple pages, the
+            container simply grows past one page and this has no
+            effect (the band still lands right after the last book
+            row, same as before). */}
         <style>{`@page { size: 8.5in 11in; margin: 0; }`}</style>
 
         {/* Top diagonal band */}
@@ -279,7 +286,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
             not just that element's own background) so the badge can
             nest here as a plain sibling of the background layer
             without being clipped itself. */}
-        <div className="relative isolate mt-auto flex shrink-0 flex-col justify-end break-inside-avoid break-before-avoid px-10 pb-6 pt-8 text-white">
+        <div className="relative isolate mb-[0.25in] mt-auto flex shrink-0 flex-col justify-end break-inside-avoid break-before-avoid px-10 pb-6 pt-8 text-white">
           <div
             className="absolute inset-0 -z-10 bg-primary-600"
             style={{ clipPath: "polygon(0 26%, 100% 0, 100% 100%, 0 100%)" }}
