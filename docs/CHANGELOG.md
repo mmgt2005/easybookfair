@@ -89,11 +89,15 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   a school. No illustrated mascot — kept to what's achievable with
   real data and CSS. Added a global `@media print` rule so the new
   background-color bands actually render when printed (most browsers
-  drop background colors on print by default). Featured books (up to
-  6, each with a real cover) now show as a compact grid with their
-  real price and, when set, description — not just cover art — and an
-  explicit `@page { size: 8.5in 11in; margin: 0; }` rule keeps the
-  whole flyer on a single printed page.
+  drop background colors on print by default). Featured books (every
+  catalog item with a cover, no cap) now show as a compact grid with
+  their real price and, when set, description — not just cover art —
+  and an explicit `@page { size: 8.5in 11in; margin: 0; }` rule keeps
+  the flyer's bands aligned to a real page; a fair with more books than
+  fit on one page now flows cleanly onto additional pages instead of
+  being cut off. The "Scan & Shop" QR badge overlaps the bottom band on
+  its right side, and the tagline card tucks up under the top band's
+  stars, both freeing room for the book grid.
 
 ### Changed
 

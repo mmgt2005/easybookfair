@@ -18,8 +18,8 @@ function Star({ fill, className }: { fill: string; className?: string }) {
 
 // Cycle of small rotation angles for the book-highlight thumbnails on
 // the flyer — gives a bit of "scattered stickers" charm regardless of
-// how many real covers a fair happens to have (0–6, see coverBooks
-// below).
+// how many real covers a fair happens to have (see coverBooks below;
+// no upper limit — the flyer prints across as many pages as needed).
 const COVER_ROTATIONS = [-9, 6, -4, 7, -6, 5, -8, 4];
 
 // Shared by both app/admin/fairs/[fairId]/marketing/page.tsx and
@@ -86,8 +86,9 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
   ]);
 
   // Only items with a cover image actually add anything visual to the
-  // flyer — cap at 6 so the book-highlight grid stays a clean 3x2 and
-  // doesn't blow out the one-page layout.
+  // flyer — no cap on count; the book-highlight grid flows across as
+  // many printed pages as the fair's real catalog needs (see the
+  // break-inside-avoid hints on the grid below).
   const coverBooks = (allocatedItems ?? [])
     .map(
       (a) =>
@@ -101,8 +102,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
     .filter(
       (item): item is { title: string; image_url: string; price: number; description: string | null } =>
         !!item?.image_url,
-    )
-    .slice(0, 6);
+    );
 
   const copyParams = {
     fairName: fair.name,
@@ -205,7 +205,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           className="relative shrink-0 bg-accent-600 px-10 pb-10 pt-6 text-white"
           style={{ clipPath: "polygon(0 0, 100% 0, 100% 62%, 0 100%)" }}
         >
-          <div className="max-w-[70%] break-words">
+          <div className="max-w-[60%] break-words">
             <p className="font-heading text-6xl font-extrabold leading-none">📚 BOOK FAIR</p>
             <p className="mt-3 font-heading text-2xl font-bold text-orange-100">{fair.name}</p>
             {org?.name && <p className="mt-1 text-base font-medium text-white/80">{org.name}</p>}
@@ -214,9 +214,14 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           <Star fill="#FFD166" className="absolute right-10 top-20 h-4 w-4 -rotate-12" />
         </div>
 
-        {/* Tagline banner, overlapping the band's bottom edge */}
-        <div className="relative z-10 mx-auto -mt-8 w-fit max-w-[640px] rounded-[28px] border-4 border-primary-600 bg-white px-10 py-5 text-center shadow-[5px_6px_0_rgba(43,33,24,0.12)]">
-          <p className="font-heading text-xl font-bold text-accent-600">{flyerTagline}</p>
+        {/* Tagline banner, tucked up and right under the top band's
+            stars instead of spanning centered below it. Capped
+            narrower than the headline's max-w so a long fair/org name
+            and a full-width tagline can never visually collide. */}
+        <div className="relative z-10 ml-auto mr-10 -mt-20 w-fit max-w-[240px] rounded-2xl border-4 border-primary-600 bg-white px-6 py-3 text-center shadow-[5px_6px_0_rgba(43,33,24,0.12)]">
+          <p className="line-clamp-3 font-heading text-sm font-bold leading-snug text-accent-600">
+            {flyerTagline}
+          </p>
         </div>
 
         {/* Book highlights, built from this fair's real catalog items —
@@ -227,7 +232,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
             {coverBooks.map((book, i) => (
               <div
                 key={book.title}
-                className="flex items-center gap-2 rounded-lg border border-neutral-100 bg-white p-2 shadow-sm"
+                className="flex items-center gap-2 break-inside-avoid rounded-lg border border-neutral-100 bg-white p-2 shadow-sm"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -252,44 +257,57 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           </div>
         )}
 
-        {/* "Scan & shop" QR badge */}
-        {storefrontQr && (
-          <div className="relative mx-auto flex h-[180px] w-[180px] items-center justify-center">
-            <svg viewBox="0 0 190 190" className="absolute inset-0 h-full w-full" aria-hidden="true">
-              <circle cx="95" cy="95" r="70" fill="#FFD166" />
-              <circle cx="165" cy="95" r="30" fill="#FFD166" />
-              <circle cx="144.5" cy="144.5" r="30" fill="#FFD166" />
-              <circle cx="95" cy="165" r="30" fill="#FFD166" />
-              <circle cx="45.5" cy="144.5" r="30" fill="#FFD166" />
-              <circle cx="25" cy="95" r="30" fill="#FFD166" />
-              <circle cx="45.5" cy="45.5" r="30" fill="#FFD166" />
-              <circle cx="95" cy="25" r="30" fill="#FFD166" />
-              <circle cx="144.5" cy="45.5" r="30" fill="#FFD166" />
-            </svg>
-            <div className="relative z-10 flex h-[150px] w-[150px] flex-col items-center justify-center gap-1 rounded-full border-4 border-dashed border-accent-600 bg-white shadow-[0_8px_14px_rgba(43,33,24,0.2)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={storefrontQr} alt="Storefront QR code" className="h-20 w-20" />
-              <p className="text-[11px] font-bold tracking-wide text-accent-600">SCAN &amp; SHOP</p>
-            </div>
-          </div>
-        )}
-        <p className="mb-4 mt-2 text-center text-base font-semibold text-neutral-900">
-          {storefrontUrl}
-        </p>
+        {/* Clearance spacer — guarantees blank space for the QR badge's
+            upward overlap below, regardless of how many book rows
+            (zero or many, across however many pages) precede it. */}
+        <div className="h-24" aria-hidden="true" />
 
-        {/* Bottom diagonal band */}
-        <div
-          className="relative mt-auto flex shrink-0 flex-col justify-end bg-primary-600 px-10 pb-6 pt-8 text-white"
-          style={{ clipPath: "polygon(0 26%, 100% 0, 100% 100%, 0 100%)" }}
-        >
+        {/* Bottom diagonal band, with the "Scan & shop" QR badge
+            overlapping its top-right corner. The diagonal background
+            lives on its own absolutely-positioned layer (clip-path
+            clips everything painted inside the box it's applied to,
+            not just that element's own background) so the badge can
+            nest here as a plain sibling of the background layer
+            without being clipped itself. */}
+        <div className="relative isolate mt-auto flex shrink-0 flex-col justify-end break-inside-avoid break-before-avoid px-10 pb-6 pt-8 text-white">
+          <div
+            className="absolute inset-0 -z-10 bg-primary-600"
+            style={{ clipPath: "polygon(0 26%, 100% 0, 100% 100%, 0 100%)" }}
+            aria-hidden="true"
+          />
           <p className="font-heading text-3xl font-bold">
             {fair.start_date} – {fair.end_date}
           </p>
           <p className="mt-3 text-sm font-semibold text-orange-100">
             Shop online any time, or visit us in person at the fair!
           </p>
-          <Star fill="#FFFFFF" className="absolute right-16 top-10 h-5 w-5 rotate-6" />
-          <Star fill="#FFD166" className="absolute right-28 top-24 h-3.5 w-3.5 -rotate-12" />
+          <Star fill="#FFFFFF" className="absolute right-56 top-6 h-5 w-5 rotate-6" />
+          <Star fill="#FFD166" className="absolute left-80 top-6 h-3.5 w-3.5 -rotate-12" />
+          {storefrontQr && (
+            <div className="absolute -top-24 right-10 flex w-[180px] flex-col items-center">
+              <div className="relative flex h-[180px] w-[180px] items-center justify-center">
+                <svg viewBox="0 0 190 190" className="absolute inset-0 h-full w-full" aria-hidden="true">
+                  <circle cx="95" cy="95" r="70" fill="#FFD166" />
+                  <circle cx="165" cy="95" r="30" fill="#FFD166" />
+                  <circle cx="144.5" cy="144.5" r="30" fill="#FFD166" />
+                  <circle cx="95" cy="165" r="30" fill="#FFD166" />
+                  <circle cx="45.5" cy="144.5" r="30" fill="#FFD166" />
+                  <circle cx="25" cy="95" r="30" fill="#FFD166" />
+                  <circle cx="45.5" cy="45.5" r="30" fill="#FFD166" />
+                  <circle cx="95" cy="25" r="30" fill="#FFD166" />
+                  <circle cx="144.5" cy="45.5" r="30" fill="#FFD166" />
+                </svg>
+                <div className="relative z-10 flex h-[150px] w-[150px] flex-col items-center justify-center gap-1 rounded-full border-4 border-dashed border-accent-600 bg-white shadow-[0_8px_14px_rgba(43,33,24,0.2)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={storefrontQr} alt="Storefront QR code" className="h-20 w-20" />
+                  <p className="text-[11px] font-bold tracking-wide text-accent-600">SCAN &amp; SHOP</p>
+                </div>
+              </div>
+              <p className="mt-1 max-w-[180px] break-all text-center text-xs font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+                {storefrontUrl}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
