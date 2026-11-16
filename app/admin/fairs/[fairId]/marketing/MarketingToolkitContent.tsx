@@ -16,9 +16,10 @@ function Star({ fill, className }: { fill: string; className?: string }) {
   );
 }
 
-// Cycle of small rotation angles for the book-cover collage on the
-// flyer — gives the "scattered stickers" look regardless of how many
-// real covers a fair happens to have (0–8, see coverBooks below).
+// Cycle of small rotation angles for the book-highlight thumbnails on
+// the flyer — gives a bit of "scattered stickers" charm regardless of
+// how many real covers a fair happens to have (0–6, see coverBooks
+// below).
 const COVER_ROTATIONS = [-9, 6, -4, 7, -6, 5, -8, 4];
 
 // Shared by both app/admin/fairs/[fairId]/marketing/page.tsx and
@@ -80,17 +81,28 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
     walletUrl ? qrCodeDataUrl(walletUrl) : Promise.resolve(null),
     supabase
       .from("allocations")
-      .select("catalog_items(title, image_url)")
+      .select("catalog_items(title, image_url, price, description)")
       .eq("fair_id", fair.id),
   ]);
 
   // Only items with a cover image actually add anything visual to the
-  // flyer — cap at 8 so a fair with a big catalog doesn't blow out the
-  // one-page layout.
+  // flyer — cap at 6 so the book-highlight grid stays a clean 3x2 and
+  // doesn't blow out the one-page layout.
   const coverBooks = (allocatedItems ?? [])
-    .map((a) => a.catalog_items as unknown as { title: string; image_url: string | null } | null)
-    .filter((item): item is { title: string; image_url: string } => !!item?.image_url)
-    .slice(0, 8);
+    .map(
+      (a) =>
+        a.catalog_items as unknown as {
+          title: string;
+          image_url: string | null;
+          price: number;
+          description: string | null;
+        } | null,
+    )
+    .filter(
+      (item): item is { title: string; image_url: string; price: number; description: string | null } =>
+        !!item?.image_url,
+    )
+    .slice(0, 6);
 
   const copyParams = {
     fairName: fair.name,
@@ -180,10 +192,17 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
         </Card>
       </div>
 
-      <Card className="hidden flex-col overflow-hidden p-0 print:flex print:w-[816px]">
+      <div className="hidden flex-col overflow-hidden print:flex print:w-[816px]">
+        {/* Without an explicit @page rule, this prints under the
+            browser's default page margins instead of the full
+            816x1056px (8.5in x 11in @ 96dpi) canvas this layout
+            assumes, which is what pushed the bottom band onto a
+            second page. */}
+        <style>{`@page { size: 8.5in 11in; margin: 0; }`}</style>
+
         {/* Top diagonal band */}
         <div
-          className="relative shrink-0 bg-accent-600 px-10 pb-16 pt-9 text-white"
+          className="relative shrink-0 bg-accent-600 px-10 pb-10 pt-6 text-white"
           style={{ clipPath: "polygon(0 0, 100% 0, 100% 62%, 0 100%)" }}
         >
           <div className="max-w-[70%] break-words">
@@ -200,19 +219,31 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           <p className="font-heading text-xl font-bold text-accent-600">{flyerTagline}</p>
         </div>
 
-        {/* Book-cover collage, built from this fair's real catalog covers */}
+        {/* Book highlights, built from this fair's real catalog items —
+            a fixed 3-column grid keeps row count (and total height)
+            predictable in print regardless of description length. */}
         {coverBooks.length > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-5 px-10 py-10">
+          <div className="grid grid-cols-3 gap-3 px-10 py-6">
             {coverBooks.map((book, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={book.title}
-                src={book.image_url}
-                alt={book.title}
-                title={book.title}
-                className="h-40 w-28 rounded-xl border-4 border-white object-cover shadow-[0_10px_16px_rgba(43,33,24,0.22)]"
-                style={{ transform: `rotate(${COVER_ROTATIONS[i % COVER_ROTATIONS.length]}deg)` }}
-              />
+                className="flex items-center gap-2 rounded-lg border border-neutral-100 bg-white p-2 shadow-sm"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={book.image_url}
+                  alt={book.title}
+                  className="h-16 w-12 shrink-0 rounded-md border-2 border-white object-cover shadow-[0_4px_8px_rgba(43,33,24,0.2)]"
+                  style={{ transform: `rotate(${COVER_ROTATIONS[i % COVER_ROTATIONS.length]}deg)` }}
+                />
+                <div className="min-w-0">
+                  <p className="line-clamp-1 text-xs font-bold text-neutral-900">{book.title}</p>
+                  <p className="text-xs font-semibold text-accent-600">${book.price.toFixed(2)}</p>
+                  {book.description && (
+                    <p className="line-clamp-2 text-[10px] text-neutral-500">{book.description}</p>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -238,13 +269,13 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
             </div>
           </div>
         )}
-        <p className="mb-10 mt-3 text-center text-base font-semibold text-neutral-900">
+        <p className="mb-4 mt-2 text-center text-base font-semibold text-neutral-900">
           {storefrontUrl}
         </p>
 
         {/* Bottom diagonal band */}
         <div
-          className="relative mt-auto flex shrink-0 flex-col justify-end bg-primary-600 px-10 pb-9 pt-16 text-white"
+          className="relative mt-auto flex shrink-0 flex-col justify-end bg-primary-600 px-10 pb-6 pt-8 text-white"
           style={{ clipPath: "polygon(0 26%, 100% 0, 100% 100%, 0 100%)" }}
         >
           <p className="font-heading text-3xl font-bold">
@@ -256,7 +287,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           <Star fill="#FFFFFF" className="absolute right-16 top-10 h-5 w-5 rotate-6" />
           <Star fill="#FFD166" className="absolute right-28 top-24 h-3.5 w-3.5 -rotate-12" />
         </div>
-      </Card>
+      </div>
 
       <div className="print:hidden">
         <PrintButton />

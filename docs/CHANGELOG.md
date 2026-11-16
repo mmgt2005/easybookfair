@@ -82,15 +82,18 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 - **Redesigned printable flyer** (`/admin/fairs/<id>/marketing` and the
   org equivalent) — the plain single-column print page is now a
   color-blocked, diagonal-banded layout (print-only, same "Print"
-  button as before) with a scattered-star accent treatment, a
-  rotated/overlapping "sticker" collage of the fair's own real catalog
-  cover images, and the storefront QR code presented as a circular
-  "Scan & Shop" badge. Shows the organization's real name alongside the
-  fair's name (previously not shown at all) without assuming every
-  organization is a school. No illustrated mascot — kept to what's
-  achievable with real data and CSS. Added a global `@media print`
-  rule so the new background-color bands actually render when printed
-  (most browsers drop background colors on print by default).
+  button as before) with a scattered-star accent treatment and the
+  storefront QR code presented as a circular "Scan & Shop" badge.
+  Shows the organization's real name alongside the fair's name
+  (previously not shown at all) without assuming every organization is
+  a school. No illustrated mascot — kept to what's achievable with
+  real data and CSS. Added a global `@media print` rule so the new
+  background-color bands actually render when printed (most browsers
+  drop background colors on print by default). Featured books (up to
+  6, each with a real cover) now show as a compact grid with their
+  real price and, when set, description — not just cover art — and an
+  explicit `@page { size: 8.5in 11in; margin: 0; }` rule keeps the
+  whole flyer on a single printed page.
 
 ### Changed
 
