@@ -6,6 +6,21 @@ import { buildSocialPost, buildParentEmailBlurb, buildFlyerTagline } from "@/lib
 import { Card, CopyButton, PageHeader, PrintButton } from "@/components/ui";
 import { FundraiserGoalForm } from "./FundraiserGoalForm";
 
+// Decorative star used only on the printable flyer — inline SVG (not an
+// emoji) so it scales/recolors cleanly at any size.
+function Star({ fill, className }: { fill: string; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill={fill} aria-hidden="true">
+      <polygon points="12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9" />
+    </svg>
+  );
+}
+
+// Cycle of small rotation angles for the book-cover collage on the
+// flyer — gives the "scattered stickers" look regardless of how many
+// real covers a fair happens to have (0–8, see coverBooks below).
+const COVER_ROTATIONS = [-9, 6, -4, 7, -6, 5, -8, 4];
+
 // Shared by both app/admin/fairs/[fairId]/marketing/page.tsx and
 // app/org/fairs/[fairId]/marketing/page.tsx — requireFairStaff() is the
 // actual authorization boundary (a platform admin, or org staff whose
@@ -19,7 +34,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
   const { data: fair } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, allow_online, allow_wallet, fundraiser_goal_amount, fundraiser_description, organizations(is_school)",
+      "id, name, start_date, end_date, allow_online, allow_wallet, fundraiser_goal_amount, fundraiser_description, organizations(name, is_school)",
     )
     .eq("id", fairId)
     .maybeSingle();
@@ -27,7 +42,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
 
-  const org = fair.organizations as unknown as { is_school: boolean } | null;
+  const org = fair.organizations as unknown as { name: string; is_school: boolean } | null;
   const showWallet = fair.allow_wallet && org?.is_school;
 
   const storefrontUrl = `${siteUrl()}/fairs/${fair.id}`;
@@ -165,43 +180,81 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
         </Card>
       </div>
 
-      <Card className="hidden flex-col items-center gap-6 py-10 text-center print:flex">
-        <div className="flex flex-col items-center gap-2">
-          <h1 className="font-heading text-4xl font-extrabold text-primary-600">
-            📚 {fair.name}
-          </h1>
-          <p className="text-lg text-neutral-700">
-            {fair.start_date} – {fair.end_date}
-          </p>
-          <p className="font-heading text-lg font-bold text-accent-600">{flyerTagline}</p>
+      <Card className="hidden flex-col overflow-hidden p-0 print:flex print:w-[816px]">
+        {/* Top diagonal band */}
+        <div
+          className="relative shrink-0 bg-accent-600 px-10 pb-16 pt-9 text-white"
+          style={{ clipPath: "polygon(0 0, 100% 0, 100% 62%, 0 100%)" }}
+        >
+          <div className="max-w-[70%] break-words">
+            <p className="font-heading text-6xl font-extrabold leading-none">📚 BOOK FAIR</p>
+            <p className="mt-3 font-heading text-2xl font-bold text-orange-100">{fair.name}</p>
+            {org?.name && <p className="mt-1 text-base font-medium text-white/80">{org.name}</p>}
+          </div>
+          <Star fill="#FFFFFF" className="absolute right-20 top-9 h-6 w-6 rotate-12" />
+          <Star fill="#FFD166" className="absolute right-10 top-20 h-4 w-4 -rotate-12" />
         </div>
 
+        {/* Tagline banner, overlapping the band's bottom edge */}
+        <div className="relative z-10 mx-auto -mt-8 w-fit max-w-[640px] rounded-[28px] border-4 border-primary-600 bg-white px-10 py-5 text-center shadow-[5px_6px_0_rgba(43,33,24,0.12)]">
+          <p className="font-heading text-xl font-bold text-accent-600">{flyerTagline}</p>
+        </div>
+
+        {/* Book-cover collage, built from this fair's real catalog covers */}
         {coverBooks.length > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-4 px-8">
-            {coverBooks.map((book) => (
+          <div className="flex flex-wrap items-center justify-center gap-5 px-10 py-10">
+            {coverBooks.map((book, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={book.title}
                 src={book.image_url}
                 alt={book.title}
                 title={book.title}
-                className="h-32 w-24 rounded-lg border border-neutral-200 object-cover shadow-sm"
+                className="h-40 w-28 rounded-xl border-4 border-white object-cover shadow-[0_10px_16px_rgba(43,33,24,0.22)]"
+                style={{ transform: `rotate(${COVER_ROTATIONS[i % COVER_ROTATIONS.length]}deg)` }}
               />
             ))}
           </div>
         )}
 
-        <div className="flex flex-col items-center gap-2">
-          {storefrontQr && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={storefrontQr}
-              alt="Storefront QR code"
-              className="h-40 w-40 rounded-lg border border-neutral-200 p-2"
-            />
-          )}
-          <p className="text-base text-neutral-700">Shop online any time at:</p>
-          <p className="text-base font-semibold text-neutral-900">{storefrontUrl}</p>
+        {/* "Scan & shop" QR badge */}
+        {storefrontQr && (
+          <div className="relative mx-auto flex h-[180px] w-[180px] items-center justify-center">
+            <svg viewBox="0 0 190 190" className="absolute inset-0 h-full w-full" aria-hidden="true">
+              <circle cx="95" cy="95" r="70" fill="#FFD166" />
+              <circle cx="165" cy="95" r="30" fill="#FFD166" />
+              <circle cx="144.5" cy="144.5" r="30" fill="#FFD166" />
+              <circle cx="95" cy="165" r="30" fill="#FFD166" />
+              <circle cx="45.5" cy="144.5" r="30" fill="#FFD166" />
+              <circle cx="25" cy="95" r="30" fill="#FFD166" />
+              <circle cx="45.5" cy="45.5" r="30" fill="#FFD166" />
+              <circle cx="95" cy="25" r="30" fill="#FFD166" />
+              <circle cx="144.5" cy="45.5" r="30" fill="#FFD166" />
+            </svg>
+            <div className="relative z-10 flex h-[150px] w-[150px] flex-col items-center justify-center gap-1 rounded-full border-4 border-dashed border-accent-600 bg-white shadow-[0_8px_14px_rgba(43,33,24,0.2)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={storefrontQr} alt="Storefront QR code" className="h-20 w-20" />
+              <p className="text-[11px] font-bold tracking-wide text-accent-600">SCAN &amp; SHOP</p>
+            </div>
+          </div>
+        )}
+        <p className="mb-10 mt-3 text-center text-base font-semibold text-neutral-900">
+          {storefrontUrl}
+        </p>
+
+        {/* Bottom diagonal band */}
+        <div
+          className="relative mt-auto flex shrink-0 flex-col justify-end bg-primary-600 px-10 pb-9 pt-16 text-white"
+          style={{ clipPath: "polygon(0 26%, 100% 0, 100% 100%, 0 100%)" }}
+        >
+          <p className="font-heading text-3xl font-bold">
+            {fair.start_date} – {fair.end_date}
+          </p>
+          <p className="mt-3 text-sm font-semibold text-orange-100">
+            Shop online any time, or visit us in person at the fair!
+          </p>
+          <Star fill="#FFFFFF" className="absolute right-16 top-10 h-5 w-5 rotate-6" />
+          <Star fill="#FFD166" className="absolute right-28 top-24 h-3.5 w-3.5 -rotate-12" />
         </div>
       </Card>
 

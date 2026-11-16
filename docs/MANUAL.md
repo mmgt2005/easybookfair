@@ -1173,9 +1173,11 @@ close and final once the admin closes the fair.
 
 Everything you need to spread the word about a fair in one place: your
 storefront and student-wallet links with a **Copy** button next to each,
-a QR code for each one, a printable one-page flyer (fair name, dates, QR
-code, storefront link — click **Print / save as PDF** to print it or save
-it as a PDF, only the flyer itself prints), and ready-to-copy text for a
+a QR code for each one, a printable one-page flyer (a colorful banner
+layout with your fair's name, your organization's name, dates, a collage
+of your own catalog's book covers, and the storefront QR code as a "Scan
+& Shop" badge — click **Print / save as PDF** to print it or save it as a
+PDF, only the flyer itself prints), and ready-to-copy text for a
 social media post and a parent email, already filled in with your fair's
 real name, dates, and links. Reach it from the **Marketing toolkit** link
 next to your fair in the dashboard's fairs table.
