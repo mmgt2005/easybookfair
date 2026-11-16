@@ -97,7 +97,10 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   fit on one page now flows cleanly onto additional pages instead of
   being cut off. The "Scan & Shop" QR badge overlaps the bottom band on
   its right side, and the tagline card tucks up under the top band's
-  stars, both freeing room for the book grid.
+  stars, both freeing room for the book grid. Dates show as
+  month/day/year (e.g. `11/05/2026`), and the QR badge no longer
+  repeats the storefront URL as text underneath it (the code itself
+  already encodes the link).
 
 ### Changed
 

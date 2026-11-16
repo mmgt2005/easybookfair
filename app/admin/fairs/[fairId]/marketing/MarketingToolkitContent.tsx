@@ -16,6 +16,16 @@ function Star({ fill, className }: { fill: string; className?: string }) {
   );
 }
 
+// fairs.start_date/end_date are plain Postgres `date` columns, returned
+// as already-zero-padded "YYYY-MM-DD" strings — reformat via plain
+// string splitting rather than `new Date(...).toLocaleDateString()`,
+// which would parse the date-only string as UTC midnight and can roll
+// it back a day once converted to a non-UTC server timezone.
+function formatFlyerDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${month}/${day}/${year}`;
+}
+
 // Cycle of small rotation angles for the book-highlight thumbnails on
 // the flyer — gives a bit of "scattered stickers" charm regardless of
 // how many real covers a fair happens to have (see coverBooks below;
@@ -276,7 +286,7 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
             aria-hidden="true"
           />
           <p className="font-heading text-3xl font-bold">
-            {fair.start_date} – {fair.end_date}
+            {formatFlyerDate(fair.start_date)} – {formatFlyerDate(fair.end_date)}
           </p>
           <p className="mt-3 text-sm font-semibold text-orange-100">
             Shop online any time, or visit us in person at the fair!
@@ -284,28 +294,23 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
           <Star fill="#FFFFFF" className="absolute right-56 top-6 h-5 w-5 rotate-6" />
           <Star fill="#FFD166" className="absolute left-80 top-6 h-3.5 w-3.5 -rotate-12" />
           {storefrontQr && (
-            <div className="absolute -top-24 right-10 flex w-[180px] flex-col items-center">
-              <div className="relative flex h-[180px] w-[180px] items-center justify-center">
-                <svg viewBox="0 0 190 190" className="absolute inset-0 h-full w-full" aria-hidden="true">
-                  <circle cx="95" cy="95" r="70" fill="#FFD166" />
-                  <circle cx="165" cy="95" r="30" fill="#FFD166" />
-                  <circle cx="144.5" cy="144.5" r="30" fill="#FFD166" />
-                  <circle cx="95" cy="165" r="30" fill="#FFD166" />
-                  <circle cx="45.5" cy="144.5" r="30" fill="#FFD166" />
-                  <circle cx="25" cy="95" r="30" fill="#FFD166" />
-                  <circle cx="45.5" cy="45.5" r="30" fill="#FFD166" />
-                  <circle cx="95" cy="25" r="30" fill="#FFD166" />
-                  <circle cx="144.5" cy="45.5" r="30" fill="#FFD166" />
-                </svg>
-                <div className="relative z-10 flex h-[150px] w-[150px] flex-col items-center justify-center gap-1 rounded-full border-4 border-dashed border-accent-600 bg-white shadow-[0_8px_14px_rgba(43,33,24,0.2)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={storefrontQr} alt="Storefront QR code" className="h-20 w-20" />
-                  <p className="text-[11px] font-bold tracking-wide text-accent-600">SCAN &amp; SHOP</p>
-                </div>
+            <div className="absolute -top-24 right-10 flex h-[180px] w-[180px] items-center justify-center">
+              <svg viewBox="0 0 190 190" className="absolute inset-0 h-full w-full" aria-hidden="true">
+                <circle cx="95" cy="95" r="70" fill="#FFD166" />
+                <circle cx="165" cy="95" r="30" fill="#FFD166" />
+                <circle cx="144.5" cy="144.5" r="30" fill="#FFD166" />
+                <circle cx="95" cy="165" r="30" fill="#FFD166" />
+                <circle cx="45.5" cy="144.5" r="30" fill="#FFD166" />
+                <circle cx="25" cy="95" r="30" fill="#FFD166" />
+                <circle cx="45.5" cy="45.5" r="30" fill="#FFD166" />
+                <circle cx="95" cy="25" r="30" fill="#FFD166" />
+                <circle cx="144.5" cy="45.5" r="30" fill="#FFD166" />
+              </svg>
+              <div className="relative z-10 flex h-[150px] w-[150px] flex-col items-center justify-center gap-1 rounded-full border-4 border-dashed border-accent-600 bg-white shadow-[0_8px_14px_rgba(43,33,24,0.2)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={storefrontQr} alt="Storefront QR code" className="h-20 w-20" />
+                <p className="text-[11px] font-bold tracking-wide text-accent-600">SCAN &amp; SHOP</p>
               </div>
-              <p className="mt-1 max-w-[180px] break-all text-center text-xs font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-                {storefrontUrl}
-              </p>
             </div>
           )}
         </div>
