@@ -234,8 +234,12 @@ export async function MarketingToolkitContent({ fairId }: { fairId: string }) {
         {/* Tagline banner, tucked up and right under the top band's
             stars instead of spanning centered below it. Capped
             narrower than the headline's max-w so a long fair/org name
-            and a full-width tagline can never visually collide. */}
-        <div className="relative z-10 ml-auto mr-10 -mt-20 w-fit max-w-[240px] rounded-2xl border-4 border-primary-600 bg-white px-6 py-3 text-center shadow-[5px_6px_0_rgba(43,33,24,0.12)]">
+            and a full-width tagline can never visually collide.
+            mb-24 leaves the hero row's QR badge (which overlaps 80px
+            upward from the row below) real clearance instead of
+            overlapping — flex items don't collapse margins, so this
+            adds a genuine gap rather than just shifting this card. */}
+        <div className="relative z-10 ml-auto mr-10 -mt-20 mb-24 w-fit max-w-[240px] rounded-2xl border-4 border-primary-600 bg-white px-6 py-3 text-center shadow-[5px_6px_0_rgba(43,33,24,0.12)]">
           <p className="font-heading text-sm font-bold leading-snug text-accent-600">
             {flyerTagline}
           </p>

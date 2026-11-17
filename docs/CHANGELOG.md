@@ -111,7 +111,9 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   from a full-width band at the bottom of the page into a panel
   beneath the tagline card — taking the 3rd slot in what would
   otherwise be the book grid's first row, so that row shows only 2
-  books; every row after the first still shows a full 3.
+  books; every row after the first still shows a full 3. The tagline
+  card leaves real clearance above that panel so the QR code itself
+  isn't hidden underneath it.
 
 ### Changed
 
