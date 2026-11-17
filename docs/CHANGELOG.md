@@ -12,6 +12,26 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Itemized reader display + in-person receipts** — the Stripe reader
+  now shows the actual cart (each item, quantity, and the tax/total)
+  during a card-reader sale instead of just the final amount
+  (`Terminal.setReaderDisplay`/`clearReaderDisplay`). Every in-person
+  tender (card, cash, student wallet) now gets a receipt: a
+  `checkout_sessions` row (migration `0078` drops the old
+  cash-channel restriction) backs a "View receipt"/"Print receipt"
+  link + QR code shown right on the checkout screen after any sale,
+  the existing public order-confirmation page now adapts its copy for
+  non-online channels (no pickup-status/email-on-its-way language) and
+  gains a self-serve "email me this receipt" form plus a Print button,
+  and staff can optionally type a buyer's email at checkout to send a
+  copy immediately (cash/wallet) or via the existing webhook (card).
+  Wallet purchases also auto-email the wallet's most recent funding
+  parent (`wallet_fundings.parent_email`) with no extra step — the
+  answer for a child spending from a wallet with no phone of their own.
+  A printed receipt (opened via `?print=1`, which triggers
+  `window.print()` on load) covers the remaining case — pure cash, no
+  wallet, no email offered — as long as a printer is set up at the
+  checkout station.
 - **Bulk actions on every review queue + returns receiving** — fair
   requests, org signups, author submissions, event requests, and book
   reviews all support selecting multiple pending rows (a "Select all

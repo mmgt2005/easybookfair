@@ -9,6 +9,8 @@ import {
   isPromotionInWindow,
   type ActivePromotion,
 } from "@/lib/promotions";
+import { sendOrderConfirmationEmail, siteUrl } from "@/lib/email";
+import { qrCodeDataUrl } from "@/lib/qr";
 
 export type CartLine = { catalog_item_id: string; quantity: number };
 
@@ -28,7 +30,11 @@ export type CartLine = { catalog_item_id: string; quantity: number };
 // same instant for the last unit of an item could both pass this check —
 // acceptable for one reader/one cashier at a time in practice, not safe for
 // multiple concurrent checkout stations without adding real locking.
-export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
+export async function createInPersonCheckout(
+  fairId: string,
+  cart: CartLine[],
+  buyerEmail?: string,
+) {
   await requireFairStaff(fairId);
 
   if (!cart.length) {
@@ -152,6 +158,7 @@ export async function createInPersonCheckout(fairId: string, cart: CartLine[]) {
       channel: "in_person",
       line_items: lineItems,
       tax_amount: taxCents / 100,
+      buyer_email: buyerEmail || null,
     })
     .select("id")
     .single();
@@ -278,10 +285,77 @@ export async function createWalletAtCheckout(
 // not duplicated across a third PL/pgSQL implementation. spend_from_wallet
 // (migration 0039) accepts the resulting price_charged/promotion_id per
 // line instead of always pricing from catalog_items itself.
+// Best-effort checkout_sessions receipt row for a tender that already
+// settled synchronously (cash/wallet) — mirrors createInPersonCheckout's
+// own insert, but after the fact, since there's no PaymentIntent to create
+// first here. Never throws: a receipt-row failure must never undo an
+// already-completed sale. taxCents is recomputed the same way
+// record_cash_sale/spend_from_wallet compute it themselves (migration
+// 0064: round(subtotal * sales_tax_pct, 2), unconditionally — those RPCs
+// don't gate on tax_applies_cash/tax_applies_wallet), so the receipt
+// reflects what was actually charged.
+async function recordSynchronousReceipt(
+  service: ReturnType<typeof createServiceClient>,
+  params: {
+    fairId: string;
+    channel: "cash" | "wallet";
+    lineItems: { catalog_item_id: string; title: string; quantity: number; price_charged: number; promotion_id: string | null }[];
+    taxCents: number;
+    buyerEmail?: string;
+  },
+): Promise<string | null> {
+  try {
+    const { data: session, error } = await service
+      .from("checkout_sessions")
+      .insert({
+        fair_id: params.fairId,
+        channel: params.channel,
+        status: "completed",
+        line_items: params.lineItems,
+        tax_amount: params.taxCents / 100,
+        buyer_email: params.buyerEmail || null,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return session.id as string;
+  } catch (err) {
+    console.error("Failed to record checkout session receipt", err);
+    return null;
+  }
+}
+
+// Best-effort — a delivery failure must never fail the sale that already
+// completed. Shared by chargeCash/chargeWallet's immediate-send paths
+// (synchronous tenders, no webhook involved).
+async function sendReceiptEmail(params: {
+  to: string;
+  fairName: string;
+  checkoutSessionId: string;
+  fairId: string;
+  lineItems: { title: string; quantity: number; price_charged: number }[];
+  taxAmount: number;
+}) {
+  try {
+    await sendOrderConfirmationEmail({
+      to: params.to,
+      buyerName: null,
+      fairName: params.fairName,
+      orderCode: params.checkoutSessionId.slice(0, 8).toUpperCase(),
+      orderUrl: `${siteUrl()}/fairs/${params.fairId}/order/${params.checkoutSessionId}`,
+      lineItems: params.lineItems,
+      taxAmount: params.taxAmount,
+    });
+  } catch (err) {
+    console.error("Failed to send receipt email", err);
+  }
+}
+
 export async function chargeWallet(
   fairId: string,
   walletId: string,
   cart: CartLine[],
+  buyerEmail?: string,
 ) {
   await requireFairStaff(fairId);
   if (!cart.length) {
@@ -291,11 +365,15 @@ export async function chargeWallet(
   const supabase = await createClient();
 
   const catalogItemIds = cart.map((line) => line.catalog_item_id);
-  const { data: catalogItems, error: catalogError } = await supabase
-    .from("catalog_items")
-    .select("id, title, price, cost")
-    .in("id", catalogItemIds);
+  const [
+    { data: catalogItems, error: catalogError },
+    { data: fair, error: fairError },
+  ] = await Promise.all([
+    supabase.from("catalog_items").select("id, title, price, cost").in("id", catalogItemIds),
+    supabase.from("fairs").select("name, sales_tax_pct").eq("id", fairId).single(),
+  ]);
   if (catalogError) throw new Error(catalogError.message);
+  if (fairError) throw new Error(fairError.message);
 
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
@@ -317,6 +395,67 @@ export async function chargeWallet(
   });
 
   if (error) throw new Error(error.message);
+
+  const lineItems = pricedLines.map((line) => ({
+    ...line,
+    title: catalogById.get(line.catalog_item_id)?.title ?? "",
+  }));
+  const subtotalCents = lineItems.reduce(
+    (sum, line) => sum + Math.round(line.price_charged * 100) * line.quantity,
+    0,
+  );
+  const taxCents = Math.round(subtotalCents * (fair.sales_tax_pct ?? 0));
+
+  const service = createServiceClient();
+  const checkoutSessionId = await recordSynchronousReceipt(service, {
+    fairId,
+    channel: "wallet",
+    lineItems,
+    taxCents,
+    buyerEmail,
+  });
+
+  if (checkoutSessionId) {
+    if (buyerEmail) {
+      void sendReceiptEmail({
+        to: buyerEmail,
+        fairName: fair.name,
+        checkoutSessionId,
+        fairId,
+        lineItems,
+        taxAmount: taxCents / 100,
+      });
+    }
+
+    // The direct answer to "what about kids with no device" — auto-email
+    // whoever most recently funded this wallet (wallet_fundings.parent_email,
+    // migration 0028), independent of whether staff entered buyerEmail
+    // above. Only the most recent funder's email is used if the wallet's
+    // been topped up by more than one relative.
+    try {
+      const { data: funding } = await service
+        .from("wallet_fundings")
+        .select("parent_email")
+        .eq("wallet_id", walletId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (funding?.parent_email && funding.parent_email !== buyerEmail) {
+        void sendReceiptEmail({
+          to: funding.parent_email,
+          fairName: fair.name,
+          checkoutSessionId,
+          fairId,
+          lineItems,
+          taxAmount: taxCents / 100,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to look up wallet funding parent email", err);
+    }
+  }
+
+  return { checkoutSessionId };
 }
 
 // Records a cash sale — the fourth tender, alongside the reader and
@@ -324,7 +463,7 @@ export async function chargeWallet(
 // (migration 0043). Settles synchronously like the wallet path, not
 // asynchronously like the reader (no PaymentIntent/webhook involved for
 // cash at all).
-export async function chargeCash(fairId: string, cart: CartLine[]) {
+export async function chargeCash(fairId: string, cart: CartLine[], buyerEmail?: string) {
   await requireFairStaff(fairId);
   if (!cart.length) {
     throw new Error("Cart is empty");
@@ -333,11 +472,15 @@ export async function chargeCash(fairId: string, cart: CartLine[]) {
   const supabase = await createClient();
 
   const catalogItemIds = cart.map((line) => line.catalog_item_id);
-  const { data: catalogItems, error: catalogError } = await supabase
-    .from("catalog_items")
-    .select("id, title, price, cost")
-    .in("id", catalogItemIds);
+  const [
+    { data: catalogItems, error: catalogError },
+    { data: fair, error: fairError },
+  ] = await Promise.all([
+    supabase.from("catalog_items").select("id, title, price, cost").in("id", catalogItemIds),
+    supabase.from("fairs").select("name, sales_tax_pct").eq("id", fairId).single(),
+  ]);
   if (catalogError) throw new Error(catalogError.message);
+  if (fairError) throw new Error(fairError.message);
 
   const catalogById = new Map((catalogItems ?? []).map((c) => [c.id, c]));
 
@@ -358,4 +501,48 @@ export async function chargeCash(fairId: string, cart: CartLine[]) {
   });
 
   if (error) throw new Error(error.message);
+
+  const lineItems = pricedLines.map((line) => ({
+    ...line,
+    title: catalogById.get(line.catalog_item_id)?.title ?? "",
+  }));
+  const subtotalCents = lineItems.reduce(
+    (sum, line) => sum + Math.round(line.price_charged * 100) * line.quantity,
+    0,
+  );
+  const taxCents = Math.round(subtotalCents * (fair.sales_tax_pct ?? 0));
+
+  const service = createServiceClient();
+  const checkoutSessionId = await recordSynchronousReceipt(service, {
+    fairId,
+    channel: "cash",
+    lineItems,
+    taxCents,
+    buyerEmail,
+  });
+
+  if (checkoutSessionId && buyerEmail) {
+    void sendReceiptEmail({
+      to: buyerEmail,
+      fairName: fair.name,
+      checkoutSessionId,
+      fairId,
+      lineItems,
+      taxAmount: taxCents / 100,
+    });
+  }
+
+  return { checkoutSessionId };
+}
+
+// Shared by CheckoutClient.tsx after any of the three tenders completes —
+// a "View receipt"/"Print receipt" link + QR for the public order page
+// (same unguessable-UUID trust boundary that page already documents for
+// itself), useful whenever an adult with a phone is at the table, on top
+// of the auto-email paths above.
+export async function getReceiptLink(fairId: string, checkoutSessionId: string) {
+  await requireFairStaff(fairId);
+  const url = `${siteUrl()}/fairs/${fairId}/order/${checkoutSessionId}`;
+  const qrDataUrl = await qrCodeDataUrl(url);
+  return { url, qrDataUrl };
 }

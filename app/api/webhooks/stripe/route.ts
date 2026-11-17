@@ -152,7 +152,11 @@ export async function POST(request: Request) {
               .eq("payment_intent_id", paymentIntent.id)
               .single();
             const fair = session?.fairs as unknown as { name: string } | null;
-            if (session?.channel === "online" && session.buyer_email && fair) {
+            if (
+              (session?.channel === "online" || session?.channel === "in_person") &&
+              session.buyer_email &&
+              fair
+            ) {
               await sendOrderConfirmationEmail({
                 to: session.buyer_email,
                 buyerName: session.buyer_name,

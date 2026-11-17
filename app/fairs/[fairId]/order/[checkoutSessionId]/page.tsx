@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui";
+import { Card, PrintButton } from "@/components/ui";
+import { AutoPrint, EmailReceiptForm } from "./ReceiptActions";
 
 type OrderPublic = {
   id: string;
   status: string;
   fulfillment_status: string | null;
   buyer_name: string | null;
+  channel: "online" | "in_person" | "cash" | "wallet";
   line_items: {
     catalog_item_id: string;
     title: string;
@@ -25,10 +27,13 @@ type OrderPublic = {
 // covers the case a buyer loses the link/email both.
 export default async function OrderConfirmationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ fairId: string; checkoutSessionId: string }>;
+  searchParams: Promise<{ print?: string }>;
 }) {
   const { fairId, checkoutSessionId } = await params;
+  const { print } = await searchParams;
   const supabase = await createClient();
 
   const { data: order } = await supabase
@@ -46,22 +51,27 @@ export default async function OrderConfirmationPage({
   const total = subtotal + order.tax_amount;
   const orderCode = order.id.slice(0, 8).toUpperCase();
 
+  const isOnline = order.channel === "online";
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
+      {print === "1" && <AutoPrint />}
       <Card>
         {order.status === "completed" ? (
           <>
             <h1 className="font-heading text-xl font-bold text-neutral-900">
-              Order confirmed 🎉
+              {isOnline ? "Order confirmed 🎉" : "Receipt"}
             </h1>
             <p className="mt-1 text-sm text-neutral-600">{order.fair_name}</p>
             <p className="mt-3 text-sm text-neutral-700">
               Order code: <span className="font-mono font-bold">{orderCode}</span>
             </p>
-            <p className="text-xs text-neutral-500">
-              A confirmation email is on its way — save this page or write down your order code
-              too, just in case. Pick up is at the fair.
-            </p>
+            {isOnline && (
+              <p className="text-xs text-neutral-500">
+                A confirmation email is on its way — save this page or write down your order code
+                too, just in case. Pick up is at the fair.
+              </p>
+            )}
             <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-700">
               {order.line_items.map((line, i) => (
                 <li key={i} className="flex justify-between">
@@ -79,12 +89,18 @@ export default async function OrderConfirmationPage({
               </div>
             )}
             <p className="mt-2 font-semibold text-neutral-900">Total: ${total.toFixed(2)}</p>
-            <p className="mt-3 text-sm">
-              Status:{" "}
-              <span className="font-semibold">
-                {order.fulfillment_status === "picked_up" ? "Picked up" : "Awaiting pickup"}
-              </span>
-            </p>
+            {isOnline && (
+              <p className="mt-3 text-sm">
+                Status:{" "}
+                <span className="font-semibold">
+                  {order.fulfillment_status === "picked_up" ? "Picked up" : "Awaiting pickup"}
+                </span>
+              </p>
+            )}
+            <div className="mt-4 print:hidden">
+              <PrintButton />
+            </div>
+            <EmailReceiptForm fairId={fairId} checkoutSessionId={checkoutSessionId} />
           </>
         ) : (
           <>

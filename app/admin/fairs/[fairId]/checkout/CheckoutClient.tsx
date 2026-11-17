@@ -9,6 +9,7 @@ import {
   chargeWallet,
   chargeCash,
   createWalletAtCheckout,
+  getReceiptLink,
   type WalletMatch,
 } from "./actions";
 import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
@@ -56,7 +57,20 @@ export function CheckoutClient({
   const [creatingWallet, setCreatingWallet] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [lastScan, setLastScan] = useState<{ catalogItemId: string; title: string } | null>(null);
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [receipt, setReceipt] = useState<{ url: string; qrDataUrl: string } | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
+
+  // Best-effort — a receipt link/QR is a nice-to-have on top of the sale
+  // itself, never something that should surface an error to the cashier.
+  async function loadReceipt(checkoutSessionId: string) {
+    try {
+      const link = await getReceiptLink(fairId, checkoutSessionId);
+      setReceipt(link);
+    } catch {
+      setReceipt(null);
+    }
+  }
 
   // Cost is irrelevant to a price preview (only price_charged is displayed
   // here) — 0 is a safe placeholder, never sent anywhere; the real
@@ -240,9 +254,34 @@ export function CheckoutClient({
 
     setCharging(true);
     setMessage("Creating payment…");
+    setReceipt(null);
     try {
       const terminal = await getTerminal();
-      const { checkoutSessionId, clientSecret } = await createInPersonCheckout(fairId, lines);
+      const { checkoutSessionId, clientSecret } = await createInPersonCheckout(
+        fairId,
+        lines,
+        buyerEmail.trim() || undefined,
+      );
+
+      // Best-effort — shows the itemized cart on the reader's own screen
+      // instead of just the total. Never blocks the charge if it fails.
+      try {
+        await terminal.setReaderDisplay({
+          type: "cart",
+          cart: {
+            currency: "usd",
+            tax: Math.round(cardTax * 100),
+            total: Math.round(cardTotal * 100),
+            line_items: pricedLines.map((l) => ({
+              description: itemsById.get(l.catalog_item_id)?.title ?? "",
+              amount: Math.round(l.price_charged * 100),
+              quantity: l.quantity,
+            })),
+          },
+        });
+      } catch {
+        // Non-fatal — proceed to collect payment regardless.
+      }
 
       setMessage("Tap, insert, or swipe card on the reader…");
       const collectResult = await terminal.collectPaymentMethod(clientSecret);
@@ -264,9 +303,16 @@ export function CheckoutClient({
           : "Payment succeeded — sale is still finalizing, check back shortly.",
       );
       setCart({});
+      setBuyerEmail("");
+      if (completed) void loadReceipt(checkoutSessionId);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Charge failed");
     } finally {
+      try {
+        await terminalRef.current?.clearReaderDisplay();
+      } catch {
+        // Non-fatal — the reader just keeps showing the last cart.
+      }
       setCharging(false);
     }
   }
@@ -325,13 +371,21 @@ export function CheckoutClient({
 
     setCharging(true);
     setMessage("Charging wallet…");
+    setReceipt(null);
     try {
-      await chargeWallet(fairId, selectedWallet.id, lines);
+      const { checkoutSessionId } = await chargeWallet(
+        fairId,
+        selectedWallet.id,
+        lines,
+        buyerEmail.trim() || undefined,
+      );
       setMessage(`Charged $${walletTotal.toFixed(2)} to ${selectedWallet.student_name}'s wallet ✅`);
       setCart({});
       setSelectedWallet(null);
       setWalletQuery("");
       setWalletMatches([]);
+      setBuyerEmail("");
+      if (checkoutSessionId) void loadReceipt(checkoutSessionId);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Wallet charge failed");
     } finally {
@@ -351,10 +405,13 @@ export function CheckoutClient({
 
     setCharging(true);
     setMessage("Recording cash sale…");
+    setReceipt(null);
     try {
-      await chargeCash(fairId, lines);
+      const { checkoutSessionId } = await chargeCash(fairId, lines, buyerEmail.trim() || undefined);
       setMessage(`Recorded $${cashTotal.toFixed(2)} cash sale ✅`);
       setCart({});
+      setBuyerEmail("");
+      if (checkoutSessionId) void loadReceipt(checkoutSessionId);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Cash sale failed");
     } finally {
@@ -465,6 +522,15 @@ export function CheckoutClient({
           {pricedLines.length === 0 && <li className="text-neutral-500">Empty</li>}
         </ul>
         <p className="mb-3 font-semibold text-neutral-900">Subtotal: ${subtotal.toFixed(2)}</p>
+
+        <div className="mb-3">
+          <Input
+            type="email"
+            placeholder="Email receipt to (optional)"
+            value={buyerEmail}
+            onChange={(e) => setBuyerEmail(e.target.value)}
+          />
+        </div>
 
         {terminalLocationId && (
           <div className="mb-3 flex flex-col gap-2">
@@ -630,6 +696,30 @@ export function CheckoutClient({
         )}
 
         {message && <p className="mt-3 text-sm text-neutral-700">{message}</p>}
+
+        {receipt && (
+          <div className="mt-3 flex flex-col items-center gap-2 border-t border-neutral-100 pt-3">
+            <p className="text-xs font-semibold text-neutral-600">Receipt</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={receipt.qrDataUrl} alt="Scan to view receipt" className="h-28 w-28" />
+            <a
+              href={receipt.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-accent-600 hover:underline"
+            >
+              View receipt
+            </a>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(`${receipt.url}?print=1`, "_blank")}
+            >
+              Print receipt
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

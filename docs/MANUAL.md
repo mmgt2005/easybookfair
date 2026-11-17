@@ -742,6 +742,19 @@ second-class:
    PaymentIntent, or webhook involved at all. Only shown when the fair's
    cash payment option is on.
 
+**Reader cart display + receipts.** While a card-reader sale is in
+progress, the reader's own screen shows the actual cart (items,
+quantity, tax, total), not just a bare amount. Every tender gets a
+receipt: an optional "Email receipt to" field above the three charge
+buttons sends a copy immediately (cash/wallet) or once the webhook
+confirms (card); after any sale, a "View receipt"/"Print receipt" link
+and QR code appear for whoever's at the table to scan or print on the
+spot. A wallet purchase also auto-emails whoever most recently funded
+that wallet, with no field to fill in — the one case a kid spending
+cash with no phone and no parent present still gets no receipt unless
+staff use the print option (needs a printer set up at that checkout
+station).
+
 Card-in-person, online, and wallet spends all funnel into the same
 `payment_intent.succeeded` webhook handler (cash doesn't, since there's no
 PaymentIntent for cash at all) — it tells apart a cart checkout from a
