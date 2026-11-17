@@ -103,7 +103,11 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   already encodes the link). The bottom band now sits exactly a
   quarter-inch above the true bottom of the printed page on the
   common single-page case, instead of wherever the book grid happened
-  to end.
+  to end. Book titles and descriptions now wrap and show in full
+  instead of truncating with "...", cover thumbnails are 50% bigger,
+  the description text is a darker, more legible gray, and the
+  tagline card always shows the complete phrase rather than clipping
+  it on a long fair name.
 
 ### Changed
 
