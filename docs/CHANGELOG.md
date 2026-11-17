@@ -107,7 +107,9 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
   instead of truncating with "...", cover thumbnails are 50% bigger,
   the description text is a darker, more legible gray, and the
   tagline card always shows the complete phrase rather than clipping
-  it on a long fair name.
+  it on a long fair name. The footer (dates, caption, QR badge) moved
+  from a full-width band into a narrower panel on the right side of
+  the page, below the tagline card, matching its alignment.
 
 ### Changed
 
