@@ -12,6 +12,17 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Added
 
+- **Thermal receipt printer support** — the checkout screen's "Print
+  receipt" now has a thermal (80mm roll) companion, a narrow
+  chrome-free layout with its own `@page` sizing, for staff printing
+  to a thermal printer with a real OS driver from a computer. For a
+  tablet or phone — where there's usually no driver/AirPrint path to a
+  thermal printer at all — a fair can optionally set a "Thermal
+  printer network address" (`fairs.thermal_printer_url`, migration
+  `0079`); when set, a third "Print to thermal printer" button sends
+  the receipt directly to an Epson printer's built-in web server over
+  the local WiFi using its documented ePOS-Print API (`lib/eposPrint.ts`),
+  bypassing the browser's print dialog entirely.
 - **Itemized reader display + in-person receipts** — the Stripe reader
   now shows the actual cart (each item, quantity, and the tax/total)
   during a card-reader sale instead of just the final amount

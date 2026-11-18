@@ -753,7 +753,13 @@ spot. A wallet purchase also auto-emails whoever most recently funded
 that wallet, with no field to fill in — the one case a kid spending
 cash with no phone and no parent present still gets no receipt unless
 staff use the print option (needs a printer set up at that checkout
-station).
+station). Two thermal (receipt-roll) options exist alongside the
+regular printer-sized one: "Print receipt (thermal)" works from a
+computer with the printer's own driver installed; "Print to thermal
+printer" (shown only when a fair's Edit page has a "Thermal printer
+network address" set) sends straight to an Epson WiFi printer over the
+local network, which is what makes printing from a tablet or phone —
+not just a computer — possible at all.
 
 Card-in-person, online, and wallet spends all funnel into the same
 `payment_intent.succeeded` webhook handler (cash doesn't, since there's no

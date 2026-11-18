@@ -66,6 +66,7 @@ export async function updateFair(fairId: string, formData: FormData) {
   const allowCash = formData.get("allow_cash") === "on";
   const rentalFeeInput = formData.get("equipment_rental_fee");
   const equipmentRentalFee = rentalFeeInput ? Number(rentalFeeInput) : 0;
+  const thermalPrinterUrl = String(formData.get("thermal_printer_url") ?? "").trim() || null;
 
   if (!name || !startDate || !endDate || !returnDeadline || !status) {
     throw new Error("All fields are required");
@@ -135,6 +136,7 @@ export async function updateFair(fairId: string, formData: FormData) {
       allow_wallet: allowWallet,
       allow_cash: allowCash,
       equipment_rental_fee: allowInPerson ? equipmentRentalFee : 0,
+      thermal_printer_url: thermalPrinterUrl,
     })
     .eq("id", fairId);
 

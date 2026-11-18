@@ -22,7 +22,7 @@ export default async function EditFairPage({
   const { data: fair, error } = await supabase
     .from("fairs")
     .select(
-      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, tax_state, tax_county_pct, tax_city_pct, tax_applies_online, tax_applies_in_person, tax_applies_cash, tax_applies_wallet, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
+      "id, name, start_date, end_date, return_deadline, status, cash_sales_assumption_pct, stripe_terminal_location_id, allow_online, allow_wallet, allow_in_person, allow_cash, equipment_rental_fee, thermal_printer_url, tax_state, tax_county_pct, tax_city_pct, tax_applies_online, tax_applies_in_person, tax_applies_cash, tax_applies_wallet, organizations(name, is_school, stripe_connect_account_id, stripe_payouts_enabled)",
     )
     .eq("id", fairId)
     .single();
@@ -228,6 +228,21 @@ export default async function EditFairPage({
                 />
               </Field>
             )}
+            <Field label="Thermal printer network address (optional)">
+              <Input
+                name="thermal_printer_url"
+                placeholder="e.g. 192.168.1.50"
+                defaultValue={fair.thermal_printer_url ?? ""}
+              />
+              <p className="mt-1 text-xs text-neutral-500">
+                An Epson receipt printer&apos;s address on the checkout
+                table&apos;s own WiFi network — lets the checkout screen print
+                receipts to it directly from a tablet or phone, not just a
+                computer. Leave blank if there&apos;s no thermal printer, or
+                print from a computer with the printer&apos;s own driver
+                installed instead.
+              </p>
+            </Field>
           </div>
           <Button type="submit">Save changes</Button>
         </form>

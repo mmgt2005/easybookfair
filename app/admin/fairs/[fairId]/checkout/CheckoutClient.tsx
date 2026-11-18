@@ -13,6 +13,7 @@ import {
   type WalletMatch,
 } from "./actions";
 import { applyPromotions, type ActivePromotion, type CatalogPriceInfo } from "@/lib/promotions";
+import { printReceiptToEpson } from "@/lib/eposPrint";
 import { Button, Card, Input } from "@/components/ui";
 import { ScanInput } from "./ScanInput";
 
@@ -22,8 +23,10 @@ type TerminalStatus = "idle" | "connecting" | "connected" | "error";
 
 export function CheckoutClient({
   fairId,
+  fairName,
   items,
   terminalLocationId,
+  thermalPrinterUrl,
   allowWallet,
   allowCash,
   promotions,
@@ -33,8 +36,10 @@ export function CheckoutClient({
   taxAppliesWallet,
 }: {
   fairId: string;
+  fairName: string;
   items: Item[];
   terminalLocationId: string | null;
+  thermalPrinterUrl: string | null;
   allowWallet: boolean;
   allowCash: boolean;
   promotions: ActivePromotion[];
@@ -58,7 +63,19 @@ export function CheckoutClient({
   const [scanError, setScanError] = useState<string | null>(null);
   const [lastScan, setLastScan] = useState<{ catalogItemId: string; title: string } | null>(null);
   const [buyerEmail, setBuyerEmail] = useState("");
-  const [receipt, setReceipt] = useState<{ url: string; qrDataUrl: string } | null>(null);
+  const [receipt, setReceipt] = useState<{
+    url: string;
+    qrDataUrl: string;
+    checkoutSessionId: string;
+  } | null>(null);
+  // A snapshot of the sale that just completed, for the thermal-printer
+  // button below — can't read pricedLines/cart at click time since the
+  // cart is cleared right after a successful charge.
+  const [lastSale, setLastSale] = useState<{
+    lineItems: { title: string; quantity: number; price_charged: number }[];
+    taxAmount: number;
+  } | null>(null);
+  const [thermalPrinting, setThermalPrinting] = useState(false);
   const terminalRef = useRef<Terminal | null>(null);
 
   // Best-effort — a receipt link/QR is a nice-to-have on top of the sale
@@ -66,9 +83,30 @@ export function CheckoutClient({
   async function loadReceipt(checkoutSessionId: string) {
     try {
       const link = await getReceiptLink(fairId, checkoutSessionId);
-      setReceipt(link);
+      setReceipt({ ...link, checkoutSessionId });
     } catch {
       setReceipt(null);
+    }
+  }
+
+  async function printThermal() {
+    if (!thermalPrinterUrl || !lastSale || !receipt) return;
+    setThermalPrinting(true);
+    try {
+      await printReceiptToEpson(thermalPrinterUrl, {
+        fairName,
+        orderCode: receipt.checkoutSessionId.slice(0, 8).toUpperCase(),
+        lineItems: lastSale.lineItems,
+        taxAmount: lastSale.taxAmount,
+      });
+    } catch (err) {
+      setMessage(
+        err instanceof Error
+          ? `Couldn't reach the thermal printer: ${err.message}`
+          : "Couldn't reach the thermal printer",
+      );
+    } finally {
+      setThermalPrinting(false);
     }
   }
 
@@ -118,6 +156,15 @@ export function CheckoutClient({
   const walletTotal = subtotal + walletTax;
   const cashTax = taxAppliesCash ? Math.round(subtotal * taxRate * 100) / 100 : 0;
   const cashTotal = subtotal + cashTax;
+
+  // Snapshot shape shared by the thermal-print button across all three
+  // tenders — built once here so charge()/chargeSelectedWallet()/
+  // chargeCashTender() don't each repeat the title lookup.
+  const saleLineItems = pricedLines.map((l) => ({
+    title: itemsById.get(l.catalog_item_id)?.title ?? "",
+    quantity: l.quantity,
+    price_charged: l.price_charged,
+  }));
 
   async function getTerminal(): Promise<Terminal> {
     if (terminalRef.current) return terminalRef.current;
@@ -255,6 +302,7 @@ export function CheckoutClient({
     setCharging(true);
     setMessage("Creating payment…");
     setReceipt(null);
+    setLastSale(null);
     try {
       const terminal = await getTerminal();
       const { checkoutSessionId, clientSecret } = await createInPersonCheckout(
@@ -304,7 +352,10 @@ export function CheckoutClient({
       );
       setCart({});
       setBuyerEmail("");
-      if (completed) void loadReceipt(checkoutSessionId);
+      if (completed) {
+        setLastSale({ lineItems: saleLineItems, taxAmount: cardTax });
+        void loadReceipt(checkoutSessionId);
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Charge failed");
     } finally {
@@ -372,6 +423,7 @@ export function CheckoutClient({
     setCharging(true);
     setMessage("Charging wallet…");
     setReceipt(null);
+    setLastSale(null);
     try {
       const { checkoutSessionId } = await chargeWallet(
         fairId,
@@ -385,7 +437,10 @@ export function CheckoutClient({
       setWalletQuery("");
       setWalletMatches([]);
       setBuyerEmail("");
-      if (checkoutSessionId) void loadReceipt(checkoutSessionId);
+      if (checkoutSessionId) {
+        setLastSale({ lineItems: saleLineItems, taxAmount: walletTax });
+        void loadReceipt(checkoutSessionId);
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Wallet charge failed");
     } finally {
@@ -406,12 +461,16 @@ export function CheckoutClient({
     setCharging(true);
     setMessage("Recording cash sale…");
     setReceipt(null);
+    setLastSale(null);
     try {
       const { checkoutSessionId } = await chargeCash(fairId, lines, buyerEmail.trim() || undefined);
       setMessage(`Recorded $${cashTotal.toFixed(2)} cash sale ✅`);
       setCart({});
       setBuyerEmail("");
-      if (checkoutSessionId) void loadReceipt(checkoutSessionId);
+      if (checkoutSessionId) {
+        setLastSale({ lineItems: saleLineItems, taxAmount: cashTax });
+        void loadReceipt(checkoutSessionId);
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Cash sale failed");
     } finally {
@@ -710,14 +769,35 @@ export function CheckoutClient({
             >
               View receipt
             </a>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => window.open(`${receipt.url}?print=1`, "_blank")}
-            >
-              Print receipt
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`${receipt.url}?print=1`, "_blank")}
+              >
+                Print receipt
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`${receipt.url}?print=1&thermal=1`, "_blank")}
+              >
+                Print receipt (thermal)
+              </Button>
+              {thermalPrinterUrl && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={thermalPrinting || !lastSale}
+                  onClick={printThermal}
+                >
+                  {thermalPrinting ? "Printing…" : "Print to thermal printer"}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </Card>

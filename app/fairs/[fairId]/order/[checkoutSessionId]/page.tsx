@@ -30,10 +30,10 @@ export default async function OrderConfirmationPage({
   searchParams,
 }: {
   params: Promise<{ fairId: string; checkoutSessionId: string }>;
-  searchParams: Promise<{ print?: string }>;
+  searchParams: Promise<{ print?: string; thermal?: string }>;
 }) {
   const { fairId, checkoutSessionId } = await params;
-  const { print } = await searchParams;
+  const { print, thermal } = await searchParams;
   const supabase = await createClient();
 
   const { data: order } = await supabase
@@ -52,6 +52,58 @@ export default async function OrderConfirmationPage({
   const orderCode = order.id.slice(0, 8).toUpperCase();
 
   const isOnline = order.channel === "online";
+
+  // Thermal (80mm roll) layout — a narrow, chrome-free variant for staff
+  // printing to a driver-installed thermal printer from a computer (the
+  // existing full-width Card above prints cropped/scaled on an 80mm roll).
+  // Reached via CheckoutClient.tsx's "Print receipt (thermal)" button,
+  // which opens this same page with ?print=1&thermal=1.
+  if (thermal === "1") {
+    return (
+      <div className="mx-auto max-w-[320px] p-3 font-mono text-sm text-neutral-900">
+        <style>{"@page { size: 80mm auto; margin: 0; }"}</style>
+        {print === "1" && <AutoPrint />}
+        {order.status === "completed" ? (
+          <>
+            <h1 className="text-center text-base font-bold">{order.fair_name}</h1>
+            <p className="text-center">{isOnline ? "Order confirmed" : "Receipt"}</p>
+            <p className="mt-2">Order code: {orderCode}</p>
+            <div className="mt-2 flex flex-col gap-1 border-t border-dashed border-neutral-400 pt-2">
+              {order.line_items.map((line, i) => (
+                <div key={i} className="flex justify-between gap-2">
+                  <span>
+                    {line.quantity}× {line.title}
+                  </span>
+                  <span>${(line.quantity * line.price_charged).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            {order.tax_amount > 0 && (
+              <div className="mt-2 flex flex-col border-t border-dashed border-neutral-400 pt-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>${order.tax_amount.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+            <div className="mt-2 flex justify-between border-t border-dashed border-neutral-400 pt-2 text-base font-bold">
+              <span>Total</span>
+              <span>${total.toFixed(2)}</span>
+            </div>
+            <div className="mt-4 text-center print:hidden">
+              <PrintButton />
+            </div>
+          </>
+        ) : (
+          <p className="mt-2">Payment processing — refresh shortly.</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-6">
