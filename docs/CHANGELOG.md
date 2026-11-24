@@ -178,6 +178,14 @@ is still open — see `docs/spec.md`'s "Build plan" for the full phase list.
 
 ### Fixed
 
+- **The fair-edit page silently showed a generic "Fair not found" for
+  any query error, not just a genuinely missing row** — a real
+  Postgres/PostgREST error (e.g. a stale PostgREST schema cache after
+  adding a column via raw SQL, the actual cause behind one such
+  incident) was indistinguishable from the row simply not existing,
+  since the error itself was discarded. Now logged server-side and
+  shown (admins only, this page is already gated) with its real
+  message, distinct from the true not-found case.
 - **Self-serve sign-in with no prior context (e.g. the landing page's
   "Sign in →" link) always landed on `/admin` after a successful magic
   link, regardless of whether the person was an admin, org staff member,

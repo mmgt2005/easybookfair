@@ -27,7 +27,21 @@ export default async function EditFairPage({
     .eq("id", fairId)
     .single();
 
-  if (error || !fair) {
+  if (error) {
+    // A genuine query error (a stale PostgREST schema cache after a raw
+    // SQL migration, a bad filter, an RLS denial, etc.) looks identical to
+    // a missing row unless this is logged and shown distinctly — this
+    // exact ambiguity took a long debugging session to untangle once
+    // (traced to a PostgREST schema-cache reload needed after migration
+    // 0079 added a column via raw SQL). Safe to show verbatim: this page
+    // is already behind requireAdmin().
+    console.error("Failed to load fair for edit page", fairId, error);
+    return (
+      <p className="text-sm text-red-600">Error loading fair: {error.message}</p>
+    );
+  }
+
+  if (!fair) {
     return <p className="text-sm text-red-600">Fair not found.</p>;
   }
 
